@@ -1,7 +1,7 @@
 
-  # Qualification Information Submission
+  # 小B后端管理
 
-  This is a code bundle for Qualification Information Submission. The original project is available at https://www.figma.com/design/kXthmUOwCDmCEV2q8GVQ2m/Qualification-Information-Submission.
+  This is a code bundle for 小B后端管理. The original project is available at https://www.figma.com/design/kXthmUOwCDmCEV2q8GVQ2m/%E5%B0%8FB%E5%90%8E%E7%AB%AF%E7%AE%A1%E7%90%86.
 
   ## Running the code
 

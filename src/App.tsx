@@ -7,6 +7,7 @@ import { AdminLayout } from './components/AdminLayout';
 import { UserManagement } from './components/UserManagement';
 import { OrderManagement } from './components/OrderManagement';
 import { SettlementCenter } from './components/SettlementCenter';
+import { ApiKeyManagement } from './components/ApiKeyManagement';
 import { PriceConfiguration } from './components/PriceConfiguration';
 import { DeveloperCenter } from './components/DeveloperCenter';
 import { SmallBAdmin } from './components/SmallBAdmin';
@@ -420,6 +421,8 @@ export default function App() {
           return <OrderManagement />;
         case 'finance':
           return <SettlementCenter />;
+        case 'apikeys':
+          return <ApiKeyManagement />;
         case 'pricing':
           return <PriceConfiguration />;
         default:

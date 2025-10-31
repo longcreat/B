@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import { Bell, LogOut, FileCheck, Users, ChevronLeft, ChevronRight, Receipt, Settings, Package } from 'lucide-react';
+import { Bell, LogOut, FileCheck, Users, ChevronLeft, ChevronRight, Receipt, Settings, Package, Key } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +12,7 @@ import {
 } from './ui/dropdown-menu';
 import { Badge } from './ui/badge';
 
-type AdminMenuItem = 'review' | 'users' | 'orders' | 'finance' | 'pricing';
+type AdminMenuItem = 'review' | 'users' | 'orders' | 'finance' | 'apikeys' | 'pricing';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -43,6 +43,7 @@ export function AdminLayout({
     { id: 'users' as AdminMenuItem, icon: Users, label: '用户管理', count: 0 },
     { id: 'orders' as AdminMenuItem, icon: Package, label: '订单管理', count: 0 },
     { id: 'finance' as AdminMenuItem, icon: Receipt, label: '结算中心', count: 0 },
+    { id: 'apikeys' as AdminMenuItem, icon: Key, label: 'API密钥管理', count: 0 },
     { id: 'pricing' as AdminMenuItem, icon: Settings, label: '价格配置', count: 0 },
   ];
 

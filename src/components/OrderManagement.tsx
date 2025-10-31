@@ -33,7 +33,6 @@ import {
   Eye,
   Download,
   Package,
-  Calendar,
   Filter,
 } from 'lucide-react';
 
@@ -344,14 +343,6 @@ export function OrderManagement() {
     return matchesSearch && matchesOrderStatus && matchesSettlementStatus && matchesPartnerType;
   });
 
-  // 统计数据
-  const stats = {
-    total: orders.length,
-    completed: orders.filter(o => o.orderStatus === 'completed').length,
-    readyToSettle: orders.filter(o => o.settlementStatus === 'ready').length,
-    totalRevenue: orders.reduce((sum, o) => sum + o.partnerProfit, 0),
-  };
-
   return (
     <div className="p-6 space-y-6">
       {/* 面包屑导航 */}
@@ -362,54 +353,6 @@ export function OrderManagement() {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-
-      {/* 统计卡片 */}
-      <div className="grid grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">总订单数</p>
-                <p className="text-2xl mt-1">{stats.total}</p>
-              </div>
-              <Package className="w-8 h-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">已完成订单</p>
-                <p className="text-2xl mt-1">{stats.completed}</p>
-              </div>
-              <CheckCircle2 className="w-8 h-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">可结算订单</p>
-                <p className="text-2xl mt-1">{stats.readyToSettle}</p>
-              </div>
-              <Calendar className="w-8 h-8 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">总收益</p>
-                <p className="text-2xl mt-1 text-green-600">¥{stats.totalRevenue.toFixed(2)}</p>
-              </div>
-              <Download className="w-8 h-8 text-orange-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* 主内容 */}
       <Card>

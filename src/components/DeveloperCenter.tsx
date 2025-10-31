@@ -374,64 +374,102 @@ export function DeveloperCenter() {
           <TabsContent value="docs" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>API技术文档</CardTitle>
+                <CardTitle>MCP技术文档</CardTitle>
                 <CardDescription>
-                  完整的API接口文档、集成指南和最佳实践
+                  完整的MCP接口文档、集成指南和最佳实践
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <a
-                    href="https://docs.example.com/api/getting-started"
+                    href="https://docs.aigohotel.com/mcp/getting-started"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <div>
-                      <h4 className="mb-1">快速开始指南</h4>
-                      <p className="text-sm text-gray-600">了解如何在5分钟内集成我们的API</p>
+                      <h4 className="mb-1">MCP快速开始</h4>
+                      <p className="text-sm text-gray-600">了解如何在5分钟内接入MCP服务</p>
                     </div>
                     <ExternalLink className="w-5 h-5 text-gray-400" />
                   </a>
 
                   <a
-                    href="https://docs.example.com/api/reference"
+                    href="https://docs.aigohotel.com/mcp/reference"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <div>
-                      <h4 className="mb-1">API接口文档</h4>
+                      <h4 className="mb-1">MCP接口文档</h4>
                       <p className="text-sm text-gray-600">完整的接口说明和参数定义</p>
                     </div>
                     <ExternalLink className="w-5 h-5 text-gray-400" />
                   </a>
 
                   <a
-                    href="https://docs.example.com/api/examples"
+                    href="https://docs.aigohotel.com/mcp/hotel-query"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <div>
+                      <h4 className="mb-1">酒店资源查询</h4>
+                      <p className="text-sm text-gray-600">查询酒店信息、价格、库存接口</p>
+                    </div>
+                    <ExternalLink className="w-5 h-5 text-gray-400" />
+                  </a>
+
+                  <a
+                    href="https://docs.aigohotel.com/mcp/examples"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <div>
                       <h4 className="mb-1">代码示例</h4>
-                      <p className="text-sm text-gray-600">多语言SDK和代码示例</p>
+                      <p className="text-sm text-gray-600">多语言SDK和实际应用示例</p>
                     </div>
                     <ExternalLink className="w-5 h-5 text-gray-400" />
                   </a>
+                </div>
+              </CardContent>
+            </Card>
 
-                  <a
-                    href="https://docs.example.com/api/webhooks"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div>
-                      <h4 className="mb-1">Webhook配置</h4>
-                      <p className="text-sm text-gray-600">实时接收订单状态更新</p>
-                    </div>
-                    <ExternalLink className="w-5 h-5 text-gray-400" />
-                  </a>
+            {/* MCP服务说明 */}
+            <Card className="border-blue-200 bg-blue-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-blue-600" />
+                  MCP服务说明
+                </CardTitle>
+                <CardDescription>
+                  Model Context Protocol - 为AI应用提供酒店资源数据上下文
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 text-sm">
+                  <div className="p-3 bg-white rounded border border-blue-200">
+                    <p className="text-blue-900 mb-2">✅ <strong>无调用限制</strong></p>
+                    <p className="text-blue-700">
+                      MCP服务不设置调用次数限制，您可以根据业务需求自由调用API查询酒店资源信息。
+                      系统会监控异常调用模式以确保服务质量。
+                    </p>
+                  </div>
+                  <div className="p-3 bg-white rounded border border-blue-200">
+                    <p className="text-blue-900 mb-2">🏨 <strong>实时数据</strong></p>
+                    <p className="text-blue-700">
+                      通过MCP接口查询的酒店信息、房型、价格、库存等数据都是实时更新的，
+                      确保您的应用获取最新的酒店资源信息。
+                    </p>
+                  </div>
+                  <div className="p-3 bg-white rounded border border-blue-200">
+                    <p className="text-blue-900 mb-2">🔒 <strong>安全认证</strong></p>
+                    <p className="text-blue-700">
+                      所有API调用都需要使用有效的API密钥进行认证。请妥善保管您的密钥，
+                      不要在公开代码中暴露密钥内容。
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -443,24 +481,28 @@ export function DeveloperCenter() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex justify-between py-3 border-b">
-                    <span className="text-gray-600">结算方式</span>
-                    <span>按实际成交订单佣金结算</span>
+                    <span className="text-gray-600">服务类型</span>
+                    <span>MCP酒店资源查询服务</span>
                   </div>
                   <div className="flex justify-between py-3 border-b">
-                    <span className="text-gray-600">默认佣金比例</span>
-                    <span>8% - 15%（根据酒店类型浮动）</span>
+                    <span className="text-gray-600">API端点</span>
+                    <span className="font-mono text-sm">https://api.aigohotel.com/mcp/v1</span>
                   </div>
                   <div className="flex justify-between py-3 border-b">
-                    <span className="text-gray-600">结算周期</span>
-                    <span>每月1日结算上月佣金</span>
+                    <span className="text-gray-600">调用限制</span>
+                    <span>无限制（监控异常模式）</span>
                   </div>
                   <div className="flex justify-between py-3 border-b">
-                    <span className="text-gray-600">API请求限制</span>
-                    <span>1000次/分钟</span>
+                    <span className="text-gray-600">数据更新频率</span>
+                    <span>实时更新</span>
+                  </div>
+                  <div className="flex justify-between py-3 border-b">
+                    <span className="text-gray-600">支持的查询</span>
+                    <span>酒店信息、房型、价格、库存</span>
                   </div>
                   <div className="flex justify-between py-3">
                     <span className="text-gray-600">技术支持</span>
-                    <span>7x24小时 | support@example.com</span>
+                    <span>7x24小时 | mcp-support@aigohotel.com</span>
                   </div>
                 </div>
               </CardContent>
