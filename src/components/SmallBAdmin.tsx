@@ -9,8 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { toast } from 'sonner@2.0.3';
-import { Plus, Trash2, Settings, DollarSign, FileText, Download, Upload, Store } from 'lucide-react';
+import { Plus, Trash2, Settings, DollarSign, FileText, Download, Upload, Store, Wallet } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
+import { ProfitWallet } from './ProfitWallet';
 
 interface PricingRule {
   id: string;
@@ -200,6 +201,10 @@ export function SmallBAdmin() {
               <DollarSign className="w-4 h-4 mr-2" />
               加价策略管理
             </TabsTrigger>
+            <TabsTrigger value="wallet">
+              <Wallet className="w-4 h-4 mr-2" />
+              利润钱包
+            </TabsTrigger>
             <TabsTrigger value="orders">
               <FileText className="w-4 h-4 mr-2" />
               订单与财务
@@ -291,6 +296,11 @@ export function SmallBAdmin() {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Profit Wallet */}
+          <TabsContent value="wallet" className="space-y-6">
+            <ProfitWallet />
           </TabsContent>
 
           {/* Orders & Finance */}

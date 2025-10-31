@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 import { toast } from 'sonner@2.0.3';
-import { ArrowLeft, HelpCircle, Plus, X } from 'lucide-react';
+import { HelpCircle, Plus, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { ImageUpload } from './ImageUpload';
 import { AgreementCheckbox } from './AgreementCheckbox';
@@ -47,6 +47,7 @@ interface InfluencerFormData {
 interface InfluencerFormProps {
   onBack: () => void;
   onSubmit?: (data: any) => void;
+  initialData?: any;
 }
 
 const STORAGE_KEY = 'influencer_form_data';
@@ -84,12 +85,12 @@ const BANK_OPTIONS = [
   '北京银行',
 ];
 
-export function InfluencerForm({ onBack, onSubmit: onSubmitProp }: InfluencerFormProps) {
+export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: InfluencerFormProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [idPhotoFront, setIdPhotoFront] = useState<File | null>(null);
   const [idPhotoBack, setIdPhotoBack] = useState<File | null>(null);
   const [mainScreenshots, setMainScreenshots] = useState<File[]>([]);
-  const [additionalPlatforms, setAdditionalPlatforms] = useState<SocialPlatform[]>([]);
+  const [additionalPlatforms, setAdditionalPlatforms] = useState<SocialPlatform[]>(initialData?.additionalPlatforms || []);
   const [agreementAccepted, setAgreementAccepted] = useState(false);
 
   const {
@@ -99,7 +100,7 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp }: InfluencerFor
     setValue,
     formState: { errors },
   } = useForm<InfluencerFormData>({
-    defaultValues: {
+    defaultValues: initialData || {
       phone: '138****8888',
       accountType: 'bank',
     },
@@ -116,7 +117,23 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp }: InfluencerFor
     }
   }, [realName, accountType, setValue]);
 
+  // 初始化数据加载（优先使用initialData，然后是本地存储）
   useEffect(() => {
+    // 如果有初始数据（被驳回的申请），使用它
+    if (initialData) {
+      Object.keys(initialData).forEach((key) => {
+        if (key !== 'idPhotoFront' && key !== 'idPhotoBack' && key !== 'additionalPlatforms') {
+          setValue(key as keyof InfluencerFormData, initialData[key]);
+        }
+      });
+      // 设置附加平台
+      if (initialData.additionalPlatforms) {
+        setAdditionalPlatforms(initialData.additionalPlatforms);
+      }
+      return;
+    }
+    
+    // 否则尝试从本地存储恢复
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
@@ -130,7 +147,7 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp }: InfluencerFor
         console.error('Failed to restore form data', e);
       }
     }
-  }, [setValue]);
+  }, [setValue, initialData]);
 
   useEffect(() => {
     const subscription = watch((value) => {
@@ -250,11 +267,6 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp }: InfluencerFor
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        <Button variant="ghost" onClick={onBack} className="mb-6">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          返回选择身份类型
-        </Button>
-
         <Card>
           <CardHeader>
             <CardTitle>博主认证</CardTitle>

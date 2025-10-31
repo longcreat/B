@@ -6,9 +6,10 @@ type BusinessModel = 'mcp' | 'saas' | 'affiliate';
 
 interface BusinessModelSelectionProps {
   onSelect: (model: BusinessModel) => void;
+  selectedModel?: BusinessModel | null;
 }
 
-export function BusinessModelSelection({ onSelect }: BusinessModelSelectionProps) {
+export function BusinessModelSelection({ onSelect, selectedModel }: BusinessModelSelectionProps) {
   const businessModels = [
     {
       id: 'mcp' as const,
@@ -37,62 +38,55 @@ export function BusinessModelSelection({ onSelect }: BusinessModelSelectionProps
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="mb-4">业务模式选择</h1>
-          <p className="text-gray-600">请选择最适合您的业务模式，开启您的合作之旅</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {businessModels.map((model) => (
-            <Card
-              key={model.id}
-              className="cursor-pointer hover:shadow-xl transition-all border-2 hover:border-blue-500 relative group"
-              onClick={() => onSelect(model.id)}
-            >
-              {model.recommended && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                  <Badge className="bg-blue-600 hover:bg-blue-700 px-4 py-1">
-                    推荐
-                  </Badge>
+    <div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {businessModels.map((model) => (
+          <Card
+            key={model.id}
+            className={`cursor-pointer transition-all border-2 relative group ${
+              selectedModel === model.id
+                ? 'border-blue-500 bg-blue-50 shadow-xl'
+                : 'hover:shadow-xl hover:border-blue-300'
+            }`}
+            onClick={() => onSelect(model.id)}
+          >
+            {model.recommended && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                <Badge className="bg-blue-600 hover:bg-blue-700 px-4 py-1">
+                  推荐
+                </Badge>
+              </div>
+            )}
+            
+            <CardContent className="p-6">
+              <div className="mb-4 flex justify-center">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                  model.recommended ? 'bg-blue-100' : 'bg-gray-100'
+                } group-hover:scale-110 transition-transform`}>
+                  <model.icon className={`w-8 h-8 ${
+                    model.recommended ? 'text-blue-600' : 'text-gray-600'
+                  }`} />
                 </div>
-              )}
+              </div>
+
+              <h3 className="text-center mb-3">{model.title}</h3>
               
-              <CardContent className="p-6">
-                <div className="mb-4 flex justify-center">
-                  <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                    model.recommended ? 'bg-blue-100' : 'bg-gray-100'
-                  } group-hover:scale-110 transition-transform`}>
-                    <model.icon className={`w-8 h-8 ${
-                      model.recommended ? 'text-blue-600' : 'text-gray-600'
-                    }`} />
-                  </div>
-                </div>
+              <p className="text-gray-600 mb-4 min-h-[100px]">
+                {model.description}
+              </p>
 
-                <h3 className="text-center mb-3">{model.title}</h3>
-                
-                <p className="text-gray-600 mb-4 min-h-[100px]">
-                  {model.description}
+              <div className="pt-4 border-t border-gray-200">
+                <p className="text-gray-500">
+                  <span className="block mb-1">适用人群：</span>
+                  <span className="text-gray-700">{model.targetAudience}</span>
                 </p>
-
-                <div className="pt-4 border-t border-gray-200">
-                  <p className="text-gray-500">
-                    <span className="block mb-1">适用人群：</span>
-                    <span className="text-gray-700">{model.targetAudience}</span>
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <div className="mt-8 text-center">
-          <p className="text-gray-500">
-            选择后，您将进入相应的资质信息提交流程
-          </p>
-        </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
+
+
     </div>
   );
 }

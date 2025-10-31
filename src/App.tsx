@@ -1,40 +1,72 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { RegisterPage } from './components/RegisterPage';
 import { LoginPage } from './components/LoginPage';
-import { BusinessModelSelection } from './components/BusinessModelSelection';
-import { IndividualForm } from './components/IndividualForm';
-import { InfluencerForm } from './components/InfluencerForm';
-import { EnterpriseForm } from './components/EnterpriseForm';
-import { ReviewStatusPage } from './components/ReviewStatusPage';
 import { AdminReviewList, type ApplicationData } from './components/AdminReviewList';
 import { AdminReviewDetail } from './components/AdminReviewDetail';
+import { AdminLayout } from './components/AdminLayout';
+import { UserManagement } from './components/UserManagement';
+import { OrderManagement } from './components/OrderManagement';
+import { SettlementCenter } from './components/SettlementCenter';
+import { PriceConfiguration } from './components/PriceConfiguration';
 import { DeveloperCenter } from './components/DeveloperCenter';
 import { SmallBAdmin } from './components/SmallBAdmin';
 import { AffiliateBackend } from './components/AffiliateBackend';
+import { UserLayout } from './components/UserLayout';
+import { ServiceSidebar } from './components/ServiceSidebar';
+import { RegistrationSteps } from './components/RegistrationSteps';
+import { UserCenter } from './components/UserCenter';
 import { Toaster } from './components/ui/sonner';
-import { Card, CardContent } from './components/ui/card';
-import { Button } from './components/ui/button';
-import { User, Users, Building2, ArrowLeft, Settings, LogOut } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
+import { toast } from 'sonner@2.0.3';
 
 type BusinessModel = 'mcp' | 'saas' | 'affiliate' | null;
 type IdentityType = 'individual' | 'influencer' | 'enterprise' | null;
-type ViewMode = 'user' | 'admin';
 type AuthView = 'login' | 'register' | null;
+
+type UserView = 'registration' | 'userCenter';
+type AdminMenuItem = 'review' | 'users' | 'finance' | 'pricing';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authView, setAuthView] = useState<AuthView>('login');
-  const [currentUser, setCurrentUser] = useState<{ phone?: string; email?: string } | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('user');
+  const [currentUser, setCurrentUser] = useState<{ 
+    name?: string;
+    phone?: string; 
+    email?: string; 
+    role?: 'admin' | 'user';
+    company?: string;
+    registeredAt?: string;
+  } | null>(null);
+  const [currentView, setCurrentView] = useState<UserView>('registration');
   const [selectedBusinessModel, setSelectedBusinessModel] = useState<BusinessModel>(null);
   const [selectedIdentity, setSelectedIdentity] = useState<IdentityType>(null);
   const [currentApplicationId, setCurrentApplicationId] = useState<string | null>(null);
   const [selectedAdminApplication, setSelectedAdminApplication] = useState<ApplicationData | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [hasCheckedExistingApplication, setHasCheckedExistingApplication] = useState(false);
+  const [adminCurrentMenu, setAdminCurrentMenu] = useState<AdminMenuItem>('review');
 
-  // Mock applications database
-  const [applications, setApplications] = useState<ApplicationData[]>([
+  // Restore user session from localStorage on mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        setCurrentUser(userData);
+        setIsLoggedIn(true);
+      } catch (error) {
+        console.error('Failed to restore user session:', error);
+        localStorage.removeItem('currentUser');
+      }
+    }
+  }, []);
+
+  // Load applications from localStorage
+  const [applications, setApplications] = useState<ApplicationData[]>(() => {
+    const stored = localStorage.getItem('applications');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    return [
     {
       id: 'APP-001',
       applicantName: '张三',
@@ -102,46 +134,41 @@ export default function App() {
         accountNumber: '11001234567890123456',
       },
     },
-  ]);
-
-  const identityTypes = [
-    {
-      id: 'individual' as const,
-      title: '个人',
-      description: '个人用户认证',
-      icon: User,
-    },
-    {
-      id: 'influencer' as const,
-      title: '博主',
-      description: '内容创作者、KOL认证',
-      icon: Users,
-    },
-    {
-      id: 'enterprise' as const,
-      title: '企业',
-      description: '企业/机构主体认证',
-      icon: Building2,
-    },
   ];
+  });
 
-  const handleBusinessModelSelect = (model: BusinessModel) => {
-    setSelectedBusinessModel(model);
-  };
+  // Check for existing application on mount/login (skip for admin)
+  useEffect(() => {
+    if (isLoggedIn && currentUser && !hasCheckedExistingApplication) {
+      // 管理员直接跳过检查
+      if (currentUser.role === 'admin') {
+        setHasCheckedExistingApplication(true);
+        return;
+      }
+      
+      const userEmail = currentUser.email;
+      if (userEmail) {
+        const storedApplications = JSON.parse(localStorage.getItem('applications') || '[]');
+        const existingApp = storedApplications.find((app: any) => 
+          app.data?.email === userEmail || app.userEmail === userEmail
+        );
+        if (existingApp) {
+          setCurrentApplicationId(existingApp.id);
+          setSelectedBusinessModel(existingApp.businessModel as BusinessModel);
+          setSelectedIdentity(existingApp.identityType as IdentityType);
+          setApplications(storedApplications);
+        }
+      }
+      setHasCheckedExistingApplication(true);
+    }
+  }, [isLoggedIn, currentUser, hasCheckedExistingApplication]);
 
-  const handleIdentitySelect = (identity: IdentityType) => {
-    setSelectedIdentity(identity);
-  };
+  // Save applications to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('applications', JSON.stringify(applications));
+  }, [applications]);
 
-  const handleBackToBusinessModel = () => {
-    setSelectedBusinessModel(null);
-    setSelectedIdentity(null);
-    setCurrentApplicationId(null);
-  };
 
-  const handleBackToIdentityType = () => {
-    setSelectedIdentity(null);
-  };
 
   const handleFormSubmit = (formData: any) => {
     // Create new application
@@ -160,10 +187,26 @@ export default function App() {
         second: '2-digit',
       }),
       data: formData,
+      userEmail: currentUser?.email, // 关联用户邮箱
     };
 
-    setApplications([...applications, newApplication]);
+    const updatedApplications = [...applications, newApplication];
+    setApplications(updatedApplications);
     setCurrentApplicationId(newApplication.id);
+    
+    // 保存到localStorage
+    localStorage.setItem('applications', JSON.stringify(updatedApplications));
+  };
+
+  const handleReapply = () => {
+    // 重新申请时，删除旧的申请记录
+    if (currentApplicationId) {
+      const updatedApplications = applications.filter(app => app.id !== currentApplicationId);
+      setApplications(updatedApplications);
+      localStorage.setItem('applications', JSON.stringify(updatedApplications));
+    }
+    // 清除当前申请ID，允许用户重新申请
+    setCurrentApplicationId(null);
   };
 
   const handleAdminApprove = (id: string) => {
@@ -215,9 +258,7 @@ export default function App() {
     return applications.find((app) => app.id === currentApplicationId);
   };
 
-  const handleGoToDashboard = () => {
-    setShowDashboard(true);
-  };
+
 
   const getDashboardComponent = (businessModel: string) => {
     if (businessModel === 'mcp') return <DeveloperCenter />;
@@ -226,28 +267,104 @@ export default function App() {
     return null;
   };
 
-  const handleLoginSuccess = (userData: { phone?: string; email?: string }) => {
-    setCurrentUser(userData);
+  const handleLoginSuccess = (userData: { phone?: string; email?: string; role?: 'admin' | 'user'; name?: string; registeredAt?: string }) => {
+    const enrichedUserData = {
+      ...userData,
+      name: userData.name || userData.email?.split('@')[0],
+    };
+    setCurrentUser(enrichedUserData);
     setIsLoggedIn(true);
-    localStorage.setItem('currentUser', JSON.stringify(userData));
+    localStorage.setItem('currentUser', JSON.stringify(enrichedUserData));
+    
+    // 如果是管理员，直接跳过检查已有申请的逻辑
+    if (userData.role === 'admin') {
+      setHasCheckedExistingApplication(true);
+      return;
+    }
+    
+    // Check if user has existing application (reload from localStorage to get latest)
+    const userEmail = userData.email;
+    if (userEmail) {
+      const storedApplications = JSON.parse(localStorage.getItem('applications') || '[]');
+      const existingApp = storedApplications.find((app: any) => 
+        app.data?.email === userEmail || app.userEmail === userEmail
+      );
+      if (existingApp) {
+        setCurrentApplicationId(existingApp.id);
+        setSelectedBusinessModel(existingApp.businessModel as BusinessModel);
+        setSelectedIdentity(existingApp.identityType as IdentityType);
+        setApplications(storedApplications);
+        // Set view based on application status
+        if (existingApp.status === 'approved') {
+          setCurrentView('registration');
+        } else {
+          setCurrentView('registration');
+        }
+      } else {
+        setCurrentView('registration');
+      }
+    } else {
+      setCurrentView('registration');
+    }
+    setHasCheckedExistingApplication(true);
   };
 
-  const handleRegisterSuccess = (userData: { phone?: string; email?: string }) => {
-    setCurrentUser(userData);
+  const handleRegisterSuccess = (userData: { phone?: string; email?: string; role?: 'admin' | 'user'; name?: string; registeredAt?: string }) => {
+    const enrichedUserData = {
+      ...userData,
+      name: userData.name || userData.email?.split('@')[0],
+    };
+    setCurrentUser(enrichedUserData);
     setIsLoggedIn(true);
-    localStorage.setItem('currentUser', JSON.stringify(userData));
+    localStorage.setItem('currentUser', JSON.stringify(enrichedUserData));
+    setHasCheckedExistingApplication(true);
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
     setCurrentUser(null);
+    setCurrentView('registration');
     setSelectedBusinessModel(null);
     setSelectedIdentity(null);
     setCurrentApplicationId(null);
     setShowDashboard(false);
-    setViewMode('user');
+    setHasCheckedExistingApplication(false);
     localStorage.removeItem('currentUser');
   };
+
+  const handleUpdateProfile = (data: { name: string; phone?: string; company?: string }) => {
+    if (currentUser) {
+      const updatedUser = {
+        ...currentUser,
+        name: data.name,
+        phone: data.phone,
+        company: data.company,
+      };
+      setCurrentUser(updatedUser);
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    }
+  };
+
+  const handleChangePassword = (oldPassword: string, newPassword: string) => {
+    // 在真实应用中，这里应该调用API验证旧密码并更新新密码
+    // 这里仅作为演示，简单地显示成功消息
+    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
+    const userIndex = storedUsers.findIndex((u: any) => u.email === currentUser?.email);
+    
+    if (userIndex !== -1) {
+      // 验证旧密码（简化版本）
+      if (storedUsers[userIndex].password === oldPassword) {
+        storedUsers[userIndex].password = newPassword;
+        localStorage.setItem('users', JSON.stringify(storedUsers));
+        toast.success('密码修改成功');
+      } else {
+        toast.error('当前密码错误');
+        throw new Error('当前密码错误');
+      }
+    }
+  };
+
+
 
   // Show login/register if not logged in
   if (!isLoggedIn) {
@@ -273,44 +390,64 @@ export default function App() {
     );
   }
 
-  // Admin view
-  if (viewMode === 'admin') {
-    if (selectedAdminApplication) {
-      return (
-        <>
+  // Admin view - 根据用户角色显示
+  if (isLoggedIn && currentUser?.role === 'admin') {
+    const renderAdminContent = () => {
+      // 如果正在查看申请详情
+      if (selectedAdminApplication) {
+        return (
           <AdminReviewDetail
             application={selectedAdminApplication}
             onBack={() => setSelectedAdminApplication(null)}
             onApprove={handleAdminApprove}
             onReject={handleAdminReject}
           />
-          <Toaster />
-        </>
-      );
-    }
+        );
+      }
+
+      // 根据当前菜单显示内容
+      switch (adminCurrentMenu) {
+        case 'review':
+          return (
+            <AdminReviewList
+              applications={applications}
+              onViewDetail={setSelectedAdminApplication}
+            />
+          );
+        case 'users':
+          return <UserManagement />;
+        case 'orders':
+          return <OrderManagement />;
+        case 'finance':
+          return <SettlementCenter />;
+        case 'pricing':
+          return <PriceConfiguration />;
+        default:
+          return (
+            <AdminReviewList
+              applications={applications}
+              onViewDetail={setSelectedAdminApplication}
+            />
+          );
+      }
+    };
+
+    // 计算待审核数量
+    const pendingCount = applications.filter(app => app.status === 'pending').length;
 
     return (
-      <div>
-        <div className="bg-white border-b sticky top-0 z-10">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-            <h2>管理员后台</h2>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setViewMode('user')}>
-                切换到用户视图
-              </Button>
-              <Button variant="outline" onClick={handleLogout}>
-                <LogOut className="w-4 h-4 mr-2" />
-                退出登录
-              </Button>
-            </div>
-          </div>
-        </div>
-        <AdminReviewList
-          applications={applications}
-          onViewDetail={setSelectedAdminApplication}
-        />
+      <>
+        <AdminLayout
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          currentMenu={adminCurrentMenu}
+          onMenuChange={setAdminCurrentMenu}
+          pendingReviewCount={pendingCount}
+        >
+          {renderAdminContent()}
+        </AdminLayout>
         <Toaster />
-      </div>
+      </>
     );
   }
 
@@ -327,149 +464,106 @@ export default function App() {
     }
   }
 
-  // User view - Show review status page if application exists
-  if (currentApplicationId) {
-    const currentApp = getCurrentApplication();
-    if (currentApp) {
+  const currentApp = getCurrentApplication();
+
+  // Handle navigation
+  const handleNavigate = (view: string) => {
+    if (view === 'registration') {
+      setCurrentView('registration');
+      // Don't reset these if user has an application
+      if (!currentApplicationId) {
+        setSelectedBusinessModel(null);
+        setSelectedIdentity(null);
+      }
+    } else if (view === 'userCenter') {
+      setCurrentView('userCenter');
+    }
+  };
+
+  // User view - Main layout with sidebar
+  const renderMainContent = (currentApp: ApplicationData | undefined) => {
+    // User Center view
+    if (currentView === 'userCenter') {
       return (
-        <>
-          <div className="absolute top-4 right-4 z-10">
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              退出登录
-            </Button>
-          </div>
-          <ReviewStatusPage
-            status={currentApp.status}
-            businessModel={currentApp.businessModel}
-            identityType={currentApp.identityType}
-            submittedAt={currentApp.submittedAt}
-            rejectionInfo={
-              currentApp.status === 'rejected' && currentApp.rejectionReason
-                ? {
-                    reason: currentApp.rejectionReason,
-                    fields: [],
-                  }
-                : undefined
-            }
-            onBack={handleBackToBusinessModel}
-            onEdit={() => {
-              setCurrentApplicationId(null);
-              // Keep the business model and identity type selected
-            }}
-            onGoToDashboard={currentApp.status === 'approved' ? handleGoToDashboard : undefined}
-          />
-          <Toaster />
-        </>
+        <UserCenter
+          currentUser={{
+            email: currentUser?.email || '',
+            name: currentUser?.name || currentUser?.email?.split('@')[0] || '用户',
+            role: currentUser?.role || 'user',
+            phone: currentUser?.phone,
+            company: currentUser?.company,
+            registeredAt: currentUser?.registeredAt,
+          }}
+          onLogout={handleLogout}
+          onUpdateProfile={handleUpdateProfile}
+          onChangePassword={handleChangePassword}
+        />
       );
     }
-  }
 
-  // Step 3: Show form based on selected identity
-  if (selectedIdentity) {
-    const formProps = {
-      onBack: handleBackToIdentityType,
-      onSubmit: handleFormSubmit,
-    };
-
-    let FormComponent;
-    switch (selectedIdentity) {
-      case 'individual':
-        FormComponent = <IndividualForm {...formProps} />;
-        break;
-      case 'influencer':
-        FormComponent = <InfluencerForm {...formProps} />;
-        break;
-      case 'enterprise':
-        FormComponent = <EnterpriseForm {...formProps} />;
-        break;
-      default:
-        FormComponent = null;
+    // Registration view (default and main view)
+    if (currentView === 'registration') {
+      return (
+        <RegistrationSteps
+          onSubmit={handleFormSubmit}
+          initialBusinessModel={selectedBusinessModel}
+          initialIdentityType={selectedIdentity}
+          onBusinessModelChange={setSelectedBusinessModel}
+          onIdentityTypeChange={setSelectedIdentity}
+          existingApplicationId={currentApplicationId}
+          applicationData={currentApp ? {
+            id: currentApp.id,
+            status: currentApp.status,
+            submittedAt: currentApp.submittedAt,
+            reviewedAt: currentApp.reviewedAt,
+            rejectionReason: currentApp.rejectionReason,
+            data: currentApp.data,
+          } : null}
+          onGoToDashboard={() => setShowDashboard(true)}
+          onReapply={handleReapply}
+        />
+      );
     }
 
+    // Default fallback
     return (
-      <>
-        <div className="absolute top-4 right-4 z-10">
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            <LogOut className="w-4 h-4 mr-2" />
-            退出登录
-          </Button>
-        </div>
-        {FormComponent}
-        <Toaster />
-      </>
+      <RegistrationSteps
+        onSubmit={handleFormSubmit}
+        initialBusinessModel={selectedBusinessModel}
+        initialIdentityType={selectedIdentity}
+        onBusinessModelChange={setSelectedBusinessModel}
+        onIdentityTypeChange={setSelectedIdentity}
+        existingApplicationId={currentApplicationId}
+        applicationData={currentApp ? {
+          id: currentApp.id,
+          status: currentApp.status,
+          submittedAt: currentApp.submittedAt,
+          reviewedAt: currentApp.reviewedAt,
+          rejectionReason: currentApp.rejectionReason,
+          data: currentApp.data,
+        } : null}
+        onGoToDashboard={() => setShowDashboard(true)}
+        onReapply={handleReapply}
+      />
     );
-  }
+  };
 
-  // Step 2: Show identity type selection after business model is selected
-  if (selectedBusinessModel) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-12 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <Button variant="ghost" onClick={handleBackToBusinessModel}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              返回业务模式选择
-            </Button>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setViewMode('admin')}>
-                <Settings className="w-4 h-4 mr-2" />
-                管理员入口
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="w-4 h-4 mr-2" />
-                退出登录
-              </Button>
-            </div>
-          </div>
-
-          <div className="text-center mb-12">
-            <h1 className="mb-4">资质信息提交</h1>
-            <p className="text-gray-600">请选择您的身份类型，系统将为您加载对应的认证表单</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {identityTypes.map((type) => (
-              <Card
-                key={type.id}
-                className="cursor-pointer hover:shadow-lg transition-shadow border-2 hover:border-blue-500"
-                onClick={() => handleIdentitySelect(type.id)}
-              >
-                <CardContent className="p-8 text-center">
-                  <div className="mb-4 flex justify-center">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                      <type.icon className="w-8 h-8 text-blue-600" />
-                    </div>
-                  </div>
-                  <h3 className="mb-2">{type.title}</h3>
-                  <p className="text-gray-600">{type.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-        <Toaster />
-      </div>
-    );
-  }
-
-  // Step 1: Show business model selection first
+  // Render user view with layout
   return (
-    <div>
-      <div className="absolute top-4 right-4 z-10 flex gap-2">
-        <Button variant="outline" size="sm" onClick={() => setViewMode('admin')}>
-          <Settings className="w-4 h-4 mr-2" />
-          管理员入口
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleLogout}>
-          <LogOut className="w-4 h-4 mr-2" />
-          退出登录
-        </Button>
-      </div>
-      <div>
-        <BusinessModelSelection onSelect={handleBusinessModelSelect} />
-        <Toaster />
-      </div>
-    </div>
+    <UserLayout
+      currentUser={currentUser}
+      onLogout={handleLogout}
+      applicationStatus={currentApp?.status as any}
+      onNavigateToUserCenter={() => setCurrentView('userCenter')}
+      sidebarContent={
+        <ServiceSidebar
+          currentView={currentView}
+          onNavigate={handleNavigate}
+        />
+      }
+    >
+      {renderMainContent(currentApp)}
+      <Toaster />
+    </UserLayout>
   );
 }

@@ -6,11 +6,12 @@ import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Checkbox } from './ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Alert, AlertDescription } from './ui/alert';
 import { toast } from 'sonner@2.0.3';
-import { Mail, Phone, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Mail, Phone, Eye, EyeOff, Loader2, Info } from 'lucide-react';
 
 interface RegisterPageProps {
-  onRegisterSuccess: (userData: { phone?: string; email?: string }) => void;
+  onRegisterSuccess: (userData: { phone?: string; email?: string; role?: 'admin' | 'user'; name?: string; registeredAt?: string }) => void;
   onSwitchToLogin: () => void;
 }
 
@@ -128,11 +129,21 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
 
     // Mock registration
     setTimeout(() => {
+      const registeredAt = new Date().toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      
       const newUser = {
         id: Date.now().toString(),
         phone: phoneForm.phone,
         password: phoneForm.password,
+        role: 'user', // 新注册用户默认为普通用户
         createdAt: new Date().toISOString(),
+        registeredAt: registeredAt,
       };
 
       existingUsers.push(newUser);
@@ -140,7 +151,11 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
 
       toast.success('注册成功！');
       setIsLoading(false);
-      onRegisterSuccess({ phone: phoneForm.phone });
+      onRegisterSuccess({ 
+        phone: phoneForm.phone, 
+        role: 'user',
+        registeredAt: registeredAt,
+      });
     }, 1000);
   };
 
@@ -178,11 +193,21 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
 
     // Mock registration
     setTimeout(() => {
+      const registeredAt = new Date().toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      
       const newUser = {
         id: Date.now().toString(),
         email: emailForm.email,
         password: emailForm.password,
+        role: 'user', // 新注册用户默认为普通用户
         createdAt: new Date().toISOString(),
+        registeredAt: registeredAt,
       };
 
       existingUsers.push(newUser);
@@ -190,7 +215,11 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
 
       toast.success('注册成功！');
       setIsLoading(false);
-      onRegisterSuccess({ email: emailForm.email });
+      onRegisterSuccess({ 
+        email: emailForm.email, 
+        role: 'user',
+        registeredAt: registeredAt,
+      });
     }, 1000);
   };
 
@@ -202,6 +231,25 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
           <CardDescription>选择您喜欢的注册方式开始使用</CardDescription>
         </CardHeader>
         <CardContent>
+          <Alert className="mb-6 bg-green-50 border-green-200">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              <div className="space-y-1">
+                <p className="font-medium text-sm">💡 快速体验提示</p>
+                <p className="text-xs text-gray-600">
+                  系统已内置测试账号，建议您点击下方
+                  <button
+                    onClick={onSwitchToLogin}
+                    className="text-blue-600 hover:underline mx-1 font-medium"
+                  >
+                    "立即登录"
+                  </button>
+                  使用测试账号快速体验完整流程！
+                </p>
+              </div>
+            </AlertDescription>
+          </Alert>
+
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'phone' | 'email')}>
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="phone">

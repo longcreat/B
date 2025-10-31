@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Checkbox } from './ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 import { toast } from 'sonner@2.0.3';
-import { ArrowLeft, HelpCircle } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { ImageUpload } from './ImageUpload';
 import { AgreementCheckbox } from './AgreementCheckbox';
@@ -37,6 +37,7 @@ interface IndividualFormData {
 interface IndividualFormProps {
   onBack: () => void;
   onSubmit?: (data: any) => void;
+  initialData?: any;
 }
 
 const STORAGE_KEY = 'individual_form_data';
@@ -62,11 +63,11 @@ const BANK_OPTIONS = [
   '北京银行',
 ];
 
-export function IndividualForm({ onBack, onSubmit: onSubmitProp }: IndividualFormProps) {
+export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: IndividualFormProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [idPhotoFront, setIdPhotoFront] = useState<File | null>(null);
   const [idPhotoBack, setIdPhotoBack] = useState<File | null>(null);
-  const [promotionChannels, setPromotionChannels] = useState<string[]>([]);
+  const [promotionChannels, setPromotionChannels] = useState<string[]>(initialData?.promotionChannels || []);
   const [agreementAccepted, setAgreementAccepted] = useState(false);
 
   const {
@@ -76,7 +77,7 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp }: IndividualFor
     setValue,
     formState: { errors },
   } = useForm<IndividualFormData>({
-    defaultValues: {
+    defaultValues: initialData || {
       phone: '138****8888', // 模拟预填充的注册手机号
       accountType: 'bank',
       promotionChannels: [],
@@ -95,8 +96,23 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp }: IndividualFor
     }
   }, [realName, accountType, setValue]);
 
-  // 本地存储恢复
+  // 初始化数据加载（优先使用initialData，然后是本地存储）
   useEffect(() => {
+    // 如果有初始数据（被驳回的申请），使用它
+    if (initialData) {
+      Object.keys(initialData).forEach((key) => {
+        if (key !== 'idPhotoFront' && key !== 'idPhotoBack') {
+          setValue(key as keyof IndividualFormData, initialData[key]);
+        }
+      });
+      // 设置推广渠道
+      if (initialData.promotionChannels) {
+        setPromotionChannels(initialData.promotionChannels);
+      }
+      return;
+    }
+    
+    // 否则尝试从本地存储恢复
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
@@ -110,7 +126,7 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp }: IndividualFor
         console.error('Failed to restore form data', e);
       }
     }
-  }, [setValue]);
+  }, [setValue, initialData]);
 
   // 自动保存到本地存储
   useEffect(() => {
@@ -218,15 +234,6 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp }: IndividualFor
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        <Button
-          variant="ghost"
-          onClick={onBack}
-          className="mb-6"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          返回选择身份类型
-        </Button>
-
         <Card>
           <CardHeader>
             <CardTitle>个人认证</CardTitle>
@@ -255,7 +262,7 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp }: IndividualFor
                       </TooltipProvider>
                     </Label>
                     <Input
-                      {...register('realName', { required: '真实姓名为必填项' })}
+                      {...register('realName', { required: '真实姓名为必��项' })}
                       placeholder="请输入真实姓名"
                       className="mt-2"
                     />

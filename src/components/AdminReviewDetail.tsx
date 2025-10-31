@@ -4,8 +4,24 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from './ui/breadcrumb';
 import { toast } from 'sonner@2.0.3';
 import { ArrowLeft, CheckCircle, XCircle, ZoomIn } from 'lucide-react';
 import type { ApplicationData } from './AdminReviewList';
@@ -13,9 +29,11 @@ import type { ApplicationData } from './AdminReviewList';
 interface AdminReviewDetailProps {
   application: ApplicationData;
   onBack: () => void;
-  onApprove: (id: string) => void;
-  onReject: (id: string, reason: string) => void;
+  onApprove: (id: string, permissionLevel: string, internalNote?: string) => void;
+  onReject: (id: string, reason: string, internalNote?: string) => void;
 }
+
+type PermissionLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4';
 
 export function AdminReviewDetail({
   application,
@@ -23,34 +41,40 @@ export function AdminReviewDetail({
   onApprove,
   onReject,
 }: AdminReviewDetailProps) {
-  const [showRejectDialog, setShowRejectDialog] = useState(false);
-  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [reviewDecision, setReviewDecision] = useState<'approve' | 'reject' | null>(null);
+  const [permissionLevel, setPermissionLevel] = useState<PermissionLevel>('L0');
   const [rejectionReason, setRejectionReason] = useState('');
+  const [internalNote, setInternalNote] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  const handleApprove = () => {
-    setShowApproveDialog(true);
+  const handleStartReview = () => {
+    setReviewDecision(null);
+    setPermissionLevel('L4'); // 默认设置为入门级
+    setRejectionReason('');
+    setInternalNote('');
+    setShowReviewDialog(true);
   };
 
-  const confirmApprove = () => {
-    onApprove(application.id);
-    setShowApproveDialog(false);
-    toast.success('审核已通过');
-  };
-
-  const handleReject = () => {
-    setShowRejectDialog(true);
-  };
-
-  const confirmReject = () => {
-    if (!rejectionReason.trim()) {
-      toast.error('请填写驳回原因');
+  const handleSubmitReview = () => {
+    if (!reviewDecision) {
+      toast.error('请选择审批结论');
       return;
     }
-    onReject(application.id, rejectionReason);
-    setShowRejectDialog(false);
-    setRejectionReason('');
-    toast.success('已驳回申请');
+
+    if (reviewDecision === 'approve') {
+      onApprove(application.id, permissionLevel, internalNote || undefined);
+      toast.success(`审核已通过，权限等级：${permissionLevel}`);
+    } else {
+      if (!rejectionReason.trim()) {
+        toast.error('请填写驳回原因');
+        return;
+      }
+      onReject(application.id, rejectionReason, internalNote || undefined);
+      toast.success('已驳回申请');
+    }
+
+    setShowReviewDialog(false);
   };
 
   const getBusinessModelName = (model: string) => {
@@ -69,6 +93,17 @@ export function AdminReviewDetail({
       enterprise: '企业认证',
     };
     return names[type as keyof typeof names] || type;
+  };
+
+  const getPermissionLevelName = (level: string) => {
+    const names = {
+      L0: 'L0 (战略级)',
+      L1: 'L1 (核心级)',
+      L2: 'L2 (优质级)',
+      L3: 'L3 (标准级)',
+      L4: 'L4 (入门级)',
+    };
+    return names[level as keyof typeof names] || level;
   };
 
   const renderFieldValue = (label: string, value: any, isImage?: boolean) => {
@@ -225,7 +260,7 @@ export function AdminReviewDetail({
 
           <div className="space-y-4">
             <h3 className="pb-2 border-b">对公结算账户信息</h3>
-            {renderFieldValue('��户主体名称', data.accountHolderName)}
+            {renderFieldValue('开户主体名称', data.accountHolderName)}
             {renderFieldValue('开户银行', data.bankName)}
             {renderFieldValue('开户支行', data.bankBranch)}
             {renderFieldValue('对公银行账号', data.accountNumber)}
@@ -246,25 +281,41 @@ export function AdminReviewDetail({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <Button variant="ghost" onClick={onBack} className="mb-6">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          返回列表
-        </Button>
+    <div className="p-6 space-y-6">
+      {/* 面包屑导航 */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <button onClick={onBack} className="cursor-pointer">
+                资质审核
+              </button>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>申请详情</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <CardTitle>申请详情</CardTitle>
-                <div className="flex items-center gap-4 mt-2">
-                  {statusBadge(application.status)}
-                  <span className="text-gray-500">申请编号：{application.id}</span>
-                </div>
+      <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle>申请详情</CardTitle>
+              <div className="flex items-center gap-4 mt-2">
+                {statusBadge(application.status)}
+                <span className="text-gray-500">申请编号：{application.id}</span>
+                {application.permissionLevel && (
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300">
+                    {getPermissionLevelName(application.permissionLevel)}
+                  </Badge>
+                )}
               </div>
             </div>
-          </CardHeader>
+          </div>
+        </CardHeader>
 
           <CardContent className="space-y-6">
             {/* 基本信息 */}
@@ -301,6 +352,14 @@ export function AdminReviewDetail({
               </div>
             )}
 
+            {/* 内部备注（如果有） */}
+            {application.internalNote && (
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <Label className="text-blue-900">内部备注</Label>
+                <p className="mt-2 text-blue-800 whitespace-pre-wrap">{application.internalNote}</p>
+              </div>
+            )}
+
             {/* 详细资料 */}
             <div className="space-y-6">
               {renderApplicationData()}
@@ -309,62 +368,106 @@ export function AdminReviewDetail({
             {/* 操作按钮 */}
             {application.status === 'pending' && (
               <div className="flex justify-end gap-4 pt-6 border-t">
-                <Button variant="outline" onClick={handleReject}>
-                  <XCircle className="w-4 h-4 mr-2" />
-                  驳回
-                </Button>
-                <Button onClick={handleApprove}>
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  通过
+                <Button onClick={handleStartReview} size="lg">
+                  开始审核
                 </Button>
               </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* 通过确认对话框 */}
-      <AlertDialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认通过审核</AlertDialogTitle>
-            <AlertDialogDescription>
-              确认通过该用户的认证申请吗？通过后，用户将获得相应的业务权限并可以访问后台管理系统。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmApprove}>确认通过</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* 审核对话框 */}
+      <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>审核申请</DialogTitle>
+          </DialogHeader>
 
-      {/* 驳回对话框 */}
-      <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>驳回申请</AlertDialogTitle>
-            <AlertDialogDescription>
-              请填写具体、清晰的驳回原因，以便用户了解需要修改的内容。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-4">
-            <Label htmlFor="rejection-reason">驳回原因 <span className="text-red-500">*</span></Label>
-            <Textarea
-              id="rejection-reason"
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="请详细说明驳回原因，例如：身份证照片模糊、银行卡信息不完整等"
-              rows={6}
-              className="mt-2"
-            />
+          <div className="space-y-6 py-4">
+            {/* 1. 审批结论 */}
+            <div className="space-y-3">
+              <Label>1. 审批结论 <span className="text-red-500">*</span></Label>
+              <RadioGroup value={reviewDecision || ''} onValueChange={(value: any) => setReviewDecision(value)}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="approve" id="approve" />
+                  <Label htmlFor="approve" className="cursor-pointer">通过</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="reject" id="reject" />
+                  <Label htmlFor="reject" className="cursor-pointer">驳回</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* 2. 风控等级（通过时） */}
+            <div className="space-y-3">
+              <Label>2. 指定风控等级 {reviewDecision === 'approve' && <span className="text-red-500">*</span>}</Label>
+              <Select 
+                value={permissionLevel} 
+                onValueChange={(value: PermissionLevel) => setPermissionLevel(value)}
+                disabled={reviewDecision !== 'approve'}
+              >
+                <SelectTrigger className={reviewDecision !== 'approve' ? 'opacity-50' : ''}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="L0">L0 (战略级 - 最高权限)</SelectItem>
+                  <SelectItem value="L1">L1 (核心级)</SelectItem>
+                  <SelectItem value="L2">L2 (优质级)</SelectItem>
+                  <SelectItem value="L3">L3 (标准级)</SelectItem>
+                  <SelectItem value="L4">L4 (入门级 - 基础权限)</SelectItem>
+                </SelectContent>
+              </Select>
+              {reviewDecision !== 'approve' && (
+                <p className="text-sm text-gray-500">请先选择"通过"才能设置风控等级</p>
+              )}
+              {reviewDecision === 'approve' && (
+                <p className="text-sm text-gray-500">风控等级越低（L0），信任度越高，权限越大</p>
+              )}
+            </div>
+
+            {/* 3. 驳回原因（驳回时） */}
+            <div className="space-y-3">
+              <Label htmlFor="rejection-reason">
+                3. 驳回原因 {reviewDecision === 'reject' && <span className="text-red-500">*</span>}
+              </Label>
+              <Textarea
+                id="rejection-reason"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="请详细说明驳回原因，此内容将展示给申请用户"
+                rows={4}
+                disabled={reviewDecision !== 'reject'}
+                className={reviewDecision !== 'reject' ? 'opacity-50' : ''}
+              />
+              {reviewDecision !== 'reject' && (
+                <p className="text-sm text-gray-500">请先选择"驳回"才能填写驳回原因</p>
+              )}
+            </div>
+
+            {/* 4. 内部备注 */}
+            <div className="space-y-3">
+              <Label htmlFor="internal-note">4. 内部备注 (选填)</Label>
+              <Textarea
+                id="internal-note"
+                value={internalNote}
+                onChange={(e) => setInternalNote(e.target.value)}
+                placeholder="此处填写的内容仅供内部管理员查看，可用于记录特殊情况或审核考量"
+                rows={3}
+              />
+            </div>
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setRejectionReason('')}>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmReject}>确认驳回</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowReviewDialog(false)}>
+              取消
+            </Button>
+            <Button onClick={handleSubmitReview}>
+              确认提交
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 图片预览对话框 */}
       <Dialog open={!!imagePreview} onOpenChange={() => setImagePreview(null)}>
