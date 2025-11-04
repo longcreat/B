@@ -1,12 +1,20 @@
 import { useState } from 'react';
-import { User, Mail, Phone, Building, Calendar, Lock, LogOut, Save } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Separator } from './ui/separator';
+import { Badge } from './ui/badge';
+import { User, Mail, Phone, Calendar, Edit2, Save, X, Lock, Building, LogOut } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { Alert, AlertDescription } from './ui/alert';
-import { toast } from 'sonner@2.0.3';
+import { Separator } from './ui/separator';
+import { toast } from 'sonner';
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbPage,
+} from './ui/breadcrumb';
 
 interface UserCenterProps {
   currentUser: {
@@ -92,11 +100,14 @@ export function UserCenter({
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* 页面标题 */}
-      <div>
-        <h1 className="text-gray-900 mb-2">用户中心</h1>
-        <p className="text-gray-600">管理您的个人信息和账户设置</p>
-      </div>
+      {/* 面包屑导航 */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbPage>用户中心</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       {/* 账户信息卡片 */}
       <Card>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form@7.55.0';
+import { useForm } from 'react-hook-form';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -8,11 +8,13 @@ import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Checkbox } from './ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { HelpCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { ImageUpload } from './ImageUpload';
 import { AgreementCheckbox } from './AgreementCheckbox';
+import { FaceVerification } from './FaceVerification';
+import { PhoneVerification } from './PhoneVerification';
 
 interface IndividualFormData {
   realName: string;
@@ -69,6 +71,8 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
   const [idPhotoBack, setIdPhotoBack] = useState<File | null>(null);
   const [promotionChannels, setPromotionChannels] = useState<string[]>(initialData?.promotionChannels || []);
   const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [faceVerified, setFaceVerified] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
 
   const {
     register,
@@ -130,7 +134,7 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
 
   // 自动保存到本地存储
   useEffect(() => {
-    const subscription = watch((value) => {
+    const subscription = watch((value: any) => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
     });
     return () => subscription.unsubscribe();
@@ -364,6 +368,11 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                       />
                     </div>
                   </div>
+
+                  <FaceVerification 
+                    onVerified={setFaceVerified}
+                    verified={faceVerified}
+                  />
                 </div>
               </div>
 
@@ -390,8 +399,8 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                         <Checkbox
                           id="channel-social"
                           checked={promotionChannels.includes('社交媒体/内容平台')}
-                          onCheckedChange={(checked) =>
-                            handleChannelChange('社交媒体/内容平台', checked as boolean)
+                          onCheckedChange={(checked: boolean) =>
+                            handleChannelChange('社交媒体/内容平台', checked)
                           }
                         />
                         <Label htmlFor="channel-social" className="cursor-pointer">
@@ -403,8 +412,8 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                         <Checkbox
                           id="channel-private"
                           checked={promotionChannels.includes('私域流量 (如微信群、朋友圈)')}
-                          onCheckedChange={(checked) =>
-                            handleChannelChange('私域流量 (如微信群、朋友圈)', checked as boolean)
+                          onCheckedChange={(checked: boolean) =>
+                            handleChannelChange('私域流量 (如微信群、朋友圈)', checked)
                           }
                         />
                         <Label htmlFor="channel-private" className="cursor-pointer">
@@ -416,8 +425,8 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                         <Checkbox
                           id="channel-offline"
                           checked={promotionChannels.includes('线下客户/门店推荐')}
-                          onCheckedChange={(checked) =>
-                            handleChannelChange('线下客户/门店推荐', checked as boolean)
+                          onCheckedChange={(checked: boolean) =>
+                            handleChannelChange('线下客户/门店推荐', checked)
                           }
                         />
                         <Label htmlFor="channel-offline" className="cursor-pointer">
@@ -429,8 +438,8 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                         <Checkbox
                           id="channel-corporate"
                           checked={promotionChannels.includes('企业客户/差旅代订')}
-                          onCheckedChange={(checked) =>
-                            handleChannelChange('企业客户/差旅代订', checked as boolean)
+                          onCheckedChange={(checked: boolean) =>
+                            handleChannelChange('企业客户/差旅代订', checked)
                           }
                         />
                         <Label htmlFor="channel-corporate" className="cursor-pointer">
@@ -443,8 +452,8 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                           <Checkbox
                             id="channel-other"
                             checked={promotionChannels.includes('其他')}
-                            onCheckedChange={(checked) =>
-                              handleChannelChange('其他', checked as boolean)
+                            onCheckedChange={(checked: boolean) =>
+                              handleChannelChange('其他', checked)
                             }
                           />
                           <Label htmlFor="channel-other" className="cursor-pointer">
@@ -528,6 +537,12 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                       <p className="text-red-500 mt-1">{errors.email.message}</p>
                     )}
                   </div>
+
+                  <PhoneVerification
+                    phoneNumber={watch('phone') || ''}
+                    onVerified={setPhoneVerified}
+                    verified={phoneVerified}
+                  />
                 </div>
               </div>
 
@@ -539,7 +554,7 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                     <Label>账户类型 <span className="text-red-500">*</span></Label>
                     <RadioGroup
                       value={accountType}
-                      onValueChange={(value) => setValue('accountType', value as 'bank' | 'alipay')}
+                      onValueChange={(value: string) => setValue('accountType', value as 'bank' | 'alipay')}
                       className="mt-2"
                     >
                       <div className="flex items-center space-x-2">
@@ -570,7 +585,7 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                         <Label>开户银行 <span className="text-red-500">*</span></Label>
                         <Select
                           value={bankName}
-                          onValueChange={(value) => setValue('bankName', value)}
+                          onValueChange={(value: string) => setValue('bankName', value)}
                         >
                           <SelectTrigger className="mt-2">
                             <SelectValue placeholder="请选择开户银行" />
@@ -654,10 +669,18 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                   <Button type="button" variant="outline" onClick={onBack}>
                     取消
                   </Button>
-                  <Button type="submit" disabled={!agreementAccepted}>
+                  <Button 
+                    type="submit" 
+                    disabled={!agreementAccepted || !faceVerified || !phoneVerified}
+                  >
                     提交审核
                   </Button>
                 </div>
+                {(!faceVerified || !phoneVerified) && (
+                  <p className="text-sm text-amber-600 text-right">
+                    请完成人脸识别和手机号验证后提交
+                  </p>
+                )}
               </div>
             </form>
           </CardContent>

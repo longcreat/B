@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form@7.55.0';
+import { useForm } from 'react-hook-form';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { HelpCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { ImageUpload } from './ImageUpload';
 import { AgreementCheckbox } from './AgreementCheckbox';
+import { FaceVerification } from './FaceVerification';
+import { PhoneVerification } from './PhoneVerification';
 
 interface EnterpriseFormData {
   companyName: string;
@@ -18,6 +20,8 @@ interface EnterpriseFormData {
   businessLicense: File | null;
   legalRepName: string;
   legalRepIdNumber: string;
+  legalRepIdPhotoFront: File | null;
+  legalRepIdPhotoBack: File | null;
   contactName: string;
   contactPhone: string;
   contactEmail: string;
@@ -59,7 +63,11 @@ const BANK_OPTIONS = [
 export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData }: EnterpriseFormProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [businessLicense, setBusinessLicense] = useState<File | null>(null);
+  const [legalRepIdPhotoFront, setLegalRepIdPhotoFront] = useState<File | null>(null);
+  const [legalRepIdPhotoBack, setLegalRepIdPhotoBack] = useState<File | null>(null);
   const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [faceVerified, setFaceVerified] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
 
   const {
     register,
@@ -111,7 +119,7 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData }: 
 
   // 自动保存到本地存储
   useEffect(() => {
-    const subscription = watch((value) => {
+    const subscription = watch((value: any) => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
     });
     return () => subscription.unsubscribe();
@@ -151,6 +159,11 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData }: 
       return;
     }
 
+    if (!legalRepIdPhotoFront || !legalRepIdPhotoBack) {
+      toast.error('请上传法人身份证人像面和国徽面照片');
+      return;
+    }
+
     setShowConfirmDialog(true);
   };
 
@@ -159,6 +172,8 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData }: 
     const submissionData = {
       ...formData,
       businessLicense: businessLicense ? URL.createObjectURL(businessLicense) : null,
+      legalRepIdPhotoFront: legalRepIdPhotoFront ? URL.createObjectURL(legalRepIdPhotoFront) : null,
+      legalRepIdPhotoBack: legalRepIdPhotoBack ? URL.createObjectURL(legalRepIdPhotoBack) : null,
       agreementAccepted: {
         accepted: true,
         timestamp: new Date().toISOString(),
@@ -288,6 +303,41 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                       <p className="text-red-500 mt-1">{errors.legalRepIdNumber.message}</p>
                     )}
                   </div>
+
+                  <div>
+                    <Label>
+                      法人身份证照片 <span className="text-red-500">*</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <HelpCircle className="w-4 h-4 inline ml-1 text-gray-400 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>支持JPG/PNG/JPEG，单张不超过5MB，确保文字清晰、无反光、无遮挡</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                      <ImageUpload
+                        label="身份证人像面"
+                        file={legalRepIdPhotoFront}
+                        onChange={setLegalRepIdPhotoFront}
+                        maxSize={5}
+                      />
+                      <ImageUpload
+                        label="身份证国徽面"
+                        file={legalRepIdPhotoBack}
+                        onChange={setLegalRepIdPhotoBack}
+                        maxSize={5}
+                      />
+                    </div>
+                  </div>
+
+                  <FaceVerification 
+                    onVerified={setFaceVerified}
+                    verified={faceVerified}
+                  />
                 </div>
               </div>
 
@@ -353,6 +403,12 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                       <p className="text-red-500 mt-1">{errors.contactEmail.message}</p>
                     )}
                   </div>
+
+                  <PhoneVerification
+                    phoneNumber={watch('contactPhone') || ''}
+                    onVerified={setPhoneVerified}
+                    verified={phoneVerified}
+                  />
                 </div>
               </div>
 
@@ -379,7 +435,7 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                     </Label>
                     <Select
                       value={bankName}
-                      onValueChange={(value) => setValue('bankName', value)}
+                      onValueChange={(value: string) => setValue('bankName', value)}
                     >
                       <SelectTrigger className="mt-2">
                         <SelectValue placeholder="请选择开户银行" />
@@ -437,10 +493,18 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                   <Button type="button" variant="outline" onClick={onBack}>
                     取消
                   </Button>
-                  <Button type="submit" disabled={!agreementAccepted}>
+                  <Button 
+                    type="submit" 
+                    disabled={!agreementAccepted || !faceVerified || !phoneVerified}
+                  >
                     提交审核
                   </Button>
                 </div>
+                {(!faceVerified || !phoneVerified) && (
+                  <p className="text-sm text-amber-600 text-right">
+                    请完成人脸识别和手机号验证后提交
+                  </p>
+                )}
               </div>
             </form>
           </CardContent>

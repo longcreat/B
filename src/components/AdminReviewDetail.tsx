@@ -287,7 +287,7 @@ export function AdminReviewDetail({
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <button onClick={onBack} className="cursor-pointer">
+              <button onClick={onBack} className="cursor-pointer text-sm">
                 资质审核
               </button>
             </BreadcrumbLink>

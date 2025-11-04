@@ -44,8 +44,9 @@ import {
   Store,
   Edit,
   Shield,
+  Filter,
 } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 // 小B用户类型
 type PartnerType = 'individual' | 'influencer' | 'enterprise';
@@ -137,6 +138,7 @@ export function UserManagement() {
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [statusAction, setStatusAction] = useState<'freeze' | 'activate' | 'close' | null>(null);
   const [statusReason, setStatusReason] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   
   // 风控等级编辑
   const [showLevelDialog, setShowLevelDialog] = useState(false);
@@ -446,16 +448,15 @@ export function UserManagement() {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbPage>小B用户管理</BreadcrumbPage>
+            <BreadcrumbPage>用户管理</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-
       {/* 用户列表 */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>小B商户列表</CardTitle>
+            <CardTitle>商户列表</CardTitle>
             <div className="flex items-center gap-3">
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -466,7 +467,20 @@ export function UserManagement() {
                   className="pl-9"
                 />
               </div>
-              
+
+              <Button
+                variant={showFilters ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <Filter className="w-4 h-4 mr-2" />
+                筛选
+              </Button>
+            </div>
+          </div>
+
+          {showFilters && (
+            <div className="flex flex-wrap items-center gap-3 pt-4 border-t mt-4">
               <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="用户类型" />
@@ -515,8 +529,23 @@ export function UserManagement() {
                   <SelectItem value="L4">L4 (入门级)</SelectItem>
                 </SelectContent>
               </Select>
+
+              {(filterType !== 'all' || filterAccountStatus !== 'all' || filterSettlementStatus !== 'all' || filterPermissionLevel !== 'all') && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setFilterType('all');
+                    setFilterAccountStatus('all');
+                    setFilterSettlementStatus('all');
+                    setFilterPermissionLevel('all');
+                  }}
+                >
+                  清除筛选
+                </Button>
+              )}
             </div>
-          </div>
+          )}
         </CardHeader>
 
         <CardContent>

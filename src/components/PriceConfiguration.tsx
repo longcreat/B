@@ -20,8 +20,10 @@ import {
   DialogFooter,
 } from './ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Percent, Settings, Plus, Edit, Info } from 'lucide-react';
+import { Percent, Settings, Plus, Edit, Info, ChevronDown, ChevronUp, Pause, Play } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 // 平台利润率配置
 interface PlatformMarkupRule {
@@ -39,6 +41,7 @@ interface PlatformMarkupRule {
 export function PriceConfiguration() {
   const [showRuleDialog, setShowRuleDialog] = useState(false);
   const [editingRule, setEditingRule] = useState<PlatformMarkupRule | null>(null);
+  const [isDescriptionOpen, setIsDescriptionOpen] = useState(false); // 默认折叠说明
 
   // 模拟配置数据
   const [markupRules, setMarkupRules] = useState<PlatformMarkupRule[]>([
@@ -194,31 +197,46 @@ export function PriceConfiguration() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* 说明卡片 */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="space-y-2 text-sm">
-              <p className="text-blue-900">
-                <strong>价格体系说明：</strong>
-              </p>
-              <p className="text-blue-800">
-                • <strong>P0 (供应商底价)</strong>：从上游供应商获取的成本价
-              </p>
-              <p className="text-blue-800">
-                • <strong>P1 (平台供货价)</strong> = P0 × (1 + 平台利润率)
-              </p>
-              <p className="text-blue-800">
-                • <strong>P2 (小B销售价)</strong> = P1 × (1 + 小B加价率)
-              </p>
-              <p className="text-blue-800 mt-2">
-                <strong>利润分配：</strong>平台利润 = P1 - P0，小B利润 = P2 - P1
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* 说明卡片 - 可折叠 */}
+      <Collapsible open={isDescriptionOpen} onOpenChange={setIsDescriptionOpen}>
+        <Card className="bg-blue-50 border-blue-200">
+          <CollapsibleTrigger asChild>
+            <CardContent className="py-4 cursor-pointer hover:bg-blue-100 transition-colors">
+              <div className="flex items-center justify-between gap-4 h-6">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <Info className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                  <span className="text-blue-900 font-medium leading-none">价格体系说明</span>
+                </div>
+                <div className="flex items-center justify-center flex-shrink-0 h-6">
+                  {isDescriptionOpen ? (
+                    <ChevronUp className="w-4 h-4 text-blue-600" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-blue-600" />
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
+            <CardContent className="pt-0 pb-6 px-6">
+              <div className="space-y-2 text-sm pl-8">
+                <p className="text-blue-800">
+                  • <strong>P0 (供应商底价)</strong>：从上游供应商获取的成本价
+                </p>
+                <p className="text-blue-800">
+                  • <strong>P1 (平台供货价)</strong> = P0 × (1 + 平台利润率)
+                </p>
+                <p className="text-blue-800">
+                  • <strong>P2 (小B销售价)</strong> = P1 × (1 + 小B加价率)
+                </p>
+                <p className="text-blue-800 mt-2">
+                  <strong>利润分配：</strong>平台利润 = P1 - P0，小B利润 = P2 - P1
+                </p>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* 配置列表 */}
       <Card>
@@ -238,7 +256,7 @@ export function PriceConfiguration() {
         </CardHeader>
 
         <CardContent>
-          <div className="border rounded-lg">
+          <div className="border rounded-lg overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -248,8 +266,8 @@ export function PriceConfiguration() {
                   <TableHead>目标</TableHead>
                   <TableHead>平台利润率</TableHead>
                   <TableHead>状态</TableHead>
-                  <TableHead>创建时间</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
+                  <TableHead className="min-w-[140px]">创建时间</TableHead>
+                  <TableHead className="w-[100px]">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -273,22 +291,43 @@ export function PriceConfiguration() {
                       <TableCell className="text-sm text-gray-600">
                         {rule.createdAt}
                       </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenDialog(rule)}
-                        >
-                          <Edit className="w-4 h-4 mr-1" />
-                          编辑
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleStatus(rule.id)}
-                        >
-                          {rule.status === 'active' ? '停用' : '启用'}
-                        </Button>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleOpenDialog(rule)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>编辑</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleToggleStatus(rule.id)}
+                              >
+                                {rule.status === 'active' ? (
+                                  <Pause className="w-4 h-4" />
+                                ) : (
+                                  <Play className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{rule.status === 'active' ? '停用' : '启用'}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

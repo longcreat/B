@@ -3,48 +3,60 @@ import { RegisterPage } from './components/RegisterPage';
 import { LoginPage } from './components/LoginPage';
 import { AdminReviewList, type ApplicationData } from './components/AdminReviewList';
 import { AdminReviewDetail } from './components/AdminReviewDetail';
-import { AdminLayout } from './components/AdminLayout';
+import { AdminLayout, type AdminMenuItem, type FinanceSubMenu, type PartnerAccountSubMenu } from './components/AdminLayout';
 import { UserManagement } from './components/UserManagement';
-import { OrderManagement } from './components/OrderManagement';
+import { OrderManagement, type Order } from './components/OrderManagement';
+import { OrderDetail } from './components/OrderDetail';
 import { SettlementCenter } from './components/SettlementCenter';
 import { ApiKeyManagement } from './components/ApiKeyManagement';
 import { PriceConfiguration } from './components/PriceConfiguration';
-import { DeveloperCenter } from './components/DeveloperCenter';
-import { SmallBAdmin } from './components/SmallBAdmin';
-import { AffiliateBackend } from './components/AffiliateBackend';
 import { UserLayout } from './components/UserLayout';
 import { ServiceSidebar } from './components/ServiceSidebar';
 import { RegistrationSteps } from './components/RegistrationSteps';
 import { UserCenter } from './components/UserCenter';
 import { Toaster } from './components/ui/sonner';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
+import type { User, ServiceType, ServiceStatus } from './types/user';
+import { getDefaultMenuId } from './config/menuConfig';
+
+// MCP 组件
+import { MCPConfiguration } from './components/mcp/MCPConfiguration';
+import { MCPMonitoring } from './components/mcp/MCPMonitoring';
+import { MCPDocumentation } from './components/mcp/MCPDocumentation';
+
+// SaaS 组件
+import { SaaSDashboard } from './components/saas/SaaSDashboard';
+import { SaaSBrandConfig } from './components/saas/SaaSBrandConfig';
+import { SaaSPricing } from './components/saas/SaaSPricing';
+import { SaaSOrders } from './components/saas/SaaSOrders';
+import { SaaSWallet } from './components/saas/SaaSWallet';
+
+// 推广联盟组件
+import { AffiliateDashboard } from './components/affiliate/AffiliateDashboard';
+import { AffiliateLink } from './components/affiliate/AffiliateLink';
+import { AffiliateData } from './components/affiliate/AffiliateData';
+import { AffiliatePoints } from './components/affiliate/AffiliatePoints';
 
 type BusinessModel = 'mcp' | 'saas' | 'affiliate' | null;
 type IdentityType = 'individual' | 'influencer' | 'enterprise' | null;
 type AuthView = 'login' | 'register' | null;
 
 type UserView = 'registration' | 'userCenter';
-type AdminMenuItem = 'review' | 'users' | 'finance' | 'pricing';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authView, setAuthView] = useState<AuthView>('login');
-  const [currentUser, setCurrentUser] = useState<{ 
-    name?: string;
-    phone?: string; 
-    email?: string; 
-    role?: 'admin' | 'user';
-    company?: string;
-    registeredAt?: string;
-  } | null>(null);
-  const [currentView, setCurrentView] = useState<UserView>('registration');
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentView, setCurrentView] = useState<string>('registration');
   const [selectedBusinessModel, setSelectedBusinessModel] = useState<BusinessModel>(null);
   const [selectedIdentity, setSelectedIdentity] = useState<IdentityType>(null);
   const [currentApplicationId, setCurrentApplicationId] = useState<string | null>(null);
   const [selectedAdminApplication, setSelectedAdminApplication] = useState<ApplicationData | null>(null);
-  const [showDashboard, setShowDashboard] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [hasCheckedExistingApplication, setHasCheckedExistingApplication] = useState(false);
   const [adminCurrentMenu, setAdminCurrentMenu] = useState<AdminMenuItem>('review');
+  const [adminCurrentFinanceSubMenu, setAdminCurrentFinanceSubMenu] = useState<FinanceSubMenu | undefined>(undefined);
+  const [adminCurrentPartnerAccountSubMenu, setAdminCurrentPartnerAccountSubMenu] = useState<PartnerAccountSubMenu | undefined>(undefined);
 
   // Restore user session from localStorage on mount
   useEffect(() => {
@@ -158,6 +170,25 @@ export default function App() {
           setSelectedBusinessModel(existingApp.businessModel as BusinessModel);
           setSelectedIdentity(existingApp.identityType as IdentityType);
           setApplications(storedApplications);
+          
+          // 同步用户的服务类型和状态
+          const updatedUser: User = {
+            ...currentUser,
+            serviceType: existingApp.businessModel as ServiceType,
+            serviceStatus: existingApp.status as ServiceStatus,
+            applicationId: existingApp.id,
+          };
+          setCurrentUser(updatedUser);
+          localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+          
+          // 如果已审核通过，设置默认视图
+          if (existingApp.status === 'approved') {
+            const defaultView = getDefaultMenuId(
+              existingApp.businessModel as ServiceType,
+              'approved'
+            );
+            setCurrentView(defaultView);
+          }
         }
       }
       setHasCheckedExistingApplication(true);
@@ -169,55 +200,49 @@ export default function App() {
     localStorage.setItem('applications', JSON.stringify(applications));
   }, [applications]);
 
+  // 当申请变为已通过时，自动同步用户服务状态并导航到默认页面
+  useEffect(() => {
+    if (!currentUser) return;
+    const app = getCurrentApplication();
+    if (app && app.status === 'approved') {
+      // 同步用户状态
+      if (
+        currentUser.serviceStatus !== 'approved' ||
+        currentUser.serviceType !== (app.businessModel as ServiceType) ||
+        currentUser.applicationId !== app.id
+      ) {
+        const updatedUser: User = {
+          ...currentUser,
+          serviceType: app.businessModel as ServiceType,
+          serviceStatus: 'approved',
+          applicationId: app.id,
+        };
+        setCurrentUser(updatedUser);
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      }
+
+      // 如果当前仍在注册页，则跳转到默认服务页
+      if (currentView === 'registration') {
+        const defaultView = getDefaultMenuId(app.businessModel as ServiceType, 'approved');
+        setCurrentView(defaultView);
+      }
+    }
+  }, [applications, currentApplicationId]);
+
 
 
   const handleFormSubmit = (formData: any) => {
-    // Create new application
-    const newApplication: ApplicationData = {
-      id: `APP-${String(applications.length + 1).padStart(3, '0')}`,
-      applicantName: formData.realName || formData.companyName || formData.contactName,
-      businessModel: selectedBusinessModel!,
-      identityType: selectedIdentity!,
-      status: 'pending',
-      submittedAt: new Date().toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      }),
-      data: formData,
-      userEmail: currentUser?.email, // 关联用户邮箱
-    };
-
-    const updatedApplications = [...applications, newApplication];
-    setApplications(updatedApplications);
-    setCurrentApplicationId(newApplication.id);
+    const currentApp = getCurrentApplication();
     
-    // 保存到localStorage
-    localStorage.setItem('applications', JSON.stringify(updatedApplications));
-  };
-
-  const handleReapply = () => {
-    // 重新申请时，删除旧的申请记录
-    if (currentApplicationId) {
-      const updatedApplications = applications.filter(app => app.id !== currentApplicationId);
-      setApplications(updatedApplications);
-      localStorage.setItem('applications', JSON.stringify(updatedApplications));
-    }
-    // 清除当前申请ID，允许用户重新申请
-    setCurrentApplicationId(null);
-  };
-
-  const handleAdminApprove = (id: string) => {
-    setApplications(
-      applications.map((app) =>
-        app.id === id
+    // 如果是重新申请（已有被驳回的申请），更新现有记录
+    if (currentApp && currentApp.status === 'rejected') {
+      const updatedApplications = applications.map(app => 
+        app.id === currentApplicationId
           ? {
               ...app,
-              status: 'approved' as const,
-              reviewedAt: new Date().toLocaleString('zh-CN', {
+              applicantName: formData.realName || formData.companyName || formData.contactName,
+              status: 'pending' as const,
+              submittedAt: new Date().toLocaleString('zh-CN', {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
@@ -225,10 +250,78 @@ export default function App() {
                 minute: '2-digit',
                 second: '2-digit',
               }),
+              reviewedAt: undefined,
+              rejectionReason: undefined,
+              data: formData,
             }
           : app
-      )
+      );
+      setApplications(updatedApplications);
+      localStorage.setItem('applications', JSON.stringify(updatedApplications));
+    } else {
+      // 首次申请，创建新记录
+      const newApplication: ApplicationData = {
+        id: `APP-${String(applications.length + 1).padStart(3, '0')}`,
+        applicantName: formData.realName || formData.companyName || formData.contactName,
+        businessModel: selectedBusinessModel!,
+        identityType: selectedIdentity!,
+        status: 'pending',
+        submittedAt: new Date().toLocaleString('zh-CN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        }),
+        data: formData,
+        userEmail: currentUser?.email,
+      };
+
+      const updatedApplications = [...applications, newApplication];
+      setApplications(updatedApplications);
+      setCurrentApplicationId(newApplication.id);
+      localStorage.setItem('applications', JSON.stringify(updatedApplications));
+    }
+  };
+
+  const handleReapply = () => {
+    // 重新申请时，不删除旧记录，保留驳回原因供用户查看
+    // 只是允许用户重新编辑表单，提交时会更新现有记录
+  };
+
+  const handleAdminApprove = (id: string) => {
+    const updatedApplications = applications.map((app) =>
+      app.id === id
+        ? {
+            ...app,
+            status: 'approved' as const,
+            reviewedAt: new Date().toLocaleString('zh-CN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            }),
+          }
+        : app
     );
+    setApplications(updatedApplications);
+    
+    // 如果是当前用户的申请，更新用户状态
+    const approvedApp = updatedApplications.find(app => app.id === id);
+    if (approvedApp && currentUser && approvedApp.userEmail === currentUser.email) {
+      const updatedUser: User = {
+        ...currentUser,
+        serviceType: approvedApp.businessModel as ServiceType,
+        serviceStatus: 'approved',
+        applicationId: approvedApp.id,
+      };
+      setCurrentUser(updatedUser);
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    }
+    
     setSelectedAdminApplication(null);
   };
 
@@ -261,17 +354,15 @@ export default function App() {
 
 
 
-  const getDashboardComponent = (businessModel: string) => {
-    if (businessModel === 'mcp') return <DeveloperCenter />;
-    if (businessModel === 'saas') return <SmallBAdmin />;
-    if (businessModel === 'affiliate') return <AffiliateBackend />;
-    return null;
-  };
+  // 已移除 getDashboardComponent，改用 renderUserContent
 
   const handleLoginSuccess = (userData: { phone?: string; email?: string; role?: 'admin' | 'user'; name?: string; registeredAt?: string }) => {
-    const enrichedUserData = {
-      ...userData,
-      name: userData.name || userData.email?.split('@')[0],
+    const enrichedUserData: User = {
+      email: userData.email || '',
+      name: userData.name || userData.email?.split('@')[0] || '用户',
+      role: userData.role || 'user',
+      phone: userData.phone,
+      registeredAt: userData.registeredAt,
     };
     setCurrentUser(enrichedUserData);
     setIsLoggedIn(true);
@@ -311,9 +402,12 @@ export default function App() {
   };
 
   const handleRegisterSuccess = (userData: { phone?: string; email?: string; role?: 'admin' | 'user'; name?: string; registeredAt?: string }) => {
-    const enrichedUserData = {
-      ...userData,
-      name: userData.name || userData.email?.split('@')[0],
+    const enrichedUserData: User = {
+      email: userData.email || '',
+      name: userData.name || userData.email?.split('@')[0] || '用户',
+      role: userData.role || 'user',
+      phone: userData.phone,
+      registeredAt: userData.registeredAt,
     };
     setCurrentUser(enrichedUserData);
     setIsLoggedIn(true);
@@ -328,7 +422,6 @@ export default function App() {
     setSelectedBusinessModel(null);
     setSelectedIdentity(null);
     setCurrentApplicationId(null);
-    setShowDashboard(false);
     setHasCheckedExistingApplication(false);
     localStorage.removeItem('currentUser');
   };
@@ -394,8 +487,19 @@ export default function App() {
   // Admin view - 根据用户角色显示
   if (isLoggedIn && currentUser?.role === 'admin') {
     const renderAdminContent = () => {
-      // 如果正在查看申请详情
-      if (selectedAdminApplication) {
+      // 详情页面的显示逻辑：只有在对应菜单下才显示详情页面
+      // 如果正在查看订单详情，且当前菜单是订单管理
+      if (selectedOrder && adminCurrentMenu === 'orders') {
+        return (
+          <OrderDetail
+            order={selectedOrder}
+            onBack={() => setSelectedOrder(null)}
+          />
+        );
+      }
+
+      // 如果正在查看申请详情，且当前菜单是资格审核
+      if (selectedAdminApplication && adminCurrentMenu === 'review') {
         return (
           <AdminReviewDetail
             application={selectedAdminApplication}
@@ -418,9 +522,32 @@ export default function App() {
         case 'users':
           return <UserManagement />;
         case 'orders':
-          return <OrderManagement />;
+          return <OrderManagement onViewOrderDetail={setSelectedOrder} />;
         case 'finance':
-          return <SettlementCenter />;
+          // 根据财务中心二级菜单显示不同内容
+          switch (adminCurrentFinanceSubMenu) {
+            case 'platform-account':
+              return <div className="p-6"><div className="text-lg font-semibold">平台账户</div><div className="text-gray-500 mt-2">平台账户管理功能开发中...</div></div>;
+            case 'partner-account':
+              // 小B账户下的三级菜单
+              if (adminCurrentPartnerAccountSubMenu === 'partner-balance') {
+                return <SettlementCenter />;
+              }
+              // 如果三级菜单未选中，显示小B账户的占位内容
+              return <div className="p-6"><div className="text-lg font-semibold">小B账户</div><div className="text-gray-500 mt-2">请选择具体的菜单项</div></div>;
+            case 'business-documents':
+              return <div className="p-6"><div className="text-lg font-semibold">业务单据管理</div><div className="text-gray-500 mt-2">业务单据管理功能开发中...</div></div>;
+            case 'settlement':
+              return <div className="p-6"><div className="text-lg font-semibold">结算管理</div><div className="text-gray-500 mt-2">结算管理功能开发中...</div></div>;
+            case 'reconciliation':
+              return <div className="p-6"><div className="text-lg font-semibold">对账</div><div className="text-gray-500 mt-2">对账功能开发中...</div></div>;
+            case 'withdrawal':
+              return <div className="p-6"><div className="text-lg font-semibold">提现管理</div><div className="text-gray-500 mt-2">提现管理功能开发中...</div></div>;
+            case 'invoice':
+              return <div className="p-6"><div className="text-lg font-semibold">发票管理</div><div className="text-gray-500 mt-2">发票管理功能开发中...</div></div>;
+            default:
+              return <SettlementCenter />;
+          }
         case 'apikeys':
           return <ApiKeyManagement />;
         case 'pricing':
@@ -438,13 +565,41 @@ export default function App() {
     // 计算待审核数量
     const pendingCount = applications.filter(app => app.status === 'pending').length;
 
+    // 统一的菜单切换处理函数
+    const handleMenuChange = (menu: AdminMenuItem) => {
+      // 切换菜单时，清除详情页面状态
+      setSelectedOrder(null);
+      setSelectedAdminApplication(null);
+      setAdminCurrentMenu(menu);
+    };
+
+    // 统一的二级菜单切换处理函数
+    const handleFinanceSubMenuChange = (subMenu: FinanceSubMenu | undefined) => {
+      // 切换二级菜单时，清除详情页面状态
+      setSelectedOrder(null);
+      setSelectedAdminApplication(null);
+      setAdminCurrentFinanceSubMenu(subMenu);
+    };
+
+    // 统一的三级菜单切换处理函数
+    const handlePartnerAccountSubMenuChange = (subMenu: PartnerAccountSubMenu | undefined) => {
+      // 切换三级菜单时，清除详情页面状态
+      setSelectedOrder(null);
+      setSelectedAdminApplication(null);
+      setAdminCurrentPartnerAccountSubMenu(subMenu);
+    };
+
     return (
       <>
         <AdminLayout
           currentUser={currentUser}
           onLogout={handleLogout}
           currentMenu={adminCurrentMenu}
-          onMenuChange={setAdminCurrentMenu}
+          onMenuChange={handleMenuChange}
+          currentFinanceSubMenu={adminCurrentFinanceSubMenu}
+          onFinanceSubMenuChange={handleFinanceSubMenuChange}
+          currentPartnerAccountSubMenu={adminCurrentPartnerAccountSubMenu}
+          onPartnerAccountSubMenuChange={handlePartnerAccountSubMenuChange}
           pendingReviewCount={pendingCount}
         >
           {renderAdminContent()}
@@ -454,49 +609,22 @@ export default function App() {
     );
   }
 
-  // User view - Show dashboard if approved and user clicks to go there
-  if (currentApplicationId && showDashboard) {
-    const currentApp = getCurrentApplication();
-    if (currentApp && currentApp.status === 'approved') {
-      return (
-        <>
-          {getDashboardComponent(currentApp.businessModel)}
-          <Toaster />
-        </>
-      );
-    }
-  }
-
   const currentApp = getCurrentApplication();
 
   // Handle navigation
   const handleNavigate = (view: string) => {
-    if (view === 'registration') {
-      setCurrentView('registration');
-      // Don't reset these if user has an application
-      if (!currentApplicationId) {
-        setSelectedBusinessModel(null);
-        setSelectedIdentity(null);
-      }
-    } else if (view === 'userCenter') {
-      setCurrentView('userCenter');
-    }
+    setCurrentView(view);
   };
 
-  // User view - Main layout with sidebar
-  const renderMainContent = (currentApp: ApplicationData | undefined) => {
-    // User Center view
+  // 用户视图 - 根据当前视图和服务类型渲染内容
+  const renderUserContent = () => {
+    if (!currentUser) return null;
+
+    // 个人中心
     if (currentView === 'userCenter') {
       return (
         <UserCenter
-          currentUser={{
-            email: currentUser?.email || '',
-            name: currentUser?.name || currentUser?.email?.split('@')[0] || '用户',
-            role: currentUser?.role || 'user',
-            phone: currentUser?.phone,
-            company: currentUser?.company,
-            registeredAt: currentUser?.registeredAt,
-          }}
+          currentUser={currentUser}
           onLogout={handleLogout}
           onUpdateProfile={handleUpdateProfile}
           onChangePassword={handleChangePassword}
@@ -504,7 +632,7 @@ export default function App() {
       );
     }
 
-    // Registration view (default and main view)
+    // 注册服务
     if (currentView === 'registration') {
       return (
         <RegistrationSteps
@@ -522,13 +650,54 @@ export default function App() {
             rejectionReason: currentApp.rejectionReason,
             data: currentApp.data,
           } : null}
-          onGoToDashboard={() => setShowDashboard(true)}
+          onGoToDashboard={() => {
+            // 使用当前申请数据进行判断，避免依赖尚未同步的 currentUser
+            const app = getCurrentApplication();
+            if (app && app.status === 'approved') {
+              const defaultView = getDefaultMenuId(app.businessModel as ServiceType, 'approved');
+              setCurrentView(defaultView);
+              if (currentUser) {
+                const updatedUser: User = {
+                  ...currentUser,
+                  serviceType: app.businessModel as ServiceType,
+                  serviceStatus: 'approved',
+                  applicationId: app.id,
+                };
+                setCurrentUser(updatedUser);
+                localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+              }
+            }
+          }}
           onReapply={handleReapply}
         />
       );
     }
 
-    // Default fallback
+    // MCP 服务页面
+    if (currentUser.serviceType === 'mcp' && currentUser.serviceStatus === 'approved') {
+      if (currentView === 'mcp-config') return <MCPConfiguration />;
+      if (currentView === 'mcp-monitoring') return <MCPMonitoring />;
+      if (currentView === 'mcp-docs') return <MCPDocumentation />;
+    }
+
+    // SaaS 服务页面
+    if (currentUser.serviceType === 'saas' && currentUser.serviceStatus === 'approved') {
+      if (currentView === 'saas-dashboard') return <SaaSDashboard />;
+      if (currentView === 'saas-brand') return <SaaSBrandConfig />;
+      if (currentView === 'saas-pricing') return <SaaSPricing />;
+      if (currentView === 'saas-orders') return <SaaSOrders />;
+      if (currentView === 'saas-wallet') return <SaaSWallet />;
+    }
+
+    // 推广联盟服务页面
+    if (currentUser.serviceType === 'affiliate' && currentUser.serviceStatus === 'approved') {
+      if (currentView === 'affiliate-dashboard') return <AffiliateDashboard />;
+      if (currentView === 'affiliate-link') return <AffiliateLink />;
+      if (currentView === 'affiliate-data') return <AffiliateData />;
+      if (currentView === 'affiliate-points') return <AffiliatePoints />;
+    }
+
+    // 默认显示注册服务
     return (
       <RegistrationSteps
         onSubmit={handleFormSubmit}
@@ -545,7 +714,23 @@ export default function App() {
           rejectionReason: currentApp.rejectionReason,
           data: currentApp.data,
         } : null}
-        onGoToDashboard={() => setShowDashboard(true)}
+        onGoToDashboard={() => {
+          const app = getCurrentApplication();
+          if (app && app.status === 'approved') {
+            const defaultView = getDefaultMenuId(app.businessModel as ServiceType, 'approved');
+            setCurrentView(defaultView);
+            if (currentUser) {
+              const updatedUser: User = {
+                ...currentUser,
+                serviceType: app.businessModel as ServiceType,
+                serviceStatus: 'approved',
+                applicationId: app.id,
+              };
+              setCurrentUser(updatedUser);
+              localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+            }
+          }
+        }}
         onReapply={handleReapply}
       />
     );
@@ -561,11 +746,13 @@ export default function App() {
       sidebarContent={
         <ServiceSidebar
           currentView={currentView}
+          serviceType={currentUser?.serviceType || null}
+          serviceStatus={currentUser?.serviceStatus || 'none'}
           onNavigate={handleNavigate}
         />
       }
     >
-      {renderMainContent(currentApp)}
+      {renderUserContent()}
       <Toaster />
     </UserLayout>
   );

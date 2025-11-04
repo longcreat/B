@@ -156,7 +156,7 @@ export function UserLayout({
                     variant="ghost" 
                     className="flex items-center gap-2 pl-2 pr-3 hover:bg-gray-100"
                     type="button"
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                       e.stopPropagation();
                       console.log('User menu button clicked');
                     }}
@@ -188,7 +188,7 @@ export function UserLayout({
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                       e.preventDefault();
                       onNavigateToUserCenter?.();
                     }}
@@ -199,7 +199,7 @@ export function UserLayout({
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                       e.preventDefault();
                       onLogout();
                     }} 
@@ -225,8 +225,13 @@ export function UserLayout({
         )}
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto">
-          {children}
+        <main className="flex-1 overflow-y-auto bg-gray-50">
+          {/* 页面统一留白，便于必要时调整整体间距 */}
+          <div className="px-6 py-4 lg:px-8">
+            <div className="max-w-5xl mx-auto">
+              {children}
+            </div>
+          </div>
         </main>
       </div>
     </div>

@@ -40,7 +40,7 @@ import {
   RefreshCw,
   Calendar,
 } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 
 // API Key 状态
@@ -269,7 +269,7 @@ export function ApiKeyManagement() {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbPage>API密钥管理</BreadcrumbPage>
+            <BreadcrumbPage>密钥管理</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form@7.55.0';
+import { useForm } from 'react-hook-form';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -8,11 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { HelpCircle, Plus, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { ImageUpload } from './ImageUpload';
 import { AgreementCheckbox } from './AgreementCheckbox';
+import { FaceVerification } from './FaceVerification';
+import { PhoneVerification } from './PhoneVerification';
 
 interface SocialPlatform {
   id: string;
@@ -92,6 +94,8 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: 
   const [mainScreenshots, setMainScreenshots] = useState<File[]>([]);
   const [additionalPlatforms, setAdditionalPlatforms] = useState<SocialPlatform[]>(initialData?.additionalPlatforms || []);
   const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [faceVerified, setFaceVerified] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
 
   const {
     register,
@@ -150,7 +154,7 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: 
   }, [setValue, initialData]);
 
   useEffect(() => {
-    const subscription = watch((value) => {
+    const subscription = watch((value: any) => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
     });
     return () => subscription.unsubscribe();
@@ -363,6 +367,11 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                       />
                     </div>
                   </div>
+
+                  <FaceVerification 
+                    onVerified={setFaceVerified}
+                    verified={faceVerified}
+                  />
                 </div>
               </div>
 
@@ -374,7 +383,7 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                     <Label>主营社交平台 <span className="text-red-500">*</span></Label>
                     <Select
                       value={mainPlatform}
-                      onValueChange={(value) => setValue('mainPlatform', value)}
+                      onValueChange={(value: string) => setValue('mainPlatform', value)}
                     >
                       <SelectTrigger className="mt-2">
                         <SelectValue placeholder="请选择主营社交平台" />
@@ -465,7 +474,7 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                           </div>
                           <Select
                             value={platform.platform}
-                            onValueChange={(value) => updatePlatform(platform.id, 'platform', value)}
+                            onValueChange={(value: string) => updatePlatform(platform.id, 'platform', value)}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="选择平台" />
@@ -551,6 +560,12 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                       <p className="text-red-500 mt-1">{errors.email.message}</p>
                     )}
                   </div>
+
+                  <PhoneVerification
+                    phoneNumber={watch('phone') || ''}
+                    onVerified={setPhoneVerified}
+                    verified={phoneVerified}
+                  />
                 </div>
               </div>
 
@@ -562,7 +577,7 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                     <Label>账户类型 <span className="text-red-500">*</span></Label>
                     <RadioGroup
                       value={accountType}
-                      onValueChange={(value) => setValue('accountType', value as 'bank' | 'alipay')}
+                      onValueChange={(value: string) => setValue('accountType', value as 'bank' | 'alipay')}
                       className="mt-2"
                     >
                       <div className="flex items-center space-x-2">
@@ -593,7 +608,7 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                         <Label>开户银行 <span className="text-red-500">*</span></Label>
                         <Select
                           value={bankName}
-                          onValueChange={(value) => setValue('bankName', value)}
+                          onValueChange={(value: string) => setValue('bankName', value)}
                         >
                           <SelectTrigger className="mt-2">
                             <SelectValue placeholder="请选择开户银行" />
@@ -665,10 +680,18 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                   <Button type="button" variant="outline" onClick={onBack}>
                     取消
                   </Button>
-                  <Button type="submit" disabled={!agreementAccepted}>
+                  <Button 
+                    type="submit" 
+                    disabled={!agreementAccepted || !faceVerified || !phoneVerified}
+                  >
                     提交审核
                   </Button>
                 </div>
+                {(!faceVerified || !phoneVerified) && (
+                  <p className="text-sm text-amber-600 text-right">
+                    请完成人脸识别和手机号验证后提交
+                  </p>
+                )}
               </div>
             </form>
           </CardContent>

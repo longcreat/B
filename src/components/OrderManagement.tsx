@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -10,14 +10,6 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
 } from './ui/breadcrumb';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from './ui/dialog';
 import {
   Select,
   SelectContent,
@@ -34,16 +26,18 @@ import {
   Download,
   Package,
   Filter,
+  ArrowLeft,
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
-// 订单状态
-type OrderStatus = 'confirmed' | 'checkin' | 'checkout' | 'completed' | 'cancelled' | 'refunded';
+// 订单状态 - 根据PRD定义
+type OrderStatus = 'pending_payment' | 'pending_confirm' | 'confirmed' | 'completed' | 'completed_settleable' | 'cancelled_free' | 'cancelled_paid' | 'no_show' | 'disputed';
 
 // 结算状态
 type SettlementStatus = 'pending' | 'ready' | 'processing' | 'completed';
 
 // 订单详情
-interface Order {
+export interface Order {
   orderId: string;
   hotelName: string;
   hotelAddress: string;
@@ -70,31 +64,53 @@ interface Order {
   platformProfit: number; // 平台利润 = P1 - P0
   partnerProfit: number; // 小B利润 = P2 - P1
   
+  // 实付金额和退款金额
+  actualAmount: number; // 实付金额
+  refundAmount?: number; // 退款金额（可选）
+  
   // 订单状态
   orderStatus: OrderStatus;
   
-  // 六重门控状态
+  // 五重门控状态 - 根据PRD定义
   gates: {
-    serviceCompleted: boolean; // Gate 1: 服务已完成
-    coolingOffPassed: boolean; // Gate 2: 冻结期已过
-    noDispute: boolean; // Gate 3: 无争议
-    costReconciled: boolean; // Gate 4: 成本已对账
-    accountHealthy: boolean; // Gate 5: 账户状态正常
-    thresholdMet: boolean; // Gate 6: 达到起付线
+    serviceCompleted: boolean; // Gate 1: 服务已完成 - 离店日期 < T(今日)
+    coolingOffPassed: boolean; // Gate 2: 冻结期已过 - T(今日) - 离店日期 > 结算冻结期天数 (7-15天)
+    noDispute: boolean; // Gate 3: 订单无未决争议 - 不处于争议中、退款处理中等异常挂起状态
+    costReconciled: boolean; // Gate 4: 供应商成本已对账 - P0已与上游供应商账单核对并标记为已对账
+    accountHealthy: boolean; // Gate 5: 结算对象状态正常 - 小B/供应商账户结算状态为活跃
   };
   
   settlementStatus: SettlementStatus;
   createdAt: string;
   settledAt?: string;
+  
+  // 状态历史时间轴
+  statusHistory?: {
+    status: OrderStatus;
+    timestamp: string;
+    description?: string;
+  }[];
 }
 
-export function OrderManagement() {
+interface OrderManagementProps {
+  onViewOrderDetail?: (order: Order) => void;
+}
+
+export function OrderManagement({ onViewOrderDetail }: OrderManagementProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOrderStatus, setFilterOrderStatus] = useState<'all' | OrderStatus>('all');
   const [filterSettlementStatus, setFilterSettlementStatus] = useState<'all' | SettlementStatus>('all');
   const [filterPartnerType, setFilterPartnerType] = useState<'all' | 'individual' | 'influencer' | 'enterprise'>('all');
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [showOrderDetail, setShowOrderDetail] = useState(false);
+  const [filterHotelName, setFilterHotelName] = useState('');
+  const [filterPartnerName, setFilterPartnerName] = useState('');
+  const [filterCreateDateStart, setFilterCreateDateStart] = useState('');
+  const [filterCreateDateEnd, setFilterCreateDateEnd] = useState('');
+  const [filterCheckInDateStart, setFilterCheckInDateStart] = useState('');
+  const [filterCheckInDateEnd, setFilterCheckInDateEnd] = useState('');
+  const [filterOrderAmountMin, setFilterOrderAmountMin] = useState('');
+  const [filterOrderAmountMax, setFilterOrderAmountMax] = useState('');
+  const [filterActualAmountMin, setFilterActualAmountMin] = useState('');
+  const [filterActualAmountMax, setFilterActualAmountMax] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   // 模拟订单数据
@@ -117,14 +133,15 @@ export function OrderManagement() {
       p2_salePrice: 968,
       platformProfit: 80,
       partnerProfit: 88,
-      orderStatus: 'completed',
+      actualAmount: 968,
+      refundAmount: 0,
+      orderStatus: 'completed_settleable',
       gates: {
         serviceCompleted: true,
         coolingOffPassed: true,
         noDispute: true,
         costReconciled: true,
         accountHealthy: true,
-        thresholdMet: true,
       },
       settlementStatus: 'ready',
       createdAt: '2025-10-15 14:30:00',
@@ -147,14 +164,15 @@ export function OrderManagement() {
       p2_salePrice: 1452,
       platformProfit: 120,
       partnerProfit: 132,
-      orderStatus: 'checkout',
+      actualAmount: 1306.8, // 1452 - 145.2 (部分退款)
+      refundAmount: 145.2,
+      orderStatus: 'completed',
       gates: {
         serviceCompleted: true,
         coolingOffPassed: false,
         noDispute: true,
         costReconciled: true,
         accountHealthy: true,
-        thresholdMet: false,
       },
       settlementStatus: 'pending',
       createdAt: '2025-10-20 10:15:00',
@@ -177,6 +195,8 @@ export function OrderManagement() {
       p2_salePrice: 1149.5,
       platformProfit: 95,
       partnerProfit: 104.5,
+      actualAmount: 459.8, // 1149.5 - 689.7 (大量退款)
+      refundAmount: 689.7,
       orderStatus: 'completed',
       gates: {
         serviceCompleted: true,
@@ -184,7 +204,6 @@ export function OrderManagement() {
         noDispute: true,
         costReconciled: false,
         accountHealthy: true,
-        thresholdMet: false,
       },
       settlementStatus: 'pending',
       createdAt: '2025-10-18 16:20:00',
@@ -207,14 +226,15 @@ export function OrderManagement() {
       p2_salePrice: 907.5,
       platformProfit: 75,
       partnerProfit: 82.5,
-      orderStatus: 'completed',
+      actualAmount: 907.5,
+      refundAmount: 0,
+      orderStatus: 'completed_settleable',
       gates: {
         serviceCompleted: true,
         coolingOffPassed: true,
         noDispute: true,
         costReconciled: true,
         accountHealthy: true,
-        thresholdMet: true,
       },
       settlementStatus: 'completed',
       createdAt: '2025-10-24 11:00:00',
@@ -238,6 +258,8 @@ export function OrderManagement() {
       p2_salePrice: 1815,
       platformProfit: 150,
       partnerProfit: 165,
+      actualAmount: 1815,
+      refundAmount: 0,
       orderStatus: 'confirmed',
       gates: {
         serviceCompleted: false,
@@ -245,7 +267,6 @@ export function OrderManagement() {
         noDispute: true,
         costReconciled: false,
         accountHealthy: true,
-        thresholdMet: false,
       },
       settlementStatus: 'pending',
       createdAt: '2025-10-28 09:30:00',
@@ -268,14 +289,15 @@ export function OrderManagement() {
       p2_salePrice: 822.8,
       platformProfit: 68,
       partnerProfit: 74.8,
-      orderStatus: 'checkin',
+      actualAmount: 822.8,
+      refundAmount: 0, // 无退款
+      orderStatus: 'confirmed',
       gates: {
         serviceCompleted: false,
         coolingOffPassed: false,
         noDispute: true,
         costReconciled: true,
         accountHealthy: true,
-        thresholdMet: false,
       },
       settlementStatus: 'pending',
       createdAt: '2025-10-27 15:45:00',
@@ -284,12 +306,15 @@ export function OrderManagement() {
 
   const getOrderStatusBadge = (status: OrderStatus) => {
     const config = {
-      confirmed: { label: '已确认', className: 'bg-blue-50 text-blue-700 border-blue-300' },
-      checkin: { label: '已入住', className: 'bg-purple-50 text-purple-700 border-purple-300' },
-      checkout: { label: '已离店', className: 'bg-orange-50 text-orange-700 border-orange-300' },
+      pending_payment: { label: '待支付', className: 'bg-yellow-50 text-yellow-700 border-yellow-300' },
+      pending_confirm: { label: '待确认', className: 'bg-orange-50 text-orange-700 border-orange-300' },
+      confirmed: { label: '已确认/待入住', className: 'bg-blue-50 text-blue-700 border-blue-300' },
       completed: { label: '已完成', className: 'bg-green-50 text-green-700 border-green-300' },
-      cancelled: { label: '已取消', className: 'bg-red-50 text-red-700 border-red-300' },
-      refunded: { label: '已退款', className: 'bg-gray-50 text-gray-700 border-gray-300' },
+      completed_settleable: { label: '已完成(可结算)', className: 'bg-green-100 text-green-800 border-green-400' },
+      cancelled_free: { label: '已取消(免费)', className: 'bg-gray-50 text-gray-700 border-gray-300' },
+      cancelled_paid: { label: '已取消(付费)', className: 'bg-red-50 text-red-700 border-red-300' },
+      no_show: { label: 'No-Show', className: 'bg-red-100 text-red-800 border-red-400' },
+      disputed: { label: '争议中', className: 'bg-red-200 text-red-900 border-red-500' },
     };
     const { label, className } = config[status];
     return <Badge variant="outline" className={className}>{label}</Badge>;
@@ -325,8 +350,9 @@ export function OrderManagement() {
   };
 
   const handleViewOrderDetail = (order: Order) => {
-    setSelectedOrder(order);
-    setShowOrderDetail(true);
+    if (onViewOrderDetail) {
+      onViewOrderDetail(order);
+    }
   };
 
   const filteredOrders = orders.filter((order) => {
@@ -339,8 +365,41 @@ export function OrderManagement() {
     const matchesOrderStatus = filterOrderStatus === 'all' || order.orderStatus === filterOrderStatus;
     const matchesSettlementStatus = filterSettlementStatus === 'all' || order.settlementStatus === filterSettlementStatus;
     const matchesPartnerType = filterPartnerType === 'all' || order.partnerType === filterPartnerType;
+    
+    // 酒店名称筛选
+    const matchesHotelName = !filterHotelName || order.hotelName.toLowerCase().includes(filterHotelName.toLowerCase());
+    
+    // 小B商户筛选
+    const matchesPartnerName = !filterPartnerName || 
+      order.partnerName.toLowerCase().includes(filterPartnerName.toLowerCase()) ||
+      order.partnerEmail.toLowerCase().includes(filterPartnerName.toLowerCase());
+    
+    // 创建时间范围筛选（只比较日期部分）
+    const orderCreateDate = order.createdAt.split(' ')[0]; // 提取日期部分
+    const matchesCreateDate = (!filterCreateDateStart || orderCreateDate >= filterCreateDateStart) &&
+      (!filterCreateDateEnd || orderCreateDate <= filterCreateDateEnd);
+    
+    // 入住日期范围筛选
+    const matchesCheckInDate = (!filterCheckInDateStart || order.checkInDate >= filterCheckInDateStart) &&
+      (!filterCheckInDateEnd || order.checkInDate <= filterCheckInDateEnd);
+    
+    // 订单金额范围筛选
+    const minOrderAmount = filterOrderAmountMin ? parseFloat(filterOrderAmountMin) : null;
+    const maxOrderAmount = filterOrderAmountMax ? parseFloat(filterOrderAmountMax) : null;
+    const matchesOrderAmount = 
+      (minOrderAmount === null || !isNaN(minOrderAmount) && order.p2_salePrice >= minOrderAmount) &&
+      (maxOrderAmount === null || !isNaN(maxOrderAmount) && order.p2_salePrice <= maxOrderAmount);
+    
+    // 实付金额范围筛选
+    const minActualAmount = filterActualAmountMin ? parseFloat(filterActualAmountMin) : null;
+    const maxActualAmount = filterActualAmountMax ? parseFloat(filterActualAmountMax) : null;
+    const matchesActualAmount = 
+      (minActualAmount === null || !isNaN(minActualAmount) && order.actualAmount >= minActualAmount) &&
+      (maxActualAmount === null || !isNaN(maxActualAmount) && order.actualAmount <= maxActualAmount);
 
-    return matchesSearch && matchesOrderStatus && matchesSettlementStatus && matchesPartnerType;
+    return matchesSearch && matchesOrderStatus && matchesSettlementStatus && matchesPartnerType &&
+      matchesHotelName && matchesPartnerName && matchesCreateDate && matchesCheckInDate &&
+      matchesOrderAmount && matchesActualAmount;
   });
 
   return (
@@ -391,147 +450,300 @@ export function OrderManagement() {
 
           {/* 筛选器 */}
           {showFilters && (
-            <div className="flex items-center gap-3 pt-4 border-t mt-4">
-              <Select value={filterOrderStatus} onValueChange={(value: any) => setFilterOrderStatus(value)}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="订单状态" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部状态</SelectItem>
-                  <SelectItem value="confirmed">已确认</SelectItem>
-                  <SelectItem value="checkin">已入住</SelectItem>
-                  <SelectItem value="checkout">已离店</SelectItem>
-                  <SelectItem value="completed">已完成</SelectItem>
-                  <SelectItem value="cancelled">已取消</SelectItem>
-                  <SelectItem value="refunded">已退款</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="pt-4 border-t mt-4 space-y-4">
+              {/* 第一行：基本状态筛选 */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">订单状态</Label>
+                  <Select value={filterOrderStatus} onValueChange={(value: any) => setFilterOrderStatus(value)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="全部状态" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部状态</SelectItem>
+                      <SelectItem value="pending_payment">待支付</SelectItem>
+                      <SelectItem value="pending_confirm">待确认</SelectItem>
+                      <SelectItem value="confirmed">已确认/待入住</SelectItem>
+                      <SelectItem value="completed">已完成</SelectItem>
+                      <SelectItem value="completed_settleable">已完成(可结算)</SelectItem>
+                      <SelectItem value="cancelled_free">已取消(免费)</SelectItem>
+                      <SelectItem value="cancelled_paid">已取消(付费)</SelectItem>
+                      <SelectItem value="no_show">No-Show</SelectItem>
+                      <SelectItem value="disputed">争议中</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <Select value={filterSettlementStatus} onValueChange={(value: any) => setFilterSettlementStatus(value)}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="结算状态" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部状态</SelectItem>
-                  <SelectItem value="pending">待结算</SelectItem>
-                  <SelectItem value="ready">可结算</SelectItem>
-                  <SelectItem value="processing">处理中</SelectItem>
-                  <SelectItem value="completed">已结算</SelectItem>
-                </SelectContent>
-              </Select>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">结算状态</Label>
+                  <Select value={filterSettlementStatus} onValueChange={(value: any) => setFilterSettlementStatus(value)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="全部状态" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部状态</SelectItem>
+                      <SelectItem value="pending">待结算</SelectItem>
+                      <SelectItem value="ready">可结算</SelectItem>
+                      <SelectItem value="processing">处理中</SelectItem>
+                      <SelectItem value="completed">已结算</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <Select value={filterPartnerType} onValueChange={(value: any) => setFilterPartnerType(value)}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="商户类型" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部类型</SelectItem>
-                  <SelectItem value="individual">个人</SelectItem>
-                  <SelectItem value="influencer">博主</SelectItem>
-                  <SelectItem value="enterprise">企业</SelectItem>
-                </SelectContent>
-              </Select>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">商户类型</Label>
+                  <Select value={filterPartnerType} onValueChange={(value: any) => setFilterPartnerType(value)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="全部类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部类型</SelectItem>
+                      <SelectItem value="individual">个人</SelectItem>
+                      <SelectItem value="influencer">博主</SelectItem>
+                      <SelectItem value="enterprise">企业</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-              {(filterOrderStatus !== 'all' || filterSettlementStatus !== 'all' || filterPartnerType !== 'all') && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setFilterOrderStatus('all');
-                    setFilterSettlementStatus('all');
-                    setFilterPartnerType('all');
-                  }}
-                >
-                  清除筛选
-                </Button>
-              )}
+              {/* 第二行：名称筛选 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">酒店名称</Label>
+                  <Input
+                    placeholder="输入酒店名称"
+                    value={filterHotelName}
+                    onChange={(e) => setFilterHotelName(e.target.value)}
+                    className="flex-1"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">小B商户</Label>
+                  <Input
+                    placeholder="输入商户名称或邮箱"
+                    value={filterPartnerName}
+                    onChange={(e) => setFilterPartnerName(e.target.value)}
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+
+              {/* 第三行：日期范围筛选 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">创建时间</Label>
+                  <div className="flex items-center gap-2 flex-1">
+                    <Input
+                      type="date"
+                      value={filterCreateDateStart}
+                      onChange={(e) => setFilterCreateDateStart(e.target.value)}
+                      className="flex-1"
+                    />
+                    <span className="text-sm text-gray-500 flex-shrink-0">至</span>
+                    <Input
+                      type="date"
+                      value={filterCreateDateEnd}
+                      onChange={(e) => setFilterCreateDateEnd(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">入住日期</Label>
+                  <div className="flex items-center gap-2 flex-1">
+                    <Input
+                      type="date"
+                      value={filterCheckInDateStart}
+                      onChange={(e) => setFilterCheckInDateStart(e.target.value)}
+                      className="flex-1"
+                    />
+                    <span className="text-sm text-gray-500 flex-shrink-0">至</span>
+                    <Input
+                      type="date"
+                      value={filterCheckInDateEnd}
+                      onChange={(e) => setFilterCheckInDateEnd(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 第四行：金额范围筛选 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">订单金额</Label>
+                  <div className="flex items-center gap-2 flex-1">
+                    <Input
+                      type="number"
+                      placeholder="最小值"
+                      value={filterOrderAmountMin}
+                      onChange={(e) => setFilterOrderAmountMin(e.target.value)}
+                      className="flex-1"
+                      min="0"
+                      step="0.01"
+                    />
+                    <span className="text-sm text-gray-500 flex-shrink-0">至</span>
+                    <Input
+                      type="number"
+                      placeholder="最大值"
+                      value={filterOrderAmountMax}
+                      onChange={(e) => setFilterOrderAmountMax(e.target.value)}
+                      className="flex-1"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">实付金额</Label>
+                  <div className="flex items-center gap-2 flex-1">
+                    <Input
+                      type="number"
+                      placeholder="最小值"
+                      value={filterActualAmountMin}
+                      onChange={(e) => setFilterActualAmountMin(e.target.value)}
+                      className="flex-1"
+                      min="0"
+                      step="0.01"
+                    />
+                    <span className="text-sm text-gray-500 flex-shrink-0">至</span>
+                    <Input
+                      type="number"
+                      placeholder="最大值"
+                      value={filterActualAmountMax}
+                      onChange={(e) => setFilterActualAmountMax(e.target.value)}
+                      className="flex-1"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 清除筛选按钮 */}
+              <div className="flex items-center justify-end pt-2">
+                {(filterOrderStatus !== 'all' || filterSettlementStatus !== 'all' || filterPartnerType !== 'all' ||
+                  filterHotelName || filterPartnerName || filterCreateDateStart || filterCreateDateEnd ||
+                  filterCheckInDateStart || filterCheckInDateEnd || filterOrderAmountMin || filterOrderAmountMax ||
+                  filterActualAmountMin || filterActualAmountMax) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setFilterOrderStatus('all');
+                      setFilterSettlementStatus('all');
+                      setFilterPartnerType('all');
+                      setFilterHotelName('');
+                      setFilterPartnerName('');
+                      setFilterCreateDateStart('');
+                      setFilterCreateDateEnd('');
+                      setFilterCheckInDateStart('');
+                      setFilterCheckInDateEnd('');
+                      setFilterOrderAmountMin('');
+                      setFilterOrderAmountMax('');
+                      setFilterActualAmountMin('');
+                      setFilterActualAmountMax('');
+                    }}
+                  >
+                    清除所有筛选
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </CardHeader>
 
         <CardContent>
-          <div className="border rounded-lg">
+          <div className="border rounded-lg overflow-hidden relative">
+            <style>{`
+              [data-slot="table-container"] {
+                position: relative;
+              }
+              [data-slot="table"] {
+                min-width: 2000px !important;
+                width: max-content;
+              }
+              [data-slot="table"] th:last-child,
+              [data-slot="table"] td:last-child {
+                position: sticky !important;
+                right: 0 !important;
+                background: white !important;
+                z-index: 10 !important;
+                box-shadow: -2px 0 4px rgba(0,0,0,0.05) !important;
+              }
+            `}</style>
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>订单号</TableHead>
-                  <TableHead>酒店信息</TableHead>
-                  <TableHead>入住信息</TableHead>
-                  <TableHead>小B商户</TableHead>
-                  <TableHead>订单金额</TableHead>
-                  <TableHead>小B利润</TableHead>
-                  <TableHead>订单状态</TableHead>
-                  <TableHead>结算状态</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[140px] sticky left-0 bg-white z-10 shadow-[2px_0_4px_rgba(0,0,0,0.05)]">订单号</TableHead>
+                    <TableHead className="min-w-[150px]">酒店名称</TableHead>
+                    <TableHead className="min-w-[120px]">房型</TableHead>
+                    <TableHead className="min-w-[120px]">入住日期</TableHead>
+                    <TableHead className="min-w-[120px]">离店日期</TableHead>
+                    <TableHead className="min-w-[80px]">晚数</TableHead>
+                    <TableHead className="min-w-[150px]">小B商户名称</TableHead>
+                    <TableHead className="min-w-[100px]">商户类型</TableHead>
+                    <TableHead className="min-w-[180px]">商户邮箱</TableHead>
+                    <TableHead className="min-w-[100px]">订单金额</TableHead>
+                    <TableHead className="min-w-[100px]">实付金额</TableHead>
+                    <TableHead className="min-w-[100px]">退款金额</TableHead>
+                    <TableHead className="min-w-[120px]">订单状态</TableHead>
+                    <TableHead className="min-w-[100px]">结算状态</TableHead>
+                    <TableHead className="text-right w-[100px] sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">操作</TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-12 text-gray-500">
+                    <TableCell colSpan={15} className="text-center py-12 text-gray-500">
                       暂无订单数据
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredOrders.map((order) => {
-                    const passedGates = Object.values(order.gates).filter(Boolean).length;
-                    return (
+                  filteredOrders.map((order) => (
                       <TableRow key={order.orderId}>
-                        <TableCell className="font-mono text-sm">{order.orderId}</TableCell>
-                        <TableCell>
-                          <div>
-                            <p>{order.hotelName}</p>
-                            <p className="text-sm text-gray-500">{order.roomType}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <p>{order.checkInDate} ~ {order.checkOutDate}</p>
-                            <p className="text-gray-500">{order.nights} 晚</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p>{order.partnerName}</p>
-                              {getPartnerTypeBadge(order.partnerType)}
-                            </div>
-                            <p className="text-sm text-gray-500">{order.partnerEmail}</p>
-                          </div>
-                        </TableCell>
+                        <TableCell className="font-mono text-sm sticky left-0 bg-white z-10 shadow-[2px_0_4px_rgba(0,0,0,0.05)]">{order.orderId}</TableCell>
+                        <TableCell>{order.hotelName}</TableCell>
+                        <TableCell className="text-gray-600">{order.roomType}</TableCell>
+                        <TableCell>{order.checkInDate}</TableCell>
+                        <TableCell>{order.checkOutDate}</TableCell>
+                        <TableCell className="text-gray-500">{order.nights} 晚</TableCell>
+                        <TableCell>{order.partnerName}</TableCell>
+                        <TableCell>{getPartnerTypeBadge(order.partnerType)}</TableCell>
+                        <TableCell className="text-sm text-gray-500">{order.partnerEmail}</TableCell>
                         <TableCell>
                           ¥{order.p2_salePrice.toFixed(2)}
                         </TableCell>
-                        <TableCell className="text-green-600">
-                          ¥{order.partnerProfit.toFixed(2)}
+                        <TableCell className="text-indigo-600 font-medium">
+                          ¥{order.actualAmount.toFixed(2)}
+                        </TableCell>
+                        <TableCell className={order.refundAmount && order.refundAmount > 0 ? "text-orange-600 font-medium" : "text-gray-400"}>
+                          {order.refundAmount && order.refundAmount > 0 ? `¥${order.refundAmount.toFixed(2)}` : '-'}
                         </TableCell>
                         <TableCell>{getOrderStatusBadge(order.orderStatus)}</TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            {getSettlementStatusBadge(order.settlementStatus)}
-                            <div className="flex items-center gap-1 text-xs text-gray-500">
-                              <span>{passedGates}/6</span>
-                              {passedGates === 6 ? (
-                                <CheckCircle2 className="w-3 h-3 text-green-600" />
-                              ) : (
-                                <AlertCircle className="w-3 h-3 text-yellow-600" />
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewOrderDetail(order)}
-                          >
-                            <Eye className="w-4 h-4 mr-2" />
-                            查看
-                          </Button>
+                        <TableCell>{getSettlementStatusBadge(order.settlementStatus)}</TableCell>
+                        <TableCell className="text-right sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleViewOrderDetail(order)}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>查看详情</p>
+                            </TooltipContent>
+                          </Tooltip>
                         </TableCell>
                       </TableRow>
-                    );
-                  })
+                    ))
                 )}
               </TableBody>
             </Table>
@@ -548,216 +760,6 @@ export function OrderManagement() {
         </CardContent>
       </Card>
 
-      {/* 订单详情弹窗 */}
-      <Dialog open={showOrderDetail} onOpenChange={setShowOrderDetail}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Package className="w-5 h-5" />
-              订单详情
-            </DialogTitle>
-            <DialogDescription>查看订单的完整信息、价格体系和六重门控状态</DialogDescription>
-          </DialogHeader>
-          
-          {selectedOrder && (
-            <div className="space-y-6">
-              {/* 订单基本信息 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b">订单基本信息</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">订单号</Label>
-                    <p className="mt-1 font-mono">{selectedOrder.orderId}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">创建时间</Label>
-                    <p className="mt-1">{selectedOrder.createdAt}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">订单状态</Label>
-                    <div className="mt-1">{getOrderStatusBadge(selectedOrder.orderStatus)}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 酒店信息 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b">酒店信息</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">酒店名称</Label>
-                    <p className="mt-1">{selectedOrder.hotelName}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">酒店地址</Label>
-                    <p className="mt-1">{selectedOrder.hotelAddress}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">房型</Label>
-                    <p className="mt-1">{selectedOrder.roomType}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">入住时间</Label>
-                    <p className="mt-1">{selectedOrder.checkInDate} ~ {selectedOrder.checkOutDate} ({selectedOrder.nights}晚)</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 客户信息 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b">客户信息</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">客户姓名</Label>
-                    <p className="mt-1">{selectedOrder.customerName}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">联系电话</Label>
-                    <p className="mt-1">{selectedOrder.customerPhone}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 小B商户信息 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b">小B商户信息</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">商户名称</Label>
-                    <p className="mt-1">{selectedOrder.partnerName}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">商户邮箱</Label>
-                    <p className="mt-1">{selectedOrder.partnerEmail}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">商户类型</Label>
-                    <div className="mt-1">{getPartnerTypeBadge(selectedOrder.partnerType)}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 价格体系 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b">价格体系</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                    <span className="text-gray-600">P0 - 供应商底价</span>
-                    <span>¥{selectedOrder.p0_supplierCost.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
-                    <span className="text-gray-600">P1 - 平台供货价</span>
-                    <span className="text-blue-700">¥{selectedOrder.p1_platformPrice.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-green-50 rounded">
-                    <span className="text-gray-600">P2 - 小B销售价</span>
-                    <span className="text-green-700">¥{selectedOrder.p2_salePrice.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 利润分配 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b">利润分配</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center p-3 bg-purple-50 rounded">
-                    <span className="text-gray-600">平台利润 (P1-P0)</span>
-                    <span className="text-purple-700">¥{selectedOrder.platformProfit.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-green-50 rounded">
-                    <span className="text-gray-600">小B利润 (P2-P1)</span>
-                    <span className="text-green-700">¥{selectedOrder.partnerProfit.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 六重门控状态 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b">六重门控状态</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between p-3 border rounded">
-                    <div className="flex items-center gap-3">
-                      {getGateIcon(selectedOrder.gates.serviceCompleted)}
-                      <span>Gate 1: 服务已完成</span>
-                    </div>
-                    <Badge variant={selectedOrder.gates.serviceCompleted ? 'default' : 'secondary'}>
-                      {selectedOrder.gates.serviceCompleted ? '已通过' : '未通过'}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded">
-                    <div className="flex items-center gap-3">
-                      {getGateIcon(selectedOrder.gates.coolingOffPassed)}
-                      <span>Gate 2: 冻结期已过 (7-15天)</span>
-                    </div>
-                    <Badge variant={selectedOrder.gates.coolingOffPassed ? 'default' : 'secondary'}>
-                      {selectedOrder.gates.coolingOffPassed ? '已通过' : '未通过'}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded">
-                    <div className="flex items-center gap-3">
-                      {getGateIcon(selectedOrder.gates.noDispute)}
-                      <span>Gate 3: 订单无未决争议</span>
-                    </div>
-                    <Badge variant={selectedOrder.gates.noDispute ? 'default' : 'secondary'}>
-                      {selectedOrder.gates.noDispute ? '已通过' : '未通过'}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded">
-                    <div className="flex items-center gap-3">
-                      {getGateIcon(selectedOrder.gates.costReconciled)}
-                      <span>Gate 4: 供应商成本已对账</span>
-                    </div>
-                    <Badge variant={selectedOrder.gates.costReconciled ? 'default' : 'secondary'}>
-                      {selectedOrder.gates.costReconciled ? '已通过' : '未通过'}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded">
-                    <div className="flex items-center gap-3">
-                      {getGateIcon(selectedOrder.gates.accountHealthy)}
-                      <span>Gate 5: 结算对象状态正常</span>
-                    </div>
-                    <Badge variant={selectedOrder.gates.accountHealthy ? 'default' : 'secondary'}>
-                      {selectedOrder.gates.accountHealthy ? '已通过' : '未通过'}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded">
-                    <div className="flex items-center gap-3">
-                      {getGateIcon(selectedOrder.gates.thresholdMet)}
-                      <span>Gate 6: 达到最低起付金额</span>
-                    </div>
-                    <Badge variant={selectedOrder.gates.thresholdMet ? 'default' : 'secondary'}>
-                      {selectedOrder.gates.thresholdMet ? '已通过' : '未通过'}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              {/* 结算信息 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b">结算信息</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">结算状态</Label>
-                    <div className="mt-1">{getSettlementStatusBadge(selectedOrder.settlementStatus)}</div>
-                  </div>
-                  {selectedOrder.settledAt && (
-                    <div className="p-3 bg-gray-50 rounded">
-                      <Label className="text-gray-600">结算时间</Label>
-                      <p className="mt-1">{selectedOrder.settledAt}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowOrderDetail(false)}>
-              关闭
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

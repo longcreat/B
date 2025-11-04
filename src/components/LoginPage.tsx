@@ -5,7 +5,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Alert, AlertDescription } from './ui/alert';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { Mail, Phone, Eye, EyeOff, Loader2, Info } from 'lucide-react';
 
 interface LoginPageProps {
@@ -86,13 +86,35 @@ const initializeTestAccounts = () => {
       registeredAt: registeredAt,
     },
     {
-      id: 'test-approved',
+      id: 'test-approved-mcp',
       phone: '13800138012',
-      email: 'approved@test.com',
+      email: 'mcp@test.com',
       password: 'test1234',
       role: 'user',
       type: 'approved',
-      name: '已通过用户',
+      name: 'MCP已通过用户',
+      createdAt: new Date().toISOString(),
+      registeredAt: registeredAt,
+    },
+    {
+      id: 'test-approved-saas',
+      phone: '13800138014',
+      email: 'saas@test.com',
+      password: 'test1234',
+      role: 'user',
+      type: 'approved',
+      name: 'SaaS已通过用户',
+      createdAt: new Date().toISOString(),
+      registeredAt: registeredAt,
+    },
+    {
+      id: 'test-approved-affiliate',
+      phone: '13800138015',
+      email: 'affiliate@test.com',
+      password: 'test1234',
+      role: 'user',
+      type: 'approved',
+      name: '推广联盟已通过用户',
       createdAt: new Date().toISOString(),
       registeredAt: registeredAt,
     },
@@ -152,9 +174,9 @@ const initializeTestAccounts = () => {
     },
     // 审核通过申请 - MCP模式
     {
-      id: 'APP-APPROVED-001',
-      userId: 'test-approved',
-      userEmail: 'approved@test.com',
+      id: 'APP-APPROVED-MCP',
+      userId: 'test-approved-mcp',
+      userEmail: 'mcp@test.com',
       applicantName: '李四',
       businessModel: 'mcp',
       identityType: 'influencer',
@@ -166,7 +188,7 @@ const initializeTestAccounts = () => {
         realName: '李四',
         idNumber: '110101199001011235',
         phone: '13912345679',
-        email: 'approved@test.com',
+        email: 'mcp@test.com',
         channels: ['视频平台', '社交媒体'],
         platform: '抖音',
         accountName: '@旅行博主小李',
@@ -177,6 +199,53 @@ const initializeTestAccounts = () => {
         bankName: '中国建设银行',
         bankAccount: '6222021234567890124',
         accountHolder: '李四',
+      },
+    },
+    // 审核通过申请 - SaaS模式
+    {
+      id: 'APP-APPROVED-SAAS',
+      userId: 'test-approved-saas',
+      userEmail: 'saas@test.com',
+      applicantName: '赵六',
+      businessModel: 'saas',
+      identityType: 'individual',
+      status: 'approved',
+      submittedAt: new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString(),
+      reviewedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+      reviewedBy: '系统管理员',
+      data: {
+        realName: '赵六',
+        idNumber: '110101199001011236',
+        phone: '13912345681',
+        email: 'saas@test.com',
+        bankName: '中国工商银行',
+        bankAccount: '6222021234567890125',
+        accountHolder: '赵六',
+      },
+    },
+    // 审核通过申请 - 推广联盟模式
+    {
+      id: 'APP-APPROVED-AFFILIATE',
+      userId: 'test-approved-affiliate',
+      userEmail: 'affiliate@test.com',
+      applicantName: '孙七',
+      businessModel: 'affiliate',
+      identityType: 'influencer',
+      status: 'approved',
+      submittedAt: new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString(),
+      reviewedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+      reviewedBy: '系统管理员',
+      data: {
+        realName: '孙七',
+        idNumber: '110101199001011237',
+        phone: '13912345682',
+        email: 'affiliate@test.com',
+        mainPlatform: '小红书',
+        mainProfileLink: 'https://xiaohongshu.com/user/test',
+        mainFollowersCount: '100000',
+        bankName: '中国建设银行',
+        bankAccount: '6222021234567890126',
+        accountHolder: '孙七',
       },
     },
     // 已驳回申请
@@ -373,20 +442,26 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister }: LoginPageProps
     }, 1000);
   };
 
-  const quickLogin = (type: 'individual' | 'influencer' | 'enterprise' | 'pending' | 'approved' | 'rejected' | 'admin') => {
+  const quickLogin = (type: 'individual' | 'influencer' | 'enterprise' | 'pending' | 'mcp' | 'saas' | 'affiliate' | 'rejected' | 'admin') => {
     const testAccounts: Record<string, { email: string; password: string }> = {
       admin: { email: 'admin@test.com', password: 'admin1234' },
       individual: { email: 'individual@test.com', password: 'test1234' },
       influencer: { email: 'influencer@test.com', password: 'test1234' },
       enterprise: { email: 'enterprise@test.com', password: 'test1234' },
       pending: { email: 'pending@test.com', password: 'test1234' },
-      approved: { email: 'approved@test.com', password: 'test1234' },
+      mcp: { email: 'mcp@test.com', password: 'test1234' },
+      saas: { email: 'saas@test.com', password: 'test1234' },
+      affiliate: { email: 'affiliate@test.com', password: 'test1234' },
       rejected: { email: 'rejected@test.com', password: 'test1234' },
     };
     
     const account = testAccounts[type];
     setEmailForm(account);
     setActiveTab('email');
+  };
+
+  const handleTabValueChange = (value: string) => {
+    setActiveTab(value as 'phone' | 'email');
   };
 
   return (
@@ -433,8 +508,8 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister }: LoginPageProps
                   </div>
                   
                   <div className="border-t pt-2">
-                    <p className="font-medium mb-2">📋 状态体验账号（查看不同状态）：</p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <p className="font-medium mb-2">📋 状态体验账号：</p>
+                    <div className="grid grid-cols-2 gap-2 mb-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -446,18 +521,37 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister }: LoginPageProps
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => quickLogin('approved')}
-                        className="text-xs border-green-300 hover:bg-green-50"
-                      >
-                        ✅ 已通过
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
                         onClick={() => quickLogin('rejected')}
                         className="text-xs border-red-300 hover:bg-red-50"
                       >
                         ❌ 已驳回
+                      </Button>
+                    </div>
+                    <p className="font-medium mb-2 text-green-700">✅ 已通过账号（不同业务模式）：</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => quickLogin('mcp')}
+                        className="text-xs border-green-300 hover:bg-green-50"
+                      >
+                        MCP
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => quickLogin('saas')}
+                        className="text-xs border-green-300 hover:bg-green-50"
+                      >
+                        SaaS
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => quickLogin('affiliate')}
+                        className="text-xs border-green-300 hover:bg-green-50"
+                      >
+                        推广联盟
                       </Button>
                     </div>
                   </div>
@@ -510,7 +604,7 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister }: LoginPageProps
             </Alert>
           )}
 
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'phone' | 'email')}>
+          <Tabs value={activeTab} onValueChange={handleTabValueChange}>
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="phone">
                 <Phone className="w-4 h-4 mr-2" />
