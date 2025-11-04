@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -29,68 +29,19 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from './ui/pagination';
+import { getMockOrders, type Order, type OrderStatus, type SettlementStatus } from '../data/mockOrders';
 
-// 订单状态 - 根据PRD定义
-type OrderStatus = 'pending_payment' | 'pending_confirm' | 'confirmed' | 'completed' | 'completed_settleable' | 'cancelled_free' | 'cancelled_paid' | 'no_show' | 'disputed';
-
-// 结算状态
-type SettlementStatus = 'pending' | 'ready' | 'processing' | 'completed';
-
-// 订单详情
-export interface Order {
-  orderId: string;
-  hotelName: string;
-  hotelAddress: string;
-  roomType: string;
-  checkInDate: string;
-  checkOutDate: string;
-  nights: number;
-  
-  // 小B信息
-  partnerName: string;
-  partnerEmail: string;
-  partnerType: 'individual' | 'influencer' | 'enterprise';
-  
-  // 客户信息
-  customerName: string;
-  customerPhone: string;
-  
-  // 价格体系
-  p0_supplierCost: number; // 供应商底价
-  p1_platformPrice: number; // 平台供货价
-  p2_salePrice: number; // 小B销售价
-  
-  // 利润计算
-  platformProfit: number; // 平台利润 = P1 - P0
-  partnerProfit: number; // 小B利润 = P2 - P1
-  
-  // 实付金额和退款金额
-  actualAmount: number; // 实付金额
-  refundAmount?: number; // 退款金额（可选）
-  
-  // 订单状态
-  orderStatus: OrderStatus;
-  
-  // 五重门控状态 - 根据PRD定义
-  gates: {
-    serviceCompleted: boolean; // Gate 1: 服务已完成 - 离店日期 < T(今日)
-    coolingOffPassed: boolean; // Gate 2: 冻结期已过 - T(今日) - 离店日期 > 结算冻结期天数 (7-15天)
-    noDispute: boolean; // Gate 3: 订单无未决争议 - 不处于争议中、退款处理中等异常挂起状态
-    costReconciled: boolean; // Gate 4: 供应商成本已对账 - P0已与上游供应商账单核对并标记为已对账
-    accountHealthy: boolean; // Gate 5: 结算对象状态正常 - 小B/供应商账户结算状态为活跃
-  };
-  
-  settlementStatus: SettlementStatus;
-  createdAt: string;
-  settledAt?: string;
-  
-  // 状态历史时间轴
-  statusHistory?: {
-    status: OrderStatus;
-    timestamp: string;
-    description?: string;
-  }[];
-}
+// 导出类型以便其他组件使用
+export type { Order, OrderStatus, SettlementStatus };
 
 interface OrderManagementProps {
   onViewOrderDetail?: (order: Order) => void;
@@ -113,196 +64,8 @@ export function OrderManagement({ onViewOrderDetail }: OrderManagementProps) {
   const [filterActualAmountMax, setFilterActualAmountMax] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
-  // 模拟订单数据
-  const orders: Order[] = [
-    {
-      orderId: 'ORD-2025001',
-      hotelName: '北京希尔顿酒店',
-      hotelAddress: '北京市朝阳区东三环北路8号',
-      roomType: '豪华大床房',
-      checkInDate: '2025-10-18',
-      checkOutDate: '2025-10-20',
-      nights: 2,
-      partnerName: '张三的旅游工作室',
-      partnerEmail: 'zhangsan@example.com',
-      partnerType: 'individual',
-      customerName: '王先生',
-      customerPhone: '138****5678',
-      p0_supplierCost: 800,
-      p1_platformPrice: 880,
-      p2_salePrice: 968,
-      platformProfit: 80,
-      partnerProfit: 88,
-      actualAmount: 968,
-      refundAmount: 0,
-      orderStatus: 'completed_settleable',
-      gates: {
-        serviceCompleted: true,
-        coolingOffPassed: true,
-        noDispute: true,
-        costReconciled: true,
-        accountHealthy: true,
-      },
-      settlementStatus: 'ready',
-      createdAt: '2025-10-15 14:30:00',
-    },
-    {
-      orderId: 'ORD-2025002',
-      hotelName: '上海浦东香格里拉',
-      hotelAddress: '上海市浦东新区富城路33号',
-      roomType: '行政套房',
-      checkInDate: '2025-10-23',
-      checkOutDate: '2025-10-25',
-      nights: 2,
-      partnerName: '李四商旅服务',
-      partnerEmail: 'lisi@example.com',
-      partnerType: 'enterprise',
-      customerName: '刘女士',
-      customerPhone: '139****1234',
-      p0_supplierCost: 1200,
-      p1_platformPrice: 1320,
-      p2_salePrice: 1452,
-      platformProfit: 120,
-      partnerProfit: 132,
-      actualAmount: 1306.8, // 1452 - 145.2 (部分退款)
-      refundAmount: 145.2,
-      orderStatus: 'completed',
-      gates: {
-        serviceCompleted: true,
-        coolingOffPassed: false,
-        noDispute: true,
-        costReconciled: true,
-        accountHealthy: true,
-      },
-      settlementStatus: 'pending',
-      createdAt: '2025-10-20 10:15:00',
-    },
-    {
-      orderId: 'ORD-2025003',
-      hotelName: '深圳湾万豪酒店',
-      hotelAddress: '深圳市南山区后海滨路3101号',
-      roomType: '海景大床房',
-      checkInDate: '2025-10-20',
-      checkOutDate: '2025-10-22',
-      nights: 2,
-      partnerName: '张三的旅游工作室',
-      partnerEmail: 'zhangsan@example.com',
-      partnerType: 'individual',
-      customerName: '赵先生',
-      customerPhone: '136****9876',
-      p0_supplierCost: 950,
-      p1_platformPrice: 1045,
-      p2_salePrice: 1149.5,
-      platformProfit: 95,
-      partnerProfit: 104.5,
-      actualAmount: 459.8, // 1149.5 - 689.7 (大量退款)
-      refundAmount: 689.7,
-      orderStatus: 'completed',
-      gates: {
-        serviceCompleted: true,
-        coolingOffPassed: true,
-        noDispute: true,
-        costReconciled: false,
-        accountHealthy: true,
-      },
-      settlementStatus: 'pending',
-      createdAt: '2025-10-18 16:20:00',
-    },
-    {
-      orderId: 'ORD-2025004',
-      hotelName: '广州白天鹅宾馆',
-      hotelAddress: '广州市荔湾区沙面南街1号',
-      roomType: '珠江景观房',
-      checkInDate: '2025-10-26',
-      checkOutDate: '2025-10-28',
-      nights: 2,
-      partnerName: '旅游达人小李',
-      partnerEmail: 'xiaoli@example.com',
-      partnerType: 'influencer',
-      customerName: '孙女士',
-      customerPhone: '137****5432',
-      p0_supplierCost: 750,
-      p1_platformPrice: 825,
-      p2_salePrice: 907.5,
-      platformProfit: 75,
-      partnerProfit: 82.5,
-      actualAmount: 907.5,
-      refundAmount: 0,
-      orderStatus: 'completed_settleable',
-      gates: {
-        serviceCompleted: true,
-        coolingOffPassed: true,
-        noDispute: true,
-        costReconciled: true,
-        accountHealthy: true,
-      },
-      settlementStatus: 'completed',
-      createdAt: '2025-10-24 11:00:00',
-      settledAt: '2025-10-29 10:00:00',
-    },
-    {
-      orderId: 'ORD-2025005',
-      hotelName: '杭州西湖四季酒店',
-      hotelAddress: '浙江省杭州市西湖区灵隐路5号',
-      roomType: '湖景套房',
-      checkInDate: '2025-11-01',
-      checkOutDate: '2025-11-03',
-      nights: 2,
-      partnerName: '王五企业集团',
-      partnerEmail: 'wangwu@example.com',
-      partnerType: 'enterprise',
-      customerName: '周先生',
-      customerPhone: '135****7890',
-      p0_supplierCost: 1500,
-      p1_platformPrice: 1650,
-      p2_salePrice: 1815,
-      platformProfit: 150,
-      partnerProfit: 165,
-      actualAmount: 1815,
-      refundAmount: 0,
-      orderStatus: 'confirmed',
-      gates: {
-        serviceCompleted: false,
-        coolingOffPassed: false,
-        noDispute: true,
-        costReconciled: false,
-        accountHealthy: true,
-      },
-      settlementStatus: 'pending',
-      createdAt: '2025-10-28 09:30:00',
-    },
-    {
-      orderId: 'ORD-2025006',
-      hotelName: '成都洲际酒店',
-      hotelAddress: '四川省成都市锦江区总府路31号',
-      roomType: '商务大床房',
-      checkInDate: '2025-10-29',
-      checkOutDate: '2025-10-30',
-      nights: 1,
-      partnerName: '李四商旅服务',
-      partnerEmail: 'lisi@example.com',
-      partnerType: 'enterprise',
-      customerName: '吴女士',
-      customerPhone: '138****2468',
-      p0_supplierCost: 680,
-      p1_platformPrice: 748,
-      p2_salePrice: 822.8,
-      platformProfit: 68,
-      partnerProfit: 74.8,
-      actualAmount: 822.8,
-      refundAmount: 0, // 无退款
-      orderStatus: 'confirmed',
-      gates: {
-        serviceCompleted: false,
-        coolingOffPassed: false,
-        noDispute: true,
-        costReconciled: true,
-        accountHealthy: true,
-      },
-      settlementStatus: 'pending',
-      createdAt: '2025-10-27 15:45:00',
-    },
-  ];
+  // 使用 mock 数据
+  const orders: Order[] = getMockOrders();
 
   const getOrderStatusBadge = (status: OrderStatus) => {
     const config = {
@@ -401,6 +164,20 @@ export function OrderManagement({ onViewOrderDetail }: OrderManagementProps) {
       matchesHotelName && matchesPartnerName && matchesCreateDate && matchesCheckInDate &&
       matchesOrderAmount && matchesActualAmount;
   });
+
+  // 计算分页数据
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const totalItems = filteredOrders.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+  // 当筛选条件改变时，重置到第一页
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterOrderStatus, filterSettlementStatus, filterPartnerType, filterHotelName, filterPartnerName, filterCreateDateStart, filterCreateDateEnd, filterCheckInDateStart, filterCheckInDateEnd, filterOrderAmountMin, filterOrderAmountMax, filterActualAmountMin, filterActualAmountMax]);
 
   return (
     <div className="p-6 space-y-6">
@@ -703,7 +480,7 @@ export function OrderManagement({ onViewOrderDetail }: OrderManagementProps) {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredOrders.map((order) => (
+                  paginatedOrders.map((order) => (
                       <TableRow key={order.orderId}>
                         <TableCell className="font-mono text-sm sticky left-0 bg-white z-10 shadow-[2px_0_4px_rgba(0,0,0,0.05)]">{order.orderId}</TableCell>
                         <TableCell>{order.hotelName}</TableCell>
@@ -749,12 +526,53 @@ export function OrderManagement({ onViewOrderDetail }: OrderManagementProps) {
             </Table>
           </div>
 
-          {/* 分页 - 暂时省略 */}
-          {filteredOrders.length > 0 && (
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-gray-500">
-                共 {filteredOrders.length} 条记录
-              </p>
+          {/* 分页 */}
+          {totalPages >= 1 && totalItems > 0 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                共 {totalItems} 条数据，第 {currentPage} / {totalPages} 页
+              </div>
+              <Pagination>
+                <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                      />
+                    </PaginationItem>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              onClick={() => setCurrentPage(page)}
+                              isActive={currentPage === page}
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      } else if (page === currentPage - 2 || page === currentPage + 2) {
+                        return (
+                          <PaginationItem key={page}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        );
+                      }
+                      return null;
+                    })}
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                      />
+                    </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
           )}
         </CardContent>

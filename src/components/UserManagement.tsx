@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -47,85 +47,18 @@ import {
   Filter,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from './ui/pagination';
+import { getMockPartners, type Partner, type PartnerType, type AccountStatus, type SettlementStatus, type PermissionLevel } from '../data/mockPartners';
 
-// 小B用户类型
-type PartnerType = 'individual' | 'influencer' | 'enterprise';
-
-// 小B用户账户状态
-type AccountStatus = 'active' | 'frozen' | 'closed';
-
-// 结算状态
-type SettlementStatus = 'normal' | 'on-hold';
-
-// 权限等级
-type PermissionLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4';
-
-// 小B用户数据结构
-interface Partner {
-  id: string;
-  type: PartnerType;
-  
-  // 基本信息
-  displayName: string; // 显示名称（个人姓名、博主昵称、企业名称）
-  email: string;
-  phone: string;
-  
-  // 认证信息
-  certificationStatus: 'pending' | 'approved' | 'rejected';
-  certifiedAt?: string;
-  
-  // 账户状态
-  accountStatus: AccountStatus;
-  settlementStatus: SettlementStatus;
-  
-  // 权限等级
-  permissionLevel: PermissionLevel;
-  
-  // 财务数据
-  financialData: {
-    totalRevenue: number; // 总交易额（P2）
-    totalProfit: number; // 累计利润
-    availableBalance: number; // 可用余额
-    pendingSettlement: number; // 待结算
-    withdrawnAmount: number; // 已提取
-  };
-  
-  // 业务数据
-  businessData: {
-    totalOrders: number; // 订单总数
-    completedOrders: number; // 已完成订单
-    avgMarkupRate: number; // 平均加价率
-    activeCustomers: number; // 活跃客户数
-  };
-  
-  // 类型特有信息
-  specificInfo: {
-    // 个人
-    realName?: string;
-    idNumber?: string;
-    
-    // 博主
-    platformName?: string;
-    followersCount?: number;
-    influenceScore?: number;
-    
-    // 企业
-    companyName?: string;
-    socialCreditCode?: string;
-    legalRepresentative?: string;
-    registeredCapital?: string;
-  };
-  
-  // 店铺信息
-  storeConfig?: {
-    storeName: string;
-    customDomain?: string;
-    status: 'active' | 'inactive';
-  };
-  
-  registeredAt: string;
-  lastLoginAt?: string;
-}
+export { type Partner };
 
 export function UserManagement() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,152 +78,8 @@ export function UserManagement() {
   const [newPermissionLevel, setNewPermissionLevel] = useState<PermissionLevel>('L4');
   const [levelChangeReason, setLevelChangeReason] = useState('');
 
-  // 模拟小B用户数据
-  const partners: Partner[] = [
-    {
-      id: 'P001',
-      type: 'individual',
-      displayName: '张三',
-      email: 'zhangsan@example.com',
-      phone: '13800138000',
-      certificationStatus: 'approved',
-      certifiedAt: '2025-10-20 15:30:00',
-      accountStatus: 'active',
-      settlementStatus: 'normal',
-      permissionLevel: 'L3',
-      financialData: {
-        totalRevenue: 156800,
-        totalProfit: 15680,
-        availableBalance: 2580.50,
-        pendingSettlement: 856.20,
-        withdrawnAmount: 12243.30,
-      },
-      businessData: {
-        totalOrders: 156,
-        completedOrders: 142,
-        avgMarkupRate: 10,
-        activeCustomers: 48,
-      },
-      specificInfo: {
-        realName: '张三',
-        idNumber: '110101199001011234',
-      },
-      storeConfig: {
-        storeName: '张三的旅游工作室',
-        customDomain: 'zhangsan.aigohotel.com',
-        status: 'active',
-      },
-      registeredAt: '2025-10-18 10:30:00',
-      lastLoginAt: '2025-10-31 09:15:00',
-    },
-    {
-      id: 'P002',
-      type: 'influencer',
-      displayName: '旅游达人小李',
-      email: 'lisi@example.com',
-      phone: '13900139000',
-      certificationStatus: 'approved',
-      certifiedAt: '2025-10-22 11:20:00',
-      accountStatus: 'active',
-      settlementStatus: 'normal',
-      permissionLevel: 'L1',
-      financialData: {
-        totalRevenue: 568900,
-        totalProfit: 56890,
-        availableBalance: 8560.80,
-        pendingSettlement: 2340.50,
-        withdrawnAmount: 45989.50,
-      },
-      businessData: {
-        totalOrders: 423,
-        completedOrders: 398,
-        avgMarkupRate: 12,
-        activeCustomers: 256,
-      },
-      specificInfo: {
-        realName: '李四',
-        idNumber: '110101199201021234',
-        platformName: '抖音、小红书',
-        followersCount: 158000,
-        influenceScore: 85,
-      },
-      storeConfig: {
-        storeName: '小李的环球旅行',
-        customDomain: 'xiaoli.aigohotel.com',
-        status: 'active',
-      },
-      registeredAt: '2025-10-20 14:20:00',
-      lastLoginAt: '2025-10-31 08:45:00',
-    },
-    {
-      id: 'P003',
-      type: 'enterprise',
-      displayName: '某某商旅服务有限公司',
-      email: 'business@example.com',
-      phone: '010-12345678',
-      certificationStatus: 'approved',
-      certifiedAt: '2025-10-25 16:00:00',
-      accountStatus: 'active',
-      settlementStatus: 'normal',
-      permissionLevel: 'L0',
-      financialData: {
-        totalRevenue: 1256800,
-        totalProfit: 125680,
-        availableBalance: 15680.50,
-        pendingSettlement: 5670.20,
-        withdrawnAmount: 104329.30,
-      },
-      businessData: {
-        totalOrders: 856,
-        completedOrders: 798,
-        avgMarkupRate: 15,
-        activeCustomers: 128,
-      },
-      specificInfo: {
-        companyName: '某某商旅服务有限公司',
-        socialCreditCode: '91110000MA01ABCD1E',
-        legalRepresentative: '王五',
-        registeredCapital: '500万元',
-      },
-      storeConfig: {
-        storeName: '某某商旅预订中心',
-        status: 'active',
-      },
-      registeredAt: '2025-10-23 09:00:00',
-      lastLoginAt: '2025-10-31 10:30:00',
-    },
-    {
-      id: 'P004',
-      type: 'individual',
-      displayName: '赵六',
-      email: 'zhaoliu@example.com',
-      phone: '13700137000',
-      certificationStatus: 'approved',
-      certifiedAt: '2025-10-26 10:15:00',
-      accountStatus: 'frozen',
-      settlementStatus: 'on-hold',
-      permissionLevel: 'L0',
-      financialData: {
-        totalRevenue: 45600,
-        totalProfit: 4560,
-        availableBalance: 1200.00,
-        pendingSettlement: 0,
-        withdrawnAmount: 3360.00,
-      },
-      businessData: {
-        totalOrders: 45,
-        completedOrders: 42,
-        avgMarkupRate: 8,
-        activeCustomers: 15,
-      },
-      specificInfo: {
-        realName: '赵六',
-        idNumber: '110101199501011234',
-      },
-      registeredAt: '2025-10-24 11:30:00',
-      lastLoginAt: '2025-10-28 15:20:00',
-    },
-  ];
+  // 使用 mock 数据
+  const partners: Partner[] = getMockPartners();
 
   const getTypeIcon = (type: PartnerType) => {
     switch (type) {
@@ -442,6 +231,20 @@ export function UserManagement() {
     return matchesSearch && matchesType && matchesAccountStatus && matchesSettlementStatus && matchesPermissionLevel;
   });
 
+  // 计算分页数据
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const totalItems = filteredPartners.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedPartners = filteredPartners.slice(startIndex, endIndex);
+
+  // 当筛选条件改变时，重置到第一页
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterType, filterAccountStatus, filterSettlementStatus, filterPermissionLevel]);
+
   return (
     <div className="p-6 space-y-6">
       {/* 面包屑导航 */}
@@ -565,14 +368,14 @@ export function UserManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPartners.length === 0 ? (
+                {paginatedPartners.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-12 text-gray-500">
                       暂无数据
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredPartners.map((partner) => (
+                  paginatedPartners.map((partner) => (
                     <TableRow key={partner.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -644,6 +447,56 @@ export function UserManagement() {
               </TableBody>
             </Table>
           </div>
+          
+          {/* 分页 */}
+          {totalPages >= 1 && totalItems > 0 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                共 {totalItems} 条数据，第 {currentPage} / {totalPages} 页
+              </div>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(page)}
+                            isActive={currentPage === page}
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    } else if (page === currentPage - 2 || page === currentPage + 2) {
+                      return (
+                        <PaginationItem key={page}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      );
+                    }
+                    return null;
+                  })}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
 

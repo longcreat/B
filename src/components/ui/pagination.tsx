@@ -14,7 +14,7 @@ function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
       role="navigation"
       aria-label="pagination"
       data-slot="pagination"
-      className={cn("mx-auto flex w-full justify-center", className)}
+      className={cn("flex", className)}
       {...props}
     />
   );
@@ -39,20 +39,24 @@ function PaginationItem({ ...props }: React.ComponentProps<"li">) {
 
 type PaginationLinkProps = {
   isActive?: boolean;
-} & Pick<React.ComponentProps<typeof Button>, "size"> &
-  React.ComponentProps<"a">;
+  onClick?: () => void;
+  size?: React.ComponentProps<typeof Button>["size"];
+} & Omit<React.ComponentProps<"button">, "size">;
 
 function PaginationLink({
   className,
   isActive,
   size = "icon",
+  onClick,
   ...props
 }: PaginationLinkProps) {
   return (
-    <a
+    <button
+      type="button"
       aria-current={isActive ? "page" : undefined}
       data-slot="pagination-link"
       data-active={isActive}
+      onClick={onClick}
       className={cn(
         buttonVariants({
           variant: isActive ? "outline" : "ghost",
@@ -67,13 +71,15 @@ function PaginationLink({
 
 function PaginationPrevious({
   className,
+  disabled,
   ...props
-}: React.ComponentProps<typeof PaginationLink>) {
+}: React.ComponentProps<typeof PaginationLink> & { disabled?: boolean }) {
   return (
     <PaginationLink
       aria-label="Go to previous page"
       size="default"
-      className={cn("gap-1 px-2.5 sm:pl-2.5", className)}
+      className={cn("gap-1 px-2.5 sm:pl-2.5", disabled && "pointer-events-none opacity-50", className)}
+      disabled={disabled}
       {...props}
     >
       <ChevronLeftIcon />
@@ -84,13 +90,15 @@ function PaginationPrevious({
 
 function PaginationNext({
   className,
+  disabled,
   ...props
-}: React.ComponentProps<typeof PaginationLink>) {
+}: React.ComponentProps<typeof PaginationLink> & { disabled?: boolean }) {
   return (
     <PaginationLink
       aria-label="Go to next page"
       size="default"
-      className={cn("gap-1 px-2.5 sm:pr-2.5", className)}
+      className={cn("gap-1 px-2.5 sm:pr-2.5", disabled && "pointer-events-none opacity-50", className)}
+      disabled={disabled}
       {...props}
     >
       <span className="hidden sm:block">Next</span>

@@ -24,7 +24,7 @@ import {
 } from './ui/breadcrumb';
 import { toast } from 'sonner@2.0.3';
 import { ArrowLeft, CheckCircle, XCircle, ZoomIn } from 'lucide-react';
-import type { ApplicationData } from './AdminReviewList';
+import type { ApplicationData } from '../data/mockApplications';
 
 interface AdminReviewDetailProps {
   application: ApplicationData;

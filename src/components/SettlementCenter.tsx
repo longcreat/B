@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -36,46 +36,18 @@ import {
   Package
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from './ui/pagination';
+import { getMockSettlementBatches, type SettlementBatch, type BatchOrder } from '../data/mockSettlementBatches';
 
-// 批次中的订单简要信息
-interface BatchOrder {
-  orderId: string;
-  hotelName: string;
-  checkOutDate: string;
-  
-  // 价格体系
-  p0_supplierCost: number;
-  p1_platformPrice: number;
-  p2_salePrice: number;
-  
-  // 利润
-  platformProfit: number;
-  partnerProfit: number;
-  
-  // 六重门控状态
-  gates: {
-    serviceCompleted: boolean;
-    coolingOffPassed: boolean;
-    noDispute: boolean;
-    costReconciled: boolean;
-    accountHealthy: boolean;
-    thresholdMet: boolean;
-  };
-}
-
-// 结算批次
-interface SettlementBatch {
-  batchId: string;
-  partnerName: string;
-  partnerEmail: string;
-  orderCount: number;
-  totalProfit: number;
-  status: 'pending' | 'approved' | 'credited'; // 待审核、已批准、已计入账户
-  createdAt: string;
-  approvedAt?: string;
-  creditedAt?: string;
-  orders?: BatchOrder[]; // 批次包含的订单
-}
+export { type SettlementBatch, type BatchOrder };
 
 export function SettlementCenter() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -85,171 +57,8 @@ export function SettlementCenter() {
   const [selectedOrder, setSelectedOrder] = useState<BatchOrder | null>(null);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
 
-  // 模拟结算批次数据
-  const batches: SettlementBatch[] = [
-    {
-      batchId: 'BATCH-20251030-001',
-      partnerName: '张三的旅游工作室',
-      partnerEmail: 'zhangsan@example.com',
-      orderCount: 3,
-      totalProfit: 278.5,
-      status: 'pending',
-      createdAt: '2025-10-30 01:00:00',
-      orders: [
-        {
-          orderId: 'ORD-2025001',
-          hotelName: '北京希尔顿酒店',
-          checkOutDate: '2025-10-20',
-          p0_supplierCost: 800,
-          p1_platformPrice: 880,
-          p2_salePrice: 968,
-          platformProfit: 80,
-          partnerProfit: 88,
-          gates: {
-            serviceCompleted: true,
-            coolingOffPassed: true,
-            noDispute: true,
-            costReconciled: true,
-            accountHealthy: true,
-            thresholdMet: true,
-          },
-        },
-        {
-          orderId: 'ORD-2025003',
-          hotelName: '深圳湾万豪酒店',
-          checkOutDate: '2025-10-22',
-          p0_supplierCost: 950,
-          p1_platformPrice: 1045,
-          p2_salePrice: 1149.5,
-          platformProfit: 95,
-          partnerProfit: 104.5,
-          gates: {
-            serviceCompleted: true,
-            coolingOffPassed: true,
-            noDispute: true,
-            costReconciled: true,
-            accountHealthy: true,
-            thresholdMet: true,
-          },
-        },
-        {
-          orderId: 'ORD-2025007',
-          hotelName: '杭州西湖国宾馆',
-          checkOutDate: '2025-10-24',
-          p0_supplierCost: 720,
-          p1_platformPrice: 792,
-          p2_salePrice: 878,
-          platformProfit: 72,
-          partnerProfit: 86,
-          gates: {
-            serviceCompleted: true,
-            coolingOffPassed: true,
-            noDispute: true,
-            costReconciled: true,
-            accountHealthy: true,
-            thresholdMet: true,
-          },
-        },
-      ],
-    },
-    {
-      batchId: 'BATCH-20251023-002',
-      partnerName: '李四商旅服务',
-      partnerEmail: 'lisi@example.com',
-      orderCount: 2,
-      totalProfit: 207.3,
-      status: 'credited',
-      createdAt: '2025-10-23 01:00:00',
-      approvedAt: '2025-10-23 09:30:00',
-      creditedAt: '2025-10-23 09:31:00',
-      orders: [
-        {
-          orderId: 'ORD-2025008',
-          hotelName: '上海浦东香格里拉',
-          checkOutDate: '2025-10-18',
-          p0_supplierCost: 1200,
-          p1_platformPrice: 1320,
-          p2_salePrice: 1452,
-          platformProfit: 120,
-          partnerProfit: 132,
-          gates: {
-            serviceCompleted: true,
-            coolingOffPassed: true,
-            noDispute: true,
-            costReconciled: true,
-            accountHealthy: true,
-            thresholdMet: true,
-          },
-        },
-        {
-          orderId: 'ORD-2025009',
-          hotelName: '成都洲际酒店',
-          checkOutDate: '2025-10-20',
-          p0_supplierCost: 680,
-          p1_platformPrice: 748,
-          p2_salePrice: 822.8,
-          platformProfit: 68,
-          partnerProfit: 74.8,
-          gates: {
-            serviceCompleted: true,
-            coolingOffPassed: true,
-            noDispute: true,
-            costReconciled: true,
-            accountHealthy: true,
-            thresholdMet: true,
-          },
-        },
-      ],
-    },
-    {
-      batchId: 'BATCH-20251025-003',
-      partnerName: '旅游达人小李',
-      partnerEmail: 'xiaoli@example.com',
-      orderCount: 2,
-      totalProfit: 157.5,
-      status: 'approved',
-      createdAt: '2025-10-25 01:00:00',
-      approvedAt: '2025-10-25 10:15:00',
-      orders: [
-        {
-          orderId: 'ORD-2025010',
-          hotelName: '广州白天鹅宾馆',
-          checkOutDate: '2025-10-21',
-          p0_supplierCost: 750,
-          p1_platformPrice: 825,
-          p2_salePrice: 907.5,
-          platformProfit: 75,
-          partnerProfit: 82.5,
-          gates: {
-            serviceCompleted: true,
-            coolingOffPassed: true,
-            noDispute: true,
-            costReconciled: true,
-            accountHealthy: true,
-            thresholdMet: true,
-          },
-        },
-        {
-          orderId: 'ORD-2025011',
-          hotelName: '南京金陵饭店',
-          checkOutDate: '2025-10-23',
-          p0_supplierCost: 650,
-          p1_platformPrice: 715,
-          p2_salePrice: 790,
-          platformProfit: 65,
-          partnerProfit: 75,
-          gates: {
-            serviceCompleted: true,
-            coolingOffPassed: true,
-            noDispute: true,
-            costReconciled: true,
-            accountHealthy: true,
-            thresholdMet: true,
-          },
-        },
-      ],
-    },
-  ];
+  // 使用 mock 数据
+  const batches: SettlementBatch[] = getMockSettlementBatches();
 
   const getStatusBadge = (status: string) => {
     const config = {
@@ -296,6 +105,20 @@ export function SettlementCenter() {
 
     return matchesSearch && matchesStatus;
   });
+
+  // 计算分页数据
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const totalItems = filteredBatches.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedBatches = filteredBatches.slice(startIndex, endIndex);
+
+  // 当筛选条件改变时，重置到第一页
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterStatus]);
 
   return (
     <div className="p-6 space-y-6">
@@ -367,14 +190,14 @@ export function SettlementCenter() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBatches.length === 0 ? (
+                {paginatedBatches.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                       暂无结算批次
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredBatches.map((batch) => (
+                  paginatedBatches.map((batch) => (
                     <TableRow key={batch.batchId}>
                       <TableCell className="font-mono text-sm">{batch.batchId}</TableCell>
                       <TableCell>
@@ -415,6 +238,56 @@ export function SettlementCenter() {
               </TableBody>
             </Table>
           </div>
+          
+          {/* 分页 */}
+          {totalPages >= 1 && totalItems > 0 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                共 {totalItems} 条数据，第 {currentPage} / {totalPages} 页
+              </div>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(page)}
+                            isActive={currentPage === page}
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    } else if (page === currentPage - 2 || page === currentPage + 2) {
+                      return (
+                        <PaginationItem key={page}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      );
+                    }
+                    return null;
+                  })}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
 

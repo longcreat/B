@@ -26,68 +26,9 @@ import {
   Shield,
   UserCheck,
 } from 'lucide-react';
+import { type Order, type OrderStatus, type SettlementStatus } from '../data/mockOrders';
 
-// 订单状态 - 根据PRD定义
-type OrderStatus = 'pending_payment' | 'pending_confirm' | 'confirmed' | 'completed' | 'completed_settleable' | 'cancelled_free' | 'cancelled_paid' | 'no_show' | 'disputed';
-
-// 结算状态
-type SettlementStatus = 'pending' | 'ready' | 'processing' | 'completed';
-
-// 订单详情接口
-export interface Order {
-  orderId: string;
-  hotelName: string;
-  hotelAddress: string;
-  roomType: string;
-  checkInDate: string;
-  checkOutDate: string;
-  nights: number;
-  
-  // 小B信息
-  partnerName: string;
-  partnerEmail: string;
-  partnerType: 'individual' | 'influencer' | 'enterprise';
-  
-  // 客户信息
-  customerName: string;
-  customerPhone: string;
-  
-  // 价格体系
-  p0_supplierCost: number;
-  p1_platformPrice: number;
-  p2_salePrice: number;
-  
-  // 利润计算
-  platformProfit: number;
-  partnerProfit: number;
-  
-  // 实付金额和退款金额
-  actualAmount: number; // 实付金额
-  refundAmount?: number; // 退款金额（可选）
-  
-  // 订单状态
-  orderStatus: OrderStatus;
-  
-  // 五重门控状态
-  gates: {
-    serviceCompleted: boolean;
-    coolingOffPassed: boolean;
-    noDispute: boolean;
-    costReconciled: boolean;
-    accountHealthy: boolean;
-  };
-  
-  settlementStatus: SettlementStatus;
-  createdAt: string;
-  settledAt?: string;
-  
-  // 状态历史时间轴
-  statusHistory?: {
-    status: OrderStatus;
-    timestamp: string;
-    description?: string;
-  }[];
-}
+export { type Order };
 
 interface OrderDetailProps {
   order: Order;

@@ -1,13 +1,22 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RegisterPage } from './components/RegisterPage';
 import { LoginPage } from './components/LoginPage';
-import { AdminReviewList, type ApplicationData } from './components/AdminReviewList';
+import { AdminReviewList } from './components/AdminReviewList';
+import type { ApplicationData } from './data/mockApplications';
+import { getMockApplications } from './data/mockApplications';
 import { AdminReviewDetail } from './components/AdminReviewDetail';
-import { AdminLayout, type AdminMenuItem, type FinanceSubMenu, type PartnerAccountSubMenu } from './components/AdminLayout';
+import { AdminLayout, type AdminMenuItem, type FinanceSubMenu, type PartnerAccountSubMenu, type ReconciliationSubMenu } from './components/AdminLayout';
 import { UserManagement } from './components/UserManagement';
 import { OrderManagement, type Order } from './components/OrderManagement';
 import { OrderDetail } from './components/OrderDetail';
 import { SettlementCenter } from './components/SettlementCenter';
+import { InvoiceManagement, type Invoice } from './components/InvoiceManagement';
+import { InvoiceDetail } from './components/InvoiceDetail';
+import { WithdrawalManagement, type Withdrawal } from './components/WithdrawalManagement';
+import { WithdrawalDetail } from './components/WithdrawalDetail';
+import { ReconciliationManagement, type Reconciliation } from './components/ReconciliationManagement';
+import { ReconciliationDetail } from './components/ReconciliationDetail';
+import { getMockOrders } from './data/mockOrders';
 import { ApiKeyManagement } from './components/ApiKeyManagement';
 import { PriceConfiguration } from './components/PriceConfiguration';
 import { UserLayout } from './components/UserLayout';
@@ -53,10 +62,38 @@ export default function App() {
   const [currentApplicationId, setCurrentApplicationId] = useState<string | null>(null);
   const [selectedAdminApplication, setSelectedAdminApplication] = useState<ApplicationData | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [selectedWithdrawal, setSelectedWithdrawal] = useState<Withdrawal | null>(null);
+  const [selectedReconciliation, setSelectedReconciliation] = useState<Reconciliation | null>(null);
   const [hasCheckedExistingApplication, setHasCheckedExistingApplication] = useState(false);
-  const [adminCurrentMenu, setAdminCurrentMenu] = useState<AdminMenuItem>('review');
-  const [adminCurrentFinanceSubMenu, setAdminCurrentFinanceSubMenu] = useState<FinanceSubMenu | undefined>(undefined);
-  const [adminCurrentPartnerAccountSubMenu, setAdminCurrentPartnerAccountSubMenu] = useState<PartnerAccountSubMenu | undefined>(undefined);
+  
+  // 从 localStorage 恢复管理员页面状态
+  const [adminCurrentMenu, setAdminCurrentMenu] = useState<AdminMenuItem>(() => {
+    const stored = localStorage.getItem('adminCurrentMenu');
+    return (stored as AdminMenuItem) || 'review';
+  });
+  const [adminCurrentFinanceSubMenu, setAdminCurrentFinanceSubMenu] = useState<FinanceSubMenu | undefined>(() => {
+    const stored = localStorage.getItem('adminCurrentFinanceSubMenu');
+    return stored ? (stored as FinanceSubMenu) : undefined;
+  });
+  const [adminCurrentPartnerAccountSubMenu, setAdminCurrentPartnerAccountSubMenu] = useState<PartnerAccountSubMenu | undefined>(() => {
+    const stored = localStorage.getItem('adminCurrentPartnerAccountSubMenu');
+    return stored ? (stored as PartnerAccountSubMenu) : undefined;
+  });
+  const [adminCurrentReconciliationSubMenu, setAdminCurrentReconciliationSubMenu] = useState<ReconciliationSubMenu | undefined>(() => {
+    const stored = localStorage.getItem('adminCurrentReconciliationSubMenu');
+    return stored ? (stored as ReconciliationSubMenu) : undefined;
+  });
+
+  // Load applications from localStorage
+  const [applications, setApplications] = useState<ApplicationData[]>(() => {
+    const stored = localStorage.getItem('applications');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    // 使用 mock 数据
+    return getMockApplications();
+  });
 
   // Restore user session from localStorage on mount
   useEffect(() => {
@@ -73,82 +110,24 @@ export default function App() {
     }
   }, []);
 
-  // Load applications from localStorage
-  const [applications, setApplications] = useState<ApplicationData[]>(() => {
-    const stored = localStorage.getItem('applications');
-    if (stored) {
-      return JSON.parse(stored);
+  // 恢复详情页面状态（仅在管理员登录后）
+  useEffect(() => {
+    if (isLoggedIn && currentUser?.role === 'admin') {
+      // 恢复申请详情（数据在App中，可以直接恢复）
+      const storedApplicationId = localStorage.getItem('selectedApplicationId');
+      if (storedApplicationId && adminCurrentMenu === 'review') {
+        const app = applications.find(a => a.id === storedApplicationId);
+        if (app) {
+          setSelectedAdminApplication(app);
+        } else {
+          localStorage.removeItem('selectedApplicationId');
+        }
+      }
+      
+      // 订单和发票详情由于数据在各自组件中动态生成，刷新后不自动恢复
+      // 用户需要重新点击查看详情，但菜单状态会保持
     }
-    return [
-    {
-      id: 'APP-001',
-      applicantName: '张三',
-      businessModel: 'mcp',
-      identityType: 'individual',
-      status: 'pending',
-      submittedAt: '2025-10-28 14:30:00',
-      data: {
-        realName: '张三',
-        idNumber: '110101199001011234',
-        idValidityStart: '2020-01-01',
-        idValidityEnd: '2030-01-01',
-        idPhotoFront: 'https://images.unsplash.com/photo-1589395937921-e452d6a2f37f?w=400',
-        idPhotoBack: 'https://images.unsplash.com/photo-1589395937921-e452d6a2f37f?w=400',
-        phone: '13800138000',
-        email: 'zhangsan@example.com',
-        accountType: 'bank',
-        bankCardholderName: '张三',
-        bankName: '中国工商银行',
-        bankBranch: '北京市朝阳区支行',
-        bankCardNumber: '6222021234567890123',
-      },
-    },
-    {
-      id: 'APP-002',
-      applicantName: '李四',
-      businessModel: 'saas',
-      identityType: 'influencer',
-      status: 'approved',
-      submittedAt: '2025-10-27 10:15:00',
-      reviewedAt: '2025-10-28 09:20:00',
-      data: {
-        realName: '李四',
-        idNumber: '110101199002021234',
-        mainPlatform: '小红书',
-        mainProfileLink: 'https://xiaohongshu.com/user/123',
-        mainFollowersCount: '50000',
-        phone: '13900139000',
-        accountType: 'alipay',
-        alipayAccount: '13900139000',
-        alipayRealName: '李四',
-      },
-    },
-    {
-      id: 'APP-003',
-      applicantName: '王五',
-      businessModel: 'affiliate',
-      identityType: 'enterprise',
-      status: 'rejected',
-      submittedAt: '2025-10-26 16:45:00',
-      reviewedAt: '2025-10-27 14:30:00',
-      rejectionReason: '1. 营业执照照片不清晰，无法辨认企业名称和信用代码\n2. 法人身份证号格式错误\n3. 银行账号信息与企业名称不符',
-      data: {
-        companyName: '某某科技有限公司',
-        creditCode: '91110000MA01ABCD1E',
-        businessLicense: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400',
-        legalRepName: '王五',
-        legalRepIdNumber: '110101199003031234',
-        contactName: '王五',
-        contactPhone: '13700137000',
-        contactEmail: 'wangwu@example.com',
-        accountHolderName: '某某科技有限公司',
-        bankName: '中国建设银行',
-        bankBranch: '北京市海淀区支行',
-        accountNumber: '11001234567890123456',
-      },
-    },
-  ];
-  });
+  }, [isLoggedIn, currentUser, adminCurrentMenu, applications]);
 
   // Check for existing application on mount/login (skip for admin)
   useEffect(() => {
@@ -490,22 +469,90 @@ export default function App() {
       // 详情页面的显示逻辑：只有在对应菜单下才显示详情页面
       // 如果正在查看订单详情，且当前菜单是订单管理
       if (selectedOrder && adminCurrentMenu === 'orders') {
+        // 保存订单ID到localStorage
+        localStorage.setItem('selectedOrderId', selectedOrder.orderId);
         return (
           <OrderDetail
             order={selectedOrder}
-            onBack={() => setSelectedOrder(null)}
+            onBack={() => {
+              setSelectedOrder(null);
+              localStorage.removeItem('selectedOrderId');
+            }}
           />
         );
       }
 
       // 如果正在查看申请详情，且当前菜单是资格审核
       if (selectedAdminApplication && adminCurrentMenu === 'review') {
+        // 保存申请ID到localStorage
+        localStorage.setItem('selectedApplicationId', selectedAdminApplication.id);
         return (
           <AdminReviewDetail
             application={selectedAdminApplication}
-            onBack={() => setSelectedAdminApplication(null)}
+            onBack={() => {
+              setSelectedAdminApplication(null);
+              localStorage.removeItem('selectedApplicationId');
+            }}
             onApprove={handleAdminApprove}
             onReject={handleAdminReject}
+          />
+        );
+      }
+
+      // 如果正在查看发票详情，且当前菜单是发票管理
+      if (selectedInvoice && adminCurrentMenu === 'finance' && adminCurrentFinanceSubMenu === 'invoice') {
+        // 保存发票ID到localStorage
+        localStorage.setItem('selectedInvoiceId', selectedInvoice.invoiceId);
+        return (
+          <InvoiceDetail
+            invoice={selectedInvoice}
+            onBack={() => {
+              setSelectedInvoice(null);
+              localStorage.removeItem('selectedInvoiceId');
+            }}
+          />
+        );
+      }
+
+      // 如果正在查看提现详情，且当前菜单是提现管理
+      if (selectedWithdrawal && adminCurrentMenu === 'finance' && adminCurrentFinanceSubMenu === 'withdrawal') {
+        // 保存提现ID到localStorage
+        localStorage.setItem('selectedWithdrawalId', selectedWithdrawal.withdrawalId);
+        return (
+          <WithdrawalDetail
+            withdrawal={selectedWithdrawal}
+            onBack={() => {
+              setSelectedWithdrawal(null);
+              localStorage.removeItem('selectedWithdrawalId');
+            }}
+          />
+        );
+      }
+
+      // 如果正在查看对账详情，且当前菜单是对账管理
+      if (selectedReconciliation && adminCurrentMenu === 'finance' && adminCurrentFinanceSubMenu === 'reconciliation' && adminCurrentReconciliationSubMenu === 'reconciliation-management') {
+        // 保存对账ID到localStorage
+        localStorage.setItem('selectedReconciliationId', selectedReconciliation.id);
+        return (
+          <ReconciliationDetail
+            reconciliation={selectedReconciliation}
+            onBack={() => {
+              setSelectedReconciliation(null);
+              localStorage.removeItem('selectedReconciliationId');
+            }}
+            onViewOrderDetail={(orderId) => {
+              // 从订单列表中查找订单并跳转
+              const orders = getMockOrders();
+              const order = orders.find(o => o.orderId === orderId);
+              if (order) {
+                setSelectedOrder(order);
+                setAdminCurrentMenu('orders');
+                localStorage.setItem('adminCurrentMenu', 'orders');
+                localStorage.setItem('selectedOrderId', orderId);
+              } else {
+                toast.error('未找到该订单');
+              }
+            }}
           />
         );
       }
@@ -540,11 +587,18 @@ export default function App() {
             case 'settlement':
               return <div className="p-6"><div className="text-lg font-semibold">结算管理</div><div className="text-gray-500 mt-2">结算管理功能开发中...</div></div>;
             case 'reconciliation':
-              return <div className="p-6"><div className="text-lg font-semibold">对账</div><div className="text-gray-500 mt-2">对账功能开发中...</div></div>;
+              // 对账下的三级菜单
+              if (adminCurrentReconciliationSubMenu === 'reconciliation-management') {
+                return <ReconciliationManagement onViewReconciliationDetail={setSelectedReconciliation} />;
+              } else if (adminCurrentReconciliationSubMenu === 'reconciliation-summary') {
+                return <div className="p-6"><div className="text-lg font-semibold">对账差异汇总</div><div className="text-gray-500 mt-2">对账差异汇总功能开发中...</div></div>;
+              }
+              // 如果三级菜单未选中，显示对账的占位内容
+              return <div className="p-6"><div className="text-lg font-semibold">对账</div><div className="text-gray-500 mt-2">请选择具体的菜单项</div></div>;
             case 'withdrawal':
-              return <div className="p-6"><div className="text-lg font-semibold">提现管理</div><div className="text-gray-500 mt-2">提现管理功能开发中...</div></div>;
+              return <WithdrawalManagement onViewWithdrawalDetail={setSelectedWithdrawal} />;
             case 'invoice':
-              return <div className="p-6"><div className="text-lg font-semibold">发票管理</div><div className="text-gray-500 mt-2">发票管理功能开发中...</div></div>;
+              return <InvoiceManagement onViewInvoiceDetail={setSelectedInvoice} />;
             default:
               return <SettlementCenter />;
           }
@@ -570,7 +624,15 @@ export default function App() {
       // 切换菜单时，清除详情页面状态
       setSelectedOrder(null);
       setSelectedAdminApplication(null);
+      setSelectedInvoice(null);
+      setSelectedWithdrawal(null);
+      setSelectedReconciliation(null);
       setAdminCurrentMenu(menu);
+      // 保存到 localStorage
+      localStorage.setItem('adminCurrentMenu', menu);
+      localStorage.removeItem('adminCurrentFinanceSubMenu');
+      localStorage.removeItem('adminCurrentPartnerAccountSubMenu');
+      localStorage.removeItem('adminCurrentReconciliationSubMenu');
     };
 
     // 统一的二级菜单切换处理函数
@@ -578,15 +640,50 @@ export default function App() {
       // 切换二级菜单时，清除详情页面状态
       setSelectedOrder(null);
       setSelectedAdminApplication(null);
+      setSelectedInvoice(null);
+      setSelectedWithdrawal(null);
+      setSelectedReconciliation(null);
       setAdminCurrentFinanceSubMenu(subMenu);
+      // 如果切换到的不是对账菜单，清除对账三级菜单状态
+      if (subMenu !== 'reconciliation') {
+        setAdminCurrentReconciliationSubMenu(undefined);
+        localStorage.removeItem('adminCurrentReconciliationSubMenu');
+      }
+      // 保存到 localStorage
+      if (subMenu) {
+        localStorage.setItem('adminCurrentFinanceSubMenu', subMenu);
+      } else {
+        localStorage.removeItem('adminCurrentFinanceSubMenu');
+      }
+      localStorage.removeItem('adminCurrentPartnerAccountSubMenu');
     };
 
-    // 统一的三级菜单切换处理函数
+    // 统一的三级菜单切换处理函数（小B账户）
     const handlePartnerAccountSubMenuChange = (subMenu: PartnerAccountSubMenu | undefined) => {
       // 切换三级菜单时，清除详情页面状态
       setSelectedOrder(null);
       setSelectedAdminApplication(null);
+      setSelectedInvoice(null);
       setAdminCurrentPartnerAccountSubMenu(subMenu);
+      // 保存到 localStorage
+      if (subMenu) {
+        localStorage.setItem('adminCurrentPartnerAccountSubMenu', subMenu);
+      } else {
+        localStorage.removeItem('adminCurrentPartnerAccountSubMenu');
+      }
+    };
+
+    // 对账三级菜单切换处理函数
+    const handleReconciliationSubMenuChange = (subMenu: ReconciliationSubMenu | undefined) => {
+      // 切换三级菜单时，清除详情页面状态
+      setSelectedReconciliation(null);
+      setAdminCurrentReconciliationSubMenu(subMenu);
+      // 保存到 localStorage
+      if (subMenu) {
+        localStorage.setItem('adminCurrentReconciliationSubMenu', subMenu);
+      } else {
+        localStorage.removeItem('adminCurrentReconciliationSubMenu');
+      }
     };
 
     return (
@@ -600,6 +697,8 @@ export default function App() {
           onFinanceSubMenuChange={handleFinanceSubMenuChange}
           currentPartnerAccountSubMenu={adminCurrentPartnerAccountSubMenu}
           onPartnerAccountSubMenuChange={handlePartnerAccountSubMenuChange}
+          currentReconciliationSubMenu={adminCurrentReconciliationSubMenu}
+          onReconciliationSubMenuChange={handleReconciliationSubMenuChange}
           pendingReviewCount={pendingCount}
         >
           {renderAdminContent()}

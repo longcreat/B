@@ -25,56 +25,17 @@ import { toast } from 'sonner@2.0.3';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
-// 平台利润率配置
-interface PlatformMarkupRule {
-  id: string;
-  name: string;
-  scope: 'global' | 'brand' | 'city' | 'supplier';
-  target?: string; // 品牌名、城市名或供应商ID
-  markupRate: number; // 平台利润率（百分比）
-  priority: number;
-  status: 'active' | 'inactive';
-  createdAt: string;
-  updatedAt?: string;
-}
+import { getMockPricingRules, type PlatformMarkupRule } from '../data/mockPricingRules';
+
+export { type PlatformMarkupRule };
 
 export function PriceConfiguration() {
   const [showRuleDialog, setShowRuleDialog] = useState(false);
   const [editingRule, setEditingRule] = useState<PlatformMarkupRule | null>(null);
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false); // 默认折叠说明
 
-  // 模拟配置数据
-  const [markupRules, setMarkupRules] = useState<PlatformMarkupRule[]>([
-    {
-      id: '1',
-      name: '全局基础利润率',
-      scope: 'global',
-      markupRate: 10,
-      priority: 999,
-      status: 'active',
-      createdAt: '2025-10-01 00:00:00',
-    },
-    {
-      id: '2',
-      name: '希尔顿品牌利润率',
-      scope: 'brand',
-      target: '希尔顿',
-      markupRate: 12,
-      priority: 10,
-      status: 'active',
-      createdAt: '2025-10-15 10:30:00',
-    },
-    {
-      id: '3',
-      name: '北京地区利润率',
-      scope: 'city',
-      target: '北京',
-      markupRate: 15,
-      priority: 20,
-      status: 'active',
-      createdAt: '2025-10-20 14:20:00',
-    },
-  ]);
+  // 使用 mock 数据
+  const [markupRules, setMarkupRules] = useState<PlatformMarkupRule[]>(getMockPricingRules());
 
   const [formData, setFormData] = useState({
     name: '',

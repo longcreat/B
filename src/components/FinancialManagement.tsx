@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -20,86 +20,25 @@ import {
   Download,
   Filter
 } from 'lucide-react';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from './ui/pagination';
+import { getMockTransactions, type Transaction } from '../data/mockTransactions';
 
-interface Transaction {
-  id: string;
-  type: 'income' | 'withdraw' | 'refund';
-  amount: number;
-  status: 'pending' | 'completed' | 'failed';
-  userName: string;
-  userEmail: string;
-  businessModel: string;
-  createdAt: string;
-  completedAt?: string;
-  description: string;
-}
+export { type Transaction };
 
 export function FinancialManagement() {
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 模拟交易数据
-  const transactions: Transaction[] = [
-    {
-      id: 'TXN-001',
-      type: 'income',
-      amount: 15680,
-      status: 'completed',
-      userName: '张三',
-      userEmail: 'zhangsan@example.com',
-      businessModel: 'MCP',
-      createdAt: '2025-10-30 14:30:00',
-      completedAt: '2025-10-30 14:31:00',
-      description: 'API调用费用',
-    },
-    {
-      id: 'TXN-002',
-      type: 'withdraw',
-      amount: 5000,
-      status: 'pending',
-      userName: '李四',
-      userEmail: 'lisi@example.com',
-      businessModel: '联盟推广',
-      createdAt: '2025-10-31 09:15:00',
-      description: '佣金提现',
-    },
-    {
-      id: 'TXN-003',
-      type: 'income',
-      amount: 28900,
-      status: 'completed',
-      userName: '王五科技',
-      userEmail: 'wangwu@example.com',
-      businessModel: '品牌预订站',
-      createdAt: '2025-10-29 16:20:00',
-      completedAt: '2025-10-29 16:22:00',
-      description: 'SaaS订阅年费',
-    },
-    {
-      id: 'TXN-004',
-      type: 'refund',
-      amount: 3500,
-      status: 'completed',
-      userName: '赵六',
-      userEmail: 'zhaoliu@example.com',
-      businessModel: 'MCP',
-      createdAt: '2025-10-28 11:45:00',
-      completedAt: '2025-10-28 11:50:00',
-      description: '服务退款',
-    },
-    {
-      id: 'TXN-005',
-      type: 'withdraw',
-      amount: 12000,
-      status: 'failed',
-      userName: '钱七',
-      userEmail: 'qianqi@example.com',
-      businessModel: '联盟推广',
-      createdAt: '2025-10-27 10:00:00',
-      completedAt: '2025-10-27 10:05:00',
-      description: '佣金提现（银行卡信息错误）',
-    },
-  ];
+  // 使用 mock 数据
+  const transactions: Transaction[] = getMockTransactions();
 
   // 统计数据
   const totalIncome = transactions
@@ -150,6 +89,20 @@ export function FinancialManagement() {
     if (activeTab === 'completed') return matchesSearch && txn.status === 'completed';
     return matchesSearch;
   });
+
+  // 计算分页数据
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const totalItems = filteredTransactions.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
+
+  // 当筛选条件改变时，重置到第一页
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery]);
 
   return (
     <div className="p-6 space-y-6">
@@ -270,14 +223,14 @@ export function FinancialManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredTransactions.length === 0 ? (
+                    {paginatedTransactions.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-12 text-gray-500">
                           暂无交易记录
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredTransactions.map((txn) => (
+                      paginatedTransactions.map((txn) => (
                         <TableRow key={txn.id}>
                           <TableCell className="font-mono text-sm">{txn.id}</TableCell>
                           <TableCell>
@@ -302,6 +255,56 @@ export function FinancialManagement() {
                   </TableBody>
                 </Table>
               </div>
+              
+              {/* 分页 */}
+              {totalPages >= 1 && totalItems > 0 && (
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    共 {totalItems} 条数据，第 {currentPage} / {totalPages} 页
+                  </div>
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          disabled={currentPage === 1}
+                        />
+                      </PaginationItem>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                        if (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 1 && page <= currentPage + 1)
+                        ) {
+                          return (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                onClick={() => setCurrentPage(page)}
+                                isActive={currentPage === page}
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        } else if (page === currentPage - 2 || page === currentPage + 2) {
+                          return (
+                            <PaginationItem key={page}>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          );
+                        }
+                        return null;
+                      })}
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                          disabled={currentPage === totalPages}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>

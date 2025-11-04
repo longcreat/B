@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -18,22 +18,18 @@ import {
   SelectValue,
 } from './ui/select';
 import { Search, Eye } from 'lucide-react';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from './ui/pagination';
+import { type ApplicationData } from '../data/mockApplications';
 
-export interface ApplicationData {
-  id: string;
-  applicantName: string;
-  businessModel: 'mcp' | 'saas' | 'affiliate';
-  identityType: 'individual' | 'influencer' | 'enterprise';
-  status: 'pending' | 'approved' | 'rejected';
-  submittedAt: string;
-  reviewedAt?: string;
-  rejectionReason?: string;
-  permissionLevel?: 'L0' | 'L1' | 'L2' | 'L3' | 'L4';
-  internalNote?: string;
-  userId?: string;
-  userEmail?: string;
-  data: any;
-}
+export { type ApplicationData };
 
 interface AdminReviewListProps {
   applications: ApplicationData[];
@@ -76,6 +72,20 @@ export function AdminReviewList({ applications, onViewDetail }: AdminReviewListP
 
     return matchesSearch && matchesStatus && matchesBusinessModel && matchesIdentityType;
   });
+
+  // 计算分页数据
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const totalItems = filteredApplications.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedApplications = filteredApplications.slice(startIndex, endIndex);
+
+  // 当筛选条件改变时，重置到第一页
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterStatus, filterBusinessModel, filterIdentityType]);
 
   const statusBadge = (status: string) => {
     const config = {
@@ -153,53 +163,105 @@ export function AdminReviewList({ applications, onViewDetail }: AdminReviewListP
         </CardHeader>
 
         <CardContent>
-          {filteredApplications.length === 0 ? (
+          {paginatedApplications.length === 0 ? (
             <div className="text-center py-12 text-gray-500 border rounded-lg">
               暂无符合条件的申请
             </div>
           ) : (
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>申请人</TableHead>
-                    <TableHead>业务模式</TableHead>
-                    <TableHead>身份类型</TableHead>
-                    <TableHead>提交时间</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredApplications.map((app) => (
-                    <TableRow key={app.id}>
-                      <TableCell>
-                        <div>
-                          <p>{app.applicantName}</p>
-                          {app.userEmail && (
-                            <p className="text-sm text-gray-500">{app.userEmail}</p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getBusinessModelName(app.businessModel)}</TableCell>
-                      <TableCell>{getIdentityTypeName(app.identityType)}</TableCell>
-                      <TableCell className="text-sm text-gray-600">{app.submittedAt}</TableCell>
-                      <TableCell>{statusBadge(app.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onViewDetail(app)}
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          查看详情
-                        </Button>
-                      </TableCell>
+            <>
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>申请人</TableHead>
+                      <TableHead>业务模式</TableHead>
+                      <TableHead>身份类型</TableHead>
+                      <TableHead>提交时间</TableHead>
+                      <TableHead>状态</TableHead>
+                      <TableHead className="text-right">操作</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedApplications.map((app) => (
+                      <TableRow key={app.id}>
+                        <TableCell>
+                          <div>
+                            <p>{app.applicantName}</p>
+                            {app.userEmail && (
+                              <p className="text-sm text-gray-500">{app.userEmail}</p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{getBusinessModelName(app.businessModel)}</TableCell>
+                        <TableCell>{getIdentityTypeName(app.identityType)}</TableCell>
+                        <TableCell className="text-sm text-gray-600">{app.submittedAt}</TableCell>
+                        <TableCell>{statusBadge(app.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onViewDetail(app)}
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            查看详情
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {/* 分页 */}
+              {totalPages >= 1 && totalItems > 0 && (
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    共 {totalItems} 条数据，第 {currentPage} / {totalPages} 页
+                  </div>
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          disabled={currentPage === 1}
+                        />
+                      </PaginationItem>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                        if (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 1 && page <= currentPage + 1)
+                        ) {
+                          return (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                onClick={() => setCurrentPage(page)}
+                                isActive={currentPage === page}
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        } else if (page === currentPage - 2 || page === currentPage + 2) {
+                          return (
+                            <PaginationItem key={page}>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          );
+                        }
+                        return null;
+                      })}
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                          disabled={currentPage === totalPages}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
