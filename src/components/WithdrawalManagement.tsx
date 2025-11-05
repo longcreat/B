@@ -178,11 +178,21 @@ export function WithdrawalManagement({ onViewWithdrawalDetail }: WithdrawalManag
 
   // 全选/取消全选
   const handleSelectAll = (checked: boolean) => {
+    const newSelected = new Set(selectedWithdrawals);
+    
     if (checked) {
-      setSelectedWithdrawals(new Set(paginatedWithdrawals.map(w => w.withdrawalId)));
+      // 全选：将当前页的所有项添加到已选集合中
+      paginatedWithdrawals.forEach(w => {
+        newSelected.add(w.withdrawalId);
+      });
     } else {
-      setSelectedWithdrawals(new Set());
+      // 取消全选：只移除当前页的项
+      paginatedWithdrawals.forEach(w => {
+        newSelected.delete(w.withdrawalId);
+      });
     }
+    
+    setSelectedWithdrawals(newSelected);
   };
 
   // 单个选择
@@ -224,7 +234,9 @@ export function WithdrawalManagement({ onViewWithdrawalDetail }: WithdrawalManag
     setSelectedWithdrawals(new Set());
   };
 
-  const isAllSelected = paginatedWithdrawals.length > 0 && selectedWithdrawals.size === paginatedWithdrawals.length;
+  // 判断当前页是否全选（当前页的所有项都在selectedWithdrawals中）
+  const isAllSelected = paginatedWithdrawals.length > 0 && 
+    paginatedWithdrawals.every(w => selectedWithdrawals.has(w.withdrawalId));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -433,7 +445,11 @@ export function WithdrawalManagement({ onViewWithdrawalDetail }: WithdrawalManag
                     <th className="text-left p-3 font-medium text-sm bg-gray-50" style={{ minWidth: '50px' }}>
                       <Checkbox
                         checked={isAllSelected}
-                        onCheckedChange={handleSelectAll}
+                        onCheckedChange={(checked) => {
+                          if (checked === true || checked === false) {
+                            handleSelectAll(checked);
+                          }
+                        }}
                       />
                     </th>
                     <th className="text-left p-3 font-medium text-sm bg-gray-50" style={{ minWidth: '150px' }}>流水号</th>

@@ -5,7 +5,7 @@ import { AdminReviewList } from './components/AdminReviewList';
 import type { ApplicationData } from './data/mockApplications';
 import { getMockApplications } from './data/mockApplications';
 import { AdminReviewDetail } from './components/AdminReviewDetail';
-import { AdminLayout, type AdminMenuItem, type FinanceSubMenu, type PartnerAccountSubMenu, type ReconciliationSubMenu } from './components/AdminLayout';
+import { AdminLayout, type AdminMenuItem, type FinanceSubMenu, type PartnerAccountSubMenu, type ReconciliationSubMenu, type SettlementSubMenu, type BusinessDocumentsSubMenu } from './components/AdminLayout';
 import { UserManagement } from './components/UserManagement';
 import { OrderManagement, type Order } from './components/OrderManagement';
 import { OrderDetail } from './components/OrderDetail';
@@ -16,7 +16,24 @@ import { WithdrawalManagement, type Withdrawal } from './components/WithdrawalMa
 import { WithdrawalDetail } from './components/WithdrawalDetail';
 import { ReconciliationManagement, type Reconciliation } from './components/ReconciliationManagement';
 import { ReconciliationDetail } from './components/ReconciliationDetail';
+import { ReconciliationSummary } from './components/ReconciliationSummary';
+import { PartnerSettlementBatchList, type PartnerSettlementBatch } from './components/PartnerSettlementBatchList';
+import { PartnerSettlementBatchDetail } from './components/PartnerSettlementBatchDetail';
+import { SupplierSettlementBatchList, type SupplierSettlementBatch } from './components/SupplierSettlementBatchList';
+import { SupplierSettlementBatchDetail } from './components/SupplierSettlementBatchDetail';
+import { SettlementConfig } from './components/SettlementConfig';
+import { ViolationFeeRecordList, type ViolationFeeRecord } from './components/ViolationFeeRecordList';
+import { ViolationFeeRecordDetail } from './components/ViolationFeeRecordDetail';
+import { OrderTransactionList, type OrderTransaction } from './components/OrderTransactionList';
+import { OrderTransactionDetail } from './components/OrderTransactionDetail';
+import { OrderPriceChangeRecordList, type OrderPriceChangeRecord } from './components/OrderPriceChangeRecordList';
+import { OrderPriceChangeRecordDetail } from './components/OrderPriceChangeRecordDetail';
+import { OrderRefundRecordList, type OrderRefundRecord } from './components/OrderRefundRecordList';
+import { OrderRefundRecordDetail } from './components/OrderRefundRecordDetail';
+import { SettlementDetailList, type SettlementDetail } from './components/SettlementDetailList';
+import { SettlementDetailDetail } from './components/SettlementDetailDetail';
 import { getMockOrders } from './data/mockOrders';
+import { getMockSettlementBatches, getMockSupplierSettlementBatches } from './data/mockSettlementBatches';
 import { ApiKeyManagement } from './components/ApiKeyManagement';
 import { PriceConfiguration } from './components/PriceConfiguration';
 import { UserLayout } from './components/UserLayout';
@@ -65,6 +82,55 @@ export default function App() {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<Withdrawal | null>(null);
   const [selectedReconciliation, setSelectedReconciliation] = useState<Reconciliation | null>(null);
+  const [selectedPartnerBatch, setSelectedPartnerBatch] = useState<PartnerSettlementBatch | null>(null);
+  const [selectedSupplierBatch, setSelectedSupplierBatch] = useState<SupplierSettlementBatch | null>(null);
+  const [selectedViolationFeeRecord, setSelectedViolationFeeRecord] = useState<ViolationFeeRecord | null>(() => {
+    const stored = localStorage.getItem('selectedViolationFeeRecordId');
+    if (stored) {
+      // 动态导入以避免循环依赖
+      const { getMockViolationFeeRecords } = require('./data/mockBusinessDocuments');
+      const records = getMockViolationFeeRecords();
+      return records.find((r: ViolationFeeRecord) => r.feeId === stored) || null;
+    }
+    return null;
+  });
+  const [selectedSettlementDetail, setSelectedSettlementDetail] = useState<SettlementDetail | null>(() => {
+    const stored = localStorage.getItem('selectedSettlementDetailId');
+    if (stored) {
+      // 动态导入以避免循环依赖
+      const { getMockSettlementDetails } = require('./data/mockBusinessDocuments');
+      const details = getMockSettlementDetails();
+      return details.find((d: SettlementDetail) => d.detailId === stored) || null;
+    }
+    return null;
+  });
+  const [selectedOrderTransaction, setSelectedOrderTransaction] = useState<OrderTransaction | null>(() => {
+    const stored = localStorage.getItem('selectedOrderTransactionId');
+    if (stored) {
+      const { getMockOrderTransactions } = require('./data/mockBusinessDocuments');
+      const transactions = getMockOrderTransactions();
+      return transactions.find((t: OrderTransaction) => t.transactionId === stored) || null;
+    }
+    return null;
+  });
+  const [selectedOrderPriceChangeRecord, setSelectedOrderPriceChangeRecord] = useState<OrderPriceChangeRecord | null>(() => {
+    const stored = localStorage.getItem('selectedOrderPriceChangeRecordId');
+    if (stored) {
+      const { getMockOrderPriceChangeRecords } = require('./data/mockBusinessDocuments');
+      const records = getMockOrderPriceChangeRecords();
+      return records.find((r: OrderPriceChangeRecord) => r.priceChangeId === stored) || null;
+    }
+    return null;
+  });
+  const [selectedOrderRefundRecord, setSelectedOrderRefundRecord] = useState<OrderRefundRecord | null>(() => {
+    const stored = localStorage.getItem('selectedOrderRefundRecordId');
+    if (stored) {
+      const { getMockOrderRefundRecords } = require('./data/mockBusinessDocuments');
+      const records = getMockOrderRefundRecords();
+      return records.find((r: OrderRefundRecord) => r.refundId === stored) || null;
+    }
+    return null;
+  });
   const [hasCheckedExistingApplication, setHasCheckedExistingApplication] = useState(false);
   
   // 从 localStorage 恢复管理员页面状态
@@ -83,6 +149,14 @@ export default function App() {
   const [adminCurrentReconciliationSubMenu, setAdminCurrentReconciliationSubMenu] = useState<ReconciliationSubMenu | undefined>(() => {
     const stored = localStorage.getItem('adminCurrentReconciliationSubMenu');
     return stored ? (stored as ReconciliationSubMenu) : undefined;
+  });
+  const [adminCurrentSettlementSubMenu, setAdminCurrentSettlementSubMenu] = useState<SettlementSubMenu | undefined>(() => {
+    const stored = localStorage.getItem('adminCurrentSettlementSubMenu');
+    return stored ? (stored as SettlementSubMenu) : undefined;
+  });
+  const [adminCurrentBusinessDocumentsSubMenu, setAdminCurrentBusinessDocumentsSubMenu] = useState<BusinessDocumentsSubMenu | undefined>(() => {
+    const stored = localStorage.getItem('adminCurrentBusinessDocumentsSubMenu');
+    return stored ? (stored as BusinessDocumentsSubMenu) : undefined;
   });
 
   // Load applications from localStorage
@@ -529,8 +603,9 @@ export default function App() {
         );
       }
 
-      // 如果正在查看对账详情，且当前菜单是对账管理
-      if (selectedReconciliation && adminCurrentMenu === 'finance' && adminCurrentFinanceSubMenu === 'reconciliation' && adminCurrentReconciliationSubMenu === 'reconciliation-management') {
+      // 如果正在查看对账详情，且当前菜单是对账（无论是管理还是汇总）
+      if (selectedReconciliation && adminCurrentMenu === 'finance' && adminCurrentFinanceSubMenu === 'reconciliation' && 
+          (adminCurrentReconciliationSubMenu === 'reconciliation-management' || adminCurrentReconciliationSubMenu === 'reconciliation-summary')) {
         // 保存对账ID到localStorage
         localStorage.setItem('selectedReconciliationId', selectedReconciliation.id);
         return (
@@ -542,6 +617,229 @@ export default function App() {
             }}
             onViewOrderDetail={(orderId) => {
               // 从订单列表中查找订单并跳转
+              const orders = getMockOrders();
+              const order = orders.find(o => o.orderId === orderId);
+              if (order) {
+                setSelectedOrder(order);
+                setAdminCurrentMenu('orders');
+                localStorage.setItem('adminCurrentMenu', 'orders');
+                localStorage.setItem('selectedOrderId', orderId);
+              } else {
+                toast.error('未找到该订单');
+              }
+            }}
+          />
+        );
+      }
+
+      // 如果正在查看小B结算批次详情
+      if (selectedPartnerBatch && adminCurrentMenu === 'finance' && adminCurrentFinanceSubMenu === 'settlement' && 
+          adminCurrentSettlementSubMenu === 'partner-batches') {
+        // 保存批次ID到localStorage
+        localStorage.setItem('selectedPartnerBatchId', selectedPartnerBatch.batchId);
+        return (
+          <PartnerSettlementBatchDetail
+            batch={selectedPartnerBatch}
+            onBack={() => {
+              setSelectedPartnerBatch(null);
+              localStorage.removeItem('selectedPartnerBatchId');
+            }}
+            onViewOrderDetail={(orderId) => {
+              const orders = getMockOrders();
+              const order = orders.find(o => o.orderId === orderId);
+              if (order) {
+                setSelectedOrder(order);
+                setAdminCurrentMenu('orders');
+                localStorage.setItem('adminCurrentMenu', 'orders');
+                localStorage.setItem('selectedOrderId', orderId);
+              } else {
+                toast.error('未找到该订单');
+              }
+            }}
+          />
+        );
+      }
+
+      // 如果正在查看供应商结算批次详情
+      if (selectedSupplierBatch && adminCurrentMenu === 'finance' && adminCurrentFinanceSubMenu === 'settlement' && 
+          adminCurrentSettlementSubMenu === 'supplier-batches') {
+        // 保存批次ID到localStorage
+        localStorage.setItem('selectedSupplierBatchId', selectedSupplierBatch.batchId);
+        return (
+          <SupplierSettlementBatchDetail
+            batch={selectedSupplierBatch}
+            onBack={() => {
+              setSelectedSupplierBatch(null);
+              localStorage.removeItem('selectedSupplierBatchId');
+            }}
+            onViewOrderDetail={(orderId) => {
+              const orders = getMockOrders();
+              const order = orders.find(o => o.orderId === orderId);
+              if (order) {
+                setSelectedOrder(order);
+                setAdminCurrentMenu('orders');
+                localStorage.setItem('adminCurrentMenu', 'orders');
+                localStorage.setItem('selectedOrderId', orderId);
+              } else {
+                toast.error('未找到该订单');
+              }
+            }}
+          />
+        );
+      }
+
+      // 如果正在查看违约扣费记录详情
+      if (selectedViolationFeeRecord && adminCurrentMenu === 'finance' && adminCurrentFinanceSubMenu === 'business-documents' && 
+          adminCurrentBusinessDocumentsSubMenu === 'violation-fee') {
+        // 保存记录ID到localStorage
+        localStorage.setItem('selectedViolationFeeRecordId', selectedViolationFeeRecord.feeId);
+        return (
+          <ViolationFeeRecordDetail
+            record={selectedViolationFeeRecord}
+            onBack={() => {
+              setSelectedViolationFeeRecord(null);
+              localStorage.removeItem('selectedViolationFeeRecordId');
+            }}
+            onCancelFee={(recordId, reason) => {
+              toast.success(`撤销扣费功能开发中: ${recordId}, 原因: ${reason}`);
+            }}
+          />
+        );
+      }
+
+      // 如果正在查看订单交易详情
+      if (selectedOrderTransaction && adminCurrentMenu === 'finance' && adminCurrentFinanceSubMenu === 'business-documents' && 
+          adminCurrentBusinessDocumentsSubMenu === 'order-transaction') {
+        // 保存交易ID到localStorage
+        localStorage.setItem('selectedOrderTransactionId', selectedOrderTransaction.transactionId);
+        return (
+          <OrderTransactionDetail
+            transaction={selectedOrderTransaction}
+            onBack={() => {
+              setSelectedOrderTransaction(null);
+              localStorage.removeItem('selectedOrderTransactionId');
+            }}
+            onViewOrder={(orderId) => {
+              const orders = getMockOrders();
+              const order = orders.find(o => o.orderId === orderId);
+              if (order) {
+                setSelectedOrder(order);
+                setAdminCurrentMenu('orders');
+                localStorage.setItem('adminCurrentMenu', 'orders');
+                localStorage.setItem('selectedOrderId', orderId);
+              } else {
+                toast.error('未找到该订单');
+              }
+            }}
+          />
+        );
+      }
+
+      // 如果正在查看订单改价记录详情
+      if (selectedOrderPriceChangeRecord && adminCurrentMenu === 'finance' && adminCurrentFinanceSubMenu === 'business-documents' && 
+          adminCurrentBusinessDocumentsSubMenu === 'order-price-change') {
+        // 保存改价记录ID到localStorage
+        localStorage.setItem('selectedOrderPriceChangeRecordId', selectedOrderPriceChangeRecord.priceChangeId);
+        return (
+          <OrderPriceChangeRecordDetail
+            record={selectedOrderPriceChangeRecord}
+            onBack={() => {
+              setSelectedOrderPriceChangeRecord(null);
+              localStorage.removeItem('selectedOrderPriceChangeRecordId');
+            }}
+            onViewOrder={(orderId) => {
+              const orders = getMockOrders();
+              const order = orders.find(o => o.orderId === orderId);
+              if (order) {
+                setSelectedOrder(order);
+                setAdminCurrentMenu('orders');
+                localStorage.setItem('adminCurrentMenu', 'orders');
+                localStorage.setItem('selectedOrderId', orderId);
+              } else {
+                toast.error('未找到该订单');
+              }
+            }}
+            onApprove={(recordId, approved, reason) => {
+              toast.success(approved ? `改价记录 ${recordId} 审批通过` : `改价记录 ${recordId} 已驳回：${reason}`);
+            }}
+          />
+        );
+      }
+
+      // 如果正在查看订单退款记录详情
+      if (selectedOrderRefundRecord && adminCurrentMenu === 'finance' && adminCurrentFinanceSubMenu === 'business-documents' && 
+          adminCurrentBusinessDocumentsSubMenu === 'order-refund') {
+        // 保存退款记录ID到localStorage
+        localStorage.setItem('selectedOrderRefundRecordId', selectedOrderRefundRecord.refundId);
+        return (
+          <OrderRefundRecordDetail
+            record={selectedOrderRefundRecord}
+            onBack={() => {
+              setSelectedOrderRefundRecord(null);
+              localStorage.removeItem('selectedOrderRefundRecordId');
+            }}
+            onViewOrder={(orderId) => {
+              const orders = getMockOrders();
+              const order = orders.find(o => o.orderId === orderId);
+              if (order) {
+                setSelectedOrder(order);
+                setAdminCurrentMenu('orders');
+                localStorage.setItem('adminCurrentMenu', 'orders');
+                localStorage.setItem('selectedOrderId', orderId);
+              } else {
+                toast.error('未找到该订单');
+              }
+            }}
+            onRetryRefund={(record) => {
+              toast.success(`重新发起退款功能开发中: ${record.refundId}`);
+            }}
+          />
+        );
+      }
+
+      // 如果正在查看结算明细详情
+      if (selectedSettlementDetail && adminCurrentMenu === 'finance' && adminCurrentFinanceSubMenu === 'business-documents' && 
+          adminCurrentBusinessDocumentsSubMenu === 'settlement-detail') {
+        // 保存明细ID到localStorage
+        localStorage.setItem('selectedSettlementDetailId', selectedSettlementDetail.detailId);
+        return (
+          <SettlementDetailDetail
+            detail={selectedSettlementDetail}
+            onBack={() => {
+              setSelectedSettlementDetail(null);
+              localStorage.removeItem('selectedSettlementDetailId');
+            }}
+            onViewBatch={(batchId) => {
+              // 根据批次ID判断是客户结算还是供应商结算
+              if (batchId.startsWith('BATCH-B-')) {
+                const batches = getMockSettlementBatches();
+                const batch = batches.find(b => b.batchId === batchId);
+                if (batch) {
+                  setSelectedPartnerBatch(batch);
+                  setAdminCurrentFinanceSubMenu('settlement');
+                  setAdminCurrentSettlementSubMenu('partner-batches');
+                  localStorage.setItem('adminCurrentFinanceSubMenu', 'settlement');
+                  localStorage.setItem('adminCurrentSettlementSubMenu', 'partner-batches');
+                  localStorage.setItem('selectedPartnerBatchId', batchId);
+                } else {
+                  toast.error('未找到该批次');
+                }
+              } else if (batchId.startsWith('BATCH-S-')) {
+                const batches = getMockSupplierSettlementBatches();
+                const batch = batches.find(b => b.batchId === batchId);
+                if (batch) {
+                  setSelectedSupplierBatch(batch);
+                  setAdminCurrentFinanceSubMenu('settlement');
+                  setAdminCurrentSettlementSubMenu('supplier-batches');
+                  localStorage.setItem('adminCurrentFinanceSubMenu', 'settlement');
+                  localStorage.setItem('adminCurrentSettlementSubMenu', 'supplier-batches');
+                  localStorage.setItem('selectedSupplierBatchId', batchId);
+                } else {
+                  toast.error('未找到该批次');
+                }
+              }
+            }}
+            onViewOrder={(orderId) => {
               const orders = getMockOrders();
               const order = orders.find(o => o.orderId === orderId);
               if (order) {
@@ -582,16 +880,23 @@ export default function App() {
               }
               // 如果三级菜单未选中，显示小B账户的占位内容
               return <div className="p-6"><div className="text-lg font-semibold">小B账户</div><div className="text-gray-500 mt-2">请选择具体的菜单项</div></div>;
-            case 'business-documents':
-              return <div className="p-6"><div className="text-lg font-semibold">业务单据管理</div><div className="text-gray-500 mt-2">业务单据管理功能开发中...</div></div>;
             case 'settlement':
-              return <div className="p-6"><div className="text-lg font-semibold">结算管理</div><div className="text-gray-500 mt-2">结算管理功能开发中...</div></div>;
+              // 结算管理下的三级菜单
+              if (adminCurrentSettlementSubMenu === 'partner-batches') {
+                return <PartnerSettlementBatchList onViewBatchDetail={setSelectedPartnerBatch} />;
+              } else if (adminCurrentSettlementSubMenu === 'supplier-batches') {
+                return <SupplierSettlementBatchList onViewBatchDetail={setSelectedSupplierBatch} />;
+              } else if (adminCurrentSettlementSubMenu === 'settlement-config') {
+                return <SettlementConfig />;
+              }
+              // 如果三级菜单未选中，显示结算管理的占位内容
+              return <div className="p-6"><div className="text-lg font-semibold">结算管理</div><div className="text-gray-500 mt-2">请选择具体的菜单项</div></div>;
             case 'reconciliation':
               // 对账下的三级菜单
               if (adminCurrentReconciliationSubMenu === 'reconciliation-management') {
                 return <ReconciliationManagement onViewReconciliationDetail={setSelectedReconciliation} />;
               } else if (adminCurrentReconciliationSubMenu === 'reconciliation-summary') {
-                return <div className="p-6"><div className="text-lg font-semibold">对账差异汇总</div><div className="text-gray-500 mt-2">对账差异汇总功能开发中...</div></div>;
+                return <ReconciliationSummary onViewReconciliationDetail={setSelectedReconciliation} />;
               }
               // 如果三级菜单未选中，显示对账的占位内容
               return <div className="p-6"><div className="text-lg font-semibold">对账</div><div className="text-gray-500 mt-2">请选择具体的菜单项</div></div>;
@@ -599,8 +904,140 @@ export default function App() {
               return <WithdrawalManagement onViewWithdrawalDetail={setSelectedWithdrawal} />;
             case 'invoice':
               return <InvoiceManagement onViewInvoiceDetail={setSelectedInvoice} />;
+            case 'business-documents':
+              // 业务单据管理下的四级菜单
+              if (adminCurrentBusinessDocumentsSubMenu === 'violation-fee') {
+                return <ViolationFeeRecordList 
+                  onViewRecordDetail={(record) => {
+                    setSelectedViolationFeeRecord(record);
+                    localStorage.setItem('selectedViolationFeeRecordId', record.feeId);
+                  }}
+                  onCancelFee={(record) => {
+                    // 可以通过详情页处理，或者直接在这里处理
+                    setSelectedViolationFeeRecord(record);
+                    localStorage.setItem('selectedViolationFeeRecordId', record.feeId);
+                    // 这里可以打开详情页，详情页有撤销扣费的完整功能
+                  }}
+                />;
+              } else if (adminCurrentBusinessDocumentsSubMenu === 'order-transaction') {
+                return <OrderTransactionList 
+                  onViewTransactionDetail={(transaction) => {
+                    setSelectedOrderTransaction(transaction);
+                    localStorage.setItem('selectedOrderTransactionId', transaction.transactionId);
+                  }}
+                  onViewOrder={(orderId) => {
+                    const orders = getMockOrders();
+                    const order = orders.find(o => o.orderId === orderId);
+                    if (order) {
+                      setSelectedOrder(order);
+                      setAdminCurrentMenu('orders');
+                      localStorage.setItem('adminCurrentMenu', 'orders');
+                      localStorage.setItem('selectedOrderId', orderId);
+                    } else {
+                      toast.error('未找到该订单');
+                    }
+                  }}
+                />;
+              } else if (adminCurrentBusinessDocumentsSubMenu === 'order-price-change') {
+                return <OrderPriceChangeRecordList 
+                  onViewRecordDetail={(record) => {
+                    setSelectedOrderPriceChangeRecord(record);
+                    localStorage.setItem('selectedOrderPriceChangeRecordId', record.priceChangeId);
+                  }}
+                  onViewOrder={(orderId) => {
+                    const orders = getMockOrders();
+                    const order = orders.find(o => o.orderId === orderId);
+                    if (order) {
+                      setSelectedOrder(order);
+                      setAdminCurrentMenu('orders');
+                      localStorage.setItem('adminCurrentMenu', 'orders');
+                      localStorage.setItem('selectedOrderId', orderId);
+                    } else {
+                      toast.error('未找到该订单');
+                    }
+                  }}
+                  onApprove={(record, approved, reason) => {
+                    // 打开详情页进行审批，详情页有完整的审批对话框
+                    setSelectedOrderPriceChangeRecord(record);
+                    localStorage.setItem('selectedOrderPriceChangeRecordId', record.priceChangeId);
+                  }}
+                />;
+              } else if (adminCurrentBusinessDocumentsSubMenu === 'order-refund') {
+                return <OrderRefundRecordList 
+                  onViewRecordDetail={(record) => {
+                    setSelectedOrderRefundRecord(record);
+                    localStorage.setItem('selectedOrderRefundRecordId', record.refundId);
+                  }}
+                  onViewOrder={(orderId) => {
+                    const orders = getMockOrders();
+                    const order = orders.find(o => o.orderId === orderId);
+                    if (order) {
+                      setSelectedOrder(order);
+                      setAdminCurrentMenu('orders');
+                      localStorage.setItem('adminCurrentMenu', 'orders');
+                      localStorage.setItem('selectedOrderId', orderId);
+                    } else {
+                      toast.error('未找到该订单');
+                    }
+                  }}
+                  onRetryRefund={(record) => {
+                    toast.success('重新发起退款功能开发中');
+                  }}
+                />;
+              } else if (adminCurrentBusinessDocumentsSubMenu === 'settlement-detail') {
+                return <SettlementDetailList 
+                  onViewDetail={(detail) => {
+                    setSelectedSettlementDetail(detail);
+                    localStorage.setItem('selectedSettlementDetailId', detail.detailId);
+                  }}
+                  onViewBatch={(batchId) => {
+                    // 根据批次ID判断是客户结算还是供应商结算
+                    if (batchId.startsWith('BATCH-B-')) {
+                      const batches = getMockSettlementBatches();
+                      const batch = batches.find(b => b.batchId === batchId);
+                      if (batch) {
+                        setSelectedPartnerBatch(batch);
+                        setAdminCurrentFinanceSubMenu('settlement');
+                        setAdminCurrentSettlementSubMenu('partner-batches');
+                        localStorage.setItem('adminCurrentFinanceSubMenu', 'settlement');
+                        localStorage.setItem('adminCurrentSettlementSubMenu', 'partner-batches');
+                        localStorage.setItem('selectedPartnerBatchId', batchId);
+                      } else {
+                        toast.error('未找到该批次');
+                      }
+                    } else if (batchId.startsWith('BATCH-S-')) {
+                      const batches = getMockSupplierSettlementBatches();
+                      const batch = batches.find(b => b.batchId === batchId);
+                      if (batch) {
+                        setSelectedSupplierBatch(batch);
+                        setAdminCurrentFinanceSubMenu('settlement');
+                        setAdminCurrentSettlementSubMenu('supplier-batches');
+                        localStorage.setItem('adminCurrentFinanceSubMenu', 'settlement');
+                        localStorage.setItem('adminCurrentSettlementSubMenu', 'supplier-batches');
+                        localStorage.setItem('selectedSupplierBatchId', batchId);
+                      } else {
+                        toast.error('未找到该批次');
+                      }
+                    }
+                  }}
+                  onViewOrder={(orderId) => {
+                    const orders = getMockOrders();
+                    const order = orders.find(o => o.orderId === orderId);
+                    if (order) {
+                      setSelectedOrder(order);
+                      setAdminCurrentMenu('orders');
+                      localStorage.setItem('adminCurrentMenu', 'orders');
+                      localStorage.setItem('selectedOrderId', orderId);
+                    } else {
+                      toast.error('未找到该订单');
+                    }
+                  }}
+                />;
+              }
+              // 如果四级菜单未选中，显示业务单据管理的占位内容
+              return <div className="p-6"><div className="text-lg font-semibold">业务单据管理</div><div className="text-gray-500 mt-2">请选择具体的菜单项</div></div>;
             default:
-              return <SettlementCenter />;
+          return <SettlementCenter />;
           }
         case 'apikeys':
           return <ApiKeyManagement />;
@@ -627,12 +1064,16 @@ export default function App() {
       setSelectedInvoice(null);
       setSelectedWithdrawal(null);
       setSelectedReconciliation(null);
+      setSelectedPartnerBatch(null);
+      setSelectedSupplierBatch(null);
       setAdminCurrentMenu(menu);
       // 保存到 localStorage
       localStorage.setItem('adminCurrentMenu', menu);
       localStorage.removeItem('adminCurrentFinanceSubMenu');
       localStorage.removeItem('adminCurrentPartnerAccountSubMenu');
       localStorage.removeItem('adminCurrentReconciliationSubMenu');
+      localStorage.removeItem('adminCurrentSettlementSubMenu');
+      localStorage.removeItem('adminCurrentBusinessDocumentsSubMenu');
     };
 
     // 统一的二级菜单切换处理函数
@@ -643,11 +1084,23 @@ export default function App() {
       setSelectedInvoice(null);
       setSelectedWithdrawal(null);
       setSelectedReconciliation(null);
+      setSelectedPartnerBatch(null);
+      setSelectedSupplierBatch(null);
       setAdminCurrentFinanceSubMenu(subMenu);
       // 如果切换到的不是对账菜单，清除对账三级菜单状态
       if (subMenu !== 'reconciliation') {
         setAdminCurrentReconciliationSubMenu(undefined);
         localStorage.removeItem('adminCurrentReconciliationSubMenu');
+      }
+      // 如果切换到的不是结算管理菜单，清除结算管理三级菜单状态
+      if (subMenu !== 'settlement') {
+        setAdminCurrentSettlementSubMenu(undefined);
+        localStorage.removeItem('adminCurrentSettlementSubMenu');
+      }
+      // 如果切换到的不是业务单据管理菜单，清除业务单据管理三级菜单状态
+      if (subMenu !== 'business-documents') {
+        setAdminCurrentBusinessDocumentsSubMenu(undefined);
+        localStorage.removeItem('adminCurrentBusinessDocumentsSubMenu');
       }
       // 保存到 localStorage
       if (subMenu) {
@@ -686,6 +1139,32 @@ export default function App() {
       }
     };
 
+    // 结算管理三级菜单切换处理函数
+    const handleSettlementSubMenuChange = (subMenu: SettlementSubMenu | undefined) => {
+      // 切换三级菜单时，清除详情页面状态
+      setSelectedPartnerBatch(null);
+      setSelectedSupplierBatch(null);
+      setAdminCurrentSettlementSubMenu(subMenu);
+      // 保存到 localStorage
+      if (subMenu) {
+        localStorage.setItem('adminCurrentSettlementSubMenu', subMenu);
+      } else {
+        localStorage.removeItem('adminCurrentSettlementSubMenu');
+      }
+    };
+
+    // 业务单据管理四级菜单切换处理函数
+    const handleBusinessDocumentsSubMenuChange = (subMenu: BusinessDocumentsSubMenu | undefined) => {
+      // 切换四级菜单时，清除详情页面状态
+      setAdminCurrentBusinessDocumentsSubMenu(subMenu);
+      // 保存到 localStorage
+      if (subMenu) {
+        localStorage.setItem('adminCurrentBusinessDocumentsSubMenu', subMenu);
+      } else {
+        localStorage.removeItem('adminCurrentBusinessDocumentsSubMenu');
+      }
+    };
+
     return (
       <>
         <AdminLayout
@@ -699,6 +1178,10 @@ export default function App() {
           onPartnerAccountSubMenuChange={handlePartnerAccountSubMenuChange}
           currentReconciliationSubMenu={adminCurrentReconciliationSubMenu}
           onReconciliationSubMenuChange={handleReconciliationSubMenuChange}
+          currentSettlementSubMenu={adminCurrentSettlementSubMenu}
+          onSettlementSubMenuChange={handleSettlementSubMenuChange}
+          currentBusinessDocumentsSubMenu={adminCurrentBusinessDocumentsSubMenu}
+          onBusinessDocumentsSubMenuChange={handleBusinessDocumentsSubMenuChange}
           pendingReviewCount={pendingCount}
         >
           {renderAdminContent()}

@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Clock, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
-
+import React from 'react';
 type ReviewStatus = 'pending' | 'approved' | 'rejected';
 
 interface RejectionInfo {

@@ -52,6 +52,20 @@ export function ReconciliationDetail({ reconciliation, onBack, onViewOrderDetail
     setShowResolveDialog(false);
     setResolutionText('');
   };
+
+  // 判断是否应该显示"处理差异"按钮
+  const shouldShowResolveButton = (): boolean => {
+    if (reconciliation.type === 'supplier_cost') {
+      return reconciliation.status === 'difference';
+    } else if (reconciliation.type === 'payment_channel') {
+      return reconciliation.status === 'platform_more' || reconciliation.status === 'channel_more';
+    } else if (reconciliation.type === 'withdrawal') {
+      return reconciliation.status === 'withdrawal_more' || reconciliation.status === 'account_more';
+    } else if (reconciliation.type === 'invoice') {
+      return reconciliation.status === 'invoice_more' || reconciliation.status === 'cost_more';
+    }
+    return false;
+  };
   const getStatusBadge = (reconciliation: Reconciliation) => {
     if (reconciliation.type === 'supplier_cost') {
       const config: Record<string, { label: string; className: string }> = {
@@ -263,10 +277,7 @@ export function ReconciliationDetail({ reconciliation, onBack, onViewOrderDetail
         <div className="border-t border-gray-200 pt-6 pb-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-gray-900">对账汇总</h3>
-            {((reconciliation.type === 'supplier_cost' && reconciliation.status === 'difference') ||
-              (reconciliation.type === 'payment_channel' && (reconciliation.status === 'platform_more' || reconciliation.status === 'channel_more')) ||
-              (reconciliation.type === 'withdrawal' && (reconciliation.status === 'withdrawal_more' || reconciliation.status === 'account_more')) ||
-              (reconciliation.type === 'invoice' && (reconciliation.status === 'invoice_more' || reconciliation.status === 'cost_more'))) && (
+            {shouldShowResolveButton() && (
               <Button
                 variant="default"
                 size="sm"
@@ -412,10 +423,7 @@ export function ReconciliationDetail({ reconciliation, onBack, onViewOrderDetail
         <div className="border-t border-gray-200 pt-6 pb-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-gray-900">对账汇总</h3>
-            {((reconciliation.type === 'supplier_cost' && reconciliation.status === 'difference') ||
-              (reconciliation.type === 'payment_channel' && (reconciliation.status === 'platform_more' || reconciliation.status === 'channel_more')) ||
-              (reconciliation.type === 'withdrawal' && (reconciliation.status === 'withdrawal_more' || reconciliation.status === 'account_more')) ||
-              (reconciliation.type === 'invoice' && (reconciliation.status === 'invoice_more' || reconciliation.status === 'cost_more'))) && (
+            {shouldShowResolveButton() && (
               <Button
                 variant="default"
                 size="sm"
@@ -566,10 +574,7 @@ export function ReconciliationDetail({ reconciliation, onBack, onViewOrderDetail
         <div className="border-t border-gray-200 pt-6 pb-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-gray-900">对账汇总</h3>
-            {((reconciliation.type === 'supplier_cost' && reconciliation.status === 'difference') ||
-              (reconciliation.type === 'payment_channel' && (reconciliation.status === 'platform_more' || reconciliation.status === 'channel_more')) ||
-              (reconciliation.type === 'withdrawal' && (reconciliation.status === 'withdrawal_more' || reconciliation.status === 'account_more')) ||
-              (reconciliation.type === 'invoice' && (reconciliation.status === 'invoice_more' || reconciliation.status === 'cost_more'))) && (
+            {shouldShowResolveButton() && (
               <Button
                 variant="default"
                 size="sm"

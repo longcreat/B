@@ -98,17 +98,37 @@ export function ReconciliationManagement({ onViewReconciliationDetail }: Reconci
     }
     if (filterDateStart) {
       filtered = filtered.filter(r => {
-        const date = r.type === 'supplier_cost' || r.type === 'payment_channel' 
-          ? (r.type === 'supplier_cost' ? r.createdAt : (r as any).reconciliationDate)
-          : (r.type === 'withdrawal' || r.type === 'invoice' ? (r as any).reconciliationMonth : r.createdAt);
+        let date: string;
+        if (r.type === 'supplier_cost') {
+          date = r.createdAt;
+        } else if (r.type === 'payment_channel') {
+          date = r.reconciliationDate;
+        } else if (r.type === 'withdrawal') {
+          date = r.reconciliationMonth;
+        } else if (r.type === 'invoice') {
+          date = r.reconciliationMonth;
+        } else {
+          // 所有类型都有 createdAt，但为了类型安全，使用默认值
+          date = 'supplier_cost' in r ? r.createdAt : 'payment_channel' in r ? r.createdAt : 'withdrawal' in r ? r.createdAt : 'invoice' in r ? r.createdAt : '';
+        }
         return date >= filterDateStart;
       });
     }
     if (filterDateEnd) {
       filtered = filtered.filter(r => {
-        const date = r.type === 'supplier_cost' || r.type === 'payment_channel' 
-          ? (r.type === 'supplier_cost' ? r.createdAt : (r as any).reconciliationDate)
-          : (r.type === 'withdrawal' || r.type === 'invoice' ? (r as any).reconciliationMonth : r.createdAt);
+        let date: string;
+        if (r.type === 'supplier_cost') {
+          date = r.createdAt;
+        } else if (r.type === 'payment_channel') {
+          date = r.reconciliationDate;
+        } else if (r.type === 'withdrawal') {
+          date = r.reconciliationMonth;
+        } else if (r.type === 'invoice') {
+          date = r.reconciliationMonth;
+        } else {
+          // 所有类型都有 createdAt，但为了类型安全，使用默认值
+          date = 'supplier_cost' in r ? r.createdAt : 'payment_channel' in r ? r.createdAt : 'withdrawal' in r ? r.createdAt : 'invoice' in r ? r.createdAt : '';
+        }
         return date <= filterDateEnd;
       });
     }
@@ -430,12 +450,14 @@ export function ReconciliationManagement({ onViewReconciliationDetail }: Reconci
                             ? reconciliation.createdAt.split(' ')[0]
                             : reconciliation.type === 'payment_channel'
                             ? reconciliation.reconciliationDate
-                            : reconciliation.type === 'withdrawal' || reconciliation.type === 'invoice'
+                            : reconciliation.type === 'withdrawal'
+                            ? reconciliation.reconciliationMonth
+                            : reconciliation.type === 'invoice'
                             ? reconciliation.reconciliationMonth
                             : reconciliation.createdAt.split(' ')[0]}
                         </td>
-                        <td className="p-3 text-sm">{getStatusBadge(reconciliation.status)}</td>
-                        <td className={`p-3 text-sm ${reconciliation.status === 'difference' ? 'text-orange-600 font-medium' : ''}`}>
+                        <td className="p-3 text-sm">{getStatusBadge(reconciliation)}</td>
+                        <td className={`p-3 text-sm ${reconciliation.type === 'supplier_cost' && reconciliation.status === 'difference' ? 'text-orange-600 font-medium' : ''}`}>
                           {getDifferenceAmount(reconciliation)}
                         </td>
                         <td className="p-3 text-sm sticky right-0 bg-white z-10">

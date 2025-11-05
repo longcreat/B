@@ -9,4 +9,5 @@ export * from './mockTransactions';
 export * from './mockInvoices';
 export * from './mockWithdrawals';
 export * from './mockReconciliations';
+export * from './mockBusinessDocuments';
 

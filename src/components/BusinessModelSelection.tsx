@@ -1,7 +1,7 @@
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Code, Globe, Share2 } from 'lucide-react';
-
+import React from 'react';
 type BusinessModel = 'mcp' | 'saas' | 'affiliate';
 
 interface BusinessModelSelectionProps {
