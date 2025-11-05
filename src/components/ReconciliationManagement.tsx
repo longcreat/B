@@ -105,11 +105,9 @@ export function ReconciliationManagement({ onViewReconciliationDetail }: Reconci
           date = r.reconciliationDate;
         } else if (r.type === 'withdrawal') {
           date = r.reconciliationMonth;
-        } else if (r.type === 'invoice') {
-          date = r.reconciliationMonth;
         } else {
-          // 所有类型都有 createdAt，但为了类型安全，使用默认值
-          date = 'supplier_cost' in r ? r.createdAt : 'payment_channel' in r ? r.createdAt : 'withdrawal' in r ? r.createdAt : 'invoice' in r ? r.createdAt : '';
+          // r.type === 'invoice'
+          date = r.reconciliationMonth;
         }
         return date >= filterDateStart;
       });
@@ -123,11 +121,9 @@ export function ReconciliationManagement({ onViewReconciliationDetail }: Reconci
           date = r.reconciliationDate;
         } else if (r.type === 'withdrawal') {
           date = r.reconciliationMonth;
-        } else if (r.type === 'invoice') {
-          date = r.reconciliationMonth;
         } else {
-          // 所有类型都有 createdAt，但为了类型安全，使用默认值
-          date = 'supplier_cost' in r ? r.createdAt : 'payment_channel' in r ? r.createdAt : 'withdrawal' in r ? r.createdAt : 'invoice' in r ? r.createdAt : '';
+          // r.type === 'invoice'
+          date = r.reconciliationMonth;
         }
         return date <= filterDateEnd;
       });
@@ -454,7 +450,7 @@ export function ReconciliationManagement({ onViewReconciliationDetail }: Reconci
                             ? reconciliation.reconciliationMonth
                             : reconciliation.type === 'invoice'
                             ? reconciliation.reconciliationMonth
-                            : reconciliation.createdAt.split(' ')[0]}
+                            : (reconciliation as any).createdAt?.split(' ')[0] || '-'}
                         </td>
                         <td className="p-3 text-sm">{getStatusBadge(reconciliation)}</td>
                         <td className={`p-3 text-sm ${reconciliation.type === 'supplier_cost' && reconciliation.status === 'difference' ? 'text-orange-600 font-medium' : ''}`}>

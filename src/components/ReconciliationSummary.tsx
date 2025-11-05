@@ -125,17 +125,33 @@ export function ReconciliationSummary({ onViewReconciliationDetail }: Reconcilia
     // 日期筛选
     if (filterDateStart) {
       filtered = filtered.filter(r => {
-        const date = r.type === 'supplier_cost' || r.type === 'payment_channel' 
-          ? (r.type === 'supplier_cost' ? r.createdAt : (r as any).reconciliationDate)
-          : (r.type === 'withdrawal' || r.type === 'invoice' ? (r as any).reconciliationMonth : r.createdAt);
+        let date: string;
+        if (r.type === 'supplier_cost') {
+          date = r.createdAt;
+        } else if (r.type === 'payment_channel') {
+          date = r.reconciliationDate;
+        } else if (r.type === 'withdrawal') {
+          date = r.reconciliationMonth;
+        } else {
+          // r.type === 'invoice'
+          date = r.reconciliationMonth;
+        }
         return date >= filterDateStart;
       });
     }
     if (filterDateEnd) {
       filtered = filtered.filter(r => {
-        const date = r.type === 'supplier_cost' || r.type === 'payment_channel' 
-          ? (r.type === 'supplier_cost' ? r.createdAt : (r as any).reconciliationDate)
-          : (r.type === 'withdrawal' || r.type === 'invoice' ? (r as any).reconciliationMonth : r.createdAt);
+        let date: string;
+        if (r.type === 'supplier_cost') {
+          date = r.createdAt;
+        } else if (r.type === 'payment_channel') {
+          date = r.reconciliationDate;
+        } else if (r.type === 'withdrawal') {
+          date = r.reconciliationMonth;
+        } else {
+          // r.type === 'invoice'
+          date = r.reconciliationMonth;
+        }
         return date <= filterDateEnd;
       });
     }
