@@ -33,7 +33,7 @@ import { OrderRefundRecordDetail } from './components/OrderRefundRecordDetail';
 import { SettlementDetailList, type SettlementDetail } from './components/SettlementDetailList';
 import { SettlementDetailDetail } from './components/SettlementDetailDetail';
 import { getMockOrders } from './data/mockOrders';
-import { getMockSettlementBatches, getMockSupplierSettlementBatches } from './data/mockSettlementBatches';
+import { getMockSettlementBatches, getMockSupplierSettlementBatches, getMockPartnerSettlementBatches } from './data/mockSettlementBatches';
 import { ApiKeyManagement } from './components/ApiKeyManagement';
 import { PriceConfiguration } from './components/PriceConfiguration';
 import { UserLayout } from './components/UserLayout';
@@ -632,7 +632,7 @@ export default function App() {
         );
       }
 
-      // 如果正在查看小B结算批次详情
+      // 如果正在查看小B结算批次详情（优先检查，确保从其他页面跳转过来时能正确显示）
       if (selectedPartnerBatch && adminCurrentMenu === 'finance' && adminCurrentFinanceSubMenu === 'settlement' && 
           adminCurrentSettlementSubMenu === 'partner-batches') {
         // 保存批次ID到localStorage
@@ -660,7 +660,7 @@ export default function App() {
         );
       }
 
-      // 如果正在查看供应商结算批次详情
+      // 如果正在查看供应商结算批次详情（优先检查，确保从其他页面跳转过来时能正确显示）
       if (selectedSupplierBatch && adminCurrentMenu === 'finance' && adminCurrentFinanceSubMenu === 'settlement' && 
           adminCurrentSettlementSubMenu === 'supplier-batches') {
         // 保存批次ID到localStorage
@@ -812,17 +812,46 @@ export default function App() {
             onViewBatch={(batchId) => {
               // 根据批次ID判断是客户结算还是供应商结算
               if (batchId.startsWith('BATCH-B-')) {
-                const batches = getMockSettlementBatches();
-                const batch = batches.find(b => b.batchId === batchId);
+                // 先尝试从客户结算批次列表查找
+                const partnerBatches = getMockPartnerSettlementBatches();
+                let batch = partnerBatches.find(b => b.batchId === batchId);
+                
+                // 如果找不到，可能是ID格式问题，尝试从旧的结算批次列表查找
+                if (!batch) {
+                  const oldBatches = getMockSettlementBatches();
+                  const oldBatch = oldBatches.find(b => b.batchId === batchId);
+                  if (oldBatch) {
+                    // 转换为新的格式
+                    batch = {
+                      batchId: oldBatch.batchId,
+                      partnerId: oldBatch.partnerId || `PARTNER-${oldBatch.batchId}`,
+                      partnerName: oldBatch.partnerName || '未知客户',
+                      partnerType: 'individual',
+                      settlementPeriodStart: oldBatch.settlementPeriodStart || '',
+                      settlementPeriodEnd: oldBatch.settlementPeriodEnd || '',
+                      orderCount: oldBatch.orderCount || 0,
+                      settlementAmount: oldBatch.settlementAmount || 0,
+                      status: oldBatch.status as any,
+                      createdAt: oldBatch.createdAt || '',
+                      totalC2cAmount: oldBatch.totalC2cAmount,
+                      totalPlatformProfit: oldBatch.totalPlatformProfit,
+                    };
+                  }
+                }
+                
                 if (batch) {
                   setSelectedPartnerBatch(batch);
                   setAdminCurrentFinanceSubMenu('settlement');
                   setAdminCurrentSettlementSubMenu('partner-batches');
+                  // 清除结算明细详情状态，避免冲突
+                  setSelectedSettlementDetail(null);
+                  localStorage.removeItem('selectedSettlementDetailId');
                   localStorage.setItem('adminCurrentFinanceSubMenu', 'settlement');
                   localStorage.setItem('adminCurrentSettlementSubMenu', 'partner-batches');
                   localStorage.setItem('selectedPartnerBatchId', batchId);
                 } else {
-                  toast.error('未找到该批次');
+                  toast.error(`未找到该批次: ${batchId}`);
+                  console.error('批次ID:', batchId, '可用批次ID:', partnerBatches.map(b => b.batchId).slice(0, 5));
                 }
               } else if (batchId.startsWith('BATCH-S-')) {
                 const batches = getMockSupplierSettlementBatches();
@@ -831,11 +860,15 @@ export default function App() {
                   setSelectedSupplierBatch(batch);
                   setAdminCurrentFinanceSubMenu('settlement');
                   setAdminCurrentSettlementSubMenu('supplier-batches');
+                  // 清除结算明细详情状态，避免冲突
+                  setSelectedSettlementDetail(null);
+                  localStorage.removeItem('selectedSettlementDetailId');
                   localStorage.setItem('adminCurrentFinanceSubMenu', 'settlement');
                   localStorage.setItem('adminCurrentSettlementSubMenu', 'supplier-batches');
                   localStorage.setItem('selectedSupplierBatchId', batchId);
                 } else {
-                  toast.error('未找到该批次');
+                  toast.error(`未找到该批次: ${batchId}`);
+                  console.error('批次ID:', batchId, '可用批次ID:', batches.map(b => b.batchId).slice(0, 5));
                 }
               }
             }}
@@ -993,17 +1026,46 @@ export default function App() {
                   onViewBatch={(batchId) => {
                     // 根据批次ID判断是客户结算还是供应商结算
                     if (batchId.startsWith('BATCH-B-')) {
-                      const batches = getMockSettlementBatches();
-                      const batch = batches.find(b => b.batchId === batchId);
+                      // 先尝试从客户结算批次列表查找
+                      const partnerBatches = getMockPartnerSettlementBatches();
+                      let batch = partnerBatches.find(b => b.batchId === batchId);
+                      
+                      // 如果找不到，可能是ID格式问题，尝试从旧的结算批次列表查找
+                      if (!batch) {
+                        const oldBatches = getMockSettlementBatches();
+                        const oldBatch = oldBatches.find(b => b.batchId === batchId);
+                        if (oldBatch) {
+                          // 转换为新的格式
+                          batch = {
+                            batchId: oldBatch.batchId,
+                            partnerId: oldBatch.partnerId || `PARTNER-${oldBatch.batchId}`,
+                            partnerName: oldBatch.partnerName || '未知客户',
+                            partnerType: 'individual',
+                            settlementPeriodStart: oldBatch.settlementPeriodStart || '',
+                            settlementPeriodEnd: oldBatch.settlementPeriodEnd || '',
+                            orderCount: oldBatch.orderCount || 0,
+                            settlementAmount: oldBatch.settlementAmount || 0,
+                            status: oldBatch.status as any,
+                            createdAt: oldBatch.createdAt || '',
+                            totalC2cAmount: oldBatch.totalC2cAmount,
+                            totalPlatformProfit: oldBatch.totalPlatformProfit,
+                          };
+                        }
+                      }
+                      
                       if (batch) {
                         setSelectedPartnerBatch(batch);
                         setAdminCurrentFinanceSubMenu('settlement');
                         setAdminCurrentSettlementSubMenu('partner-batches');
+                        // 清除结算明细详情状态，避免冲突
+                        setSelectedSettlementDetail(null);
+                        localStorage.removeItem('selectedSettlementDetailId');
                         localStorage.setItem('adminCurrentFinanceSubMenu', 'settlement');
                         localStorage.setItem('adminCurrentSettlementSubMenu', 'partner-batches');
                         localStorage.setItem('selectedPartnerBatchId', batchId);
                       } else {
-                        toast.error('未找到该批次');
+                        toast.error(`未找到该批次: ${batchId}`);
+                        console.error('批次ID:', batchId, '可用批次ID:', partnerBatches.map(b => b.batchId).slice(0, 5));
                       }
                     } else if (batchId.startsWith('BATCH-S-')) {
                       const batches = getMockSupplierSettlementBatches();
@@ -1012,11 +1074,15 @@ export default function App() {
                         setSelectedSupplierBatch(batch);
                         setAdminCurrentFinanceSubMenu('settlement');
                         setAdminCurrentSettlementSubMenu('supplier-batches');
+                        // 清除结算明细详情状态，避免冲突
+                        setSelectedSettlementDetail(null);
+                        localStorage.removeItem('selectedSettlementDetailId');
                         localStorage.setItem('adminCurrentFinanceSubMenu', 'settlement');
                         localStorage.setItem('adminCurrentSettlementSubMenu', 'supplier-batches');
                         localStorage.setItem('selectedSupplierBatchId', batchId);
                       } else {
-                        toast.error('未找到该批次');
+                        toast.error(`未找到该批次: ${batchId}`);
+                        console.error('批次ID:', batchId, '可用批次ID:', batches.map(b => b.batchId).slice(0, 5));
                       }
                     }
                   }}

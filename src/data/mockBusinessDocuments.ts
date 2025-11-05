@@ -301,6 +301,23 @@ export function getMockSettlementDetails(): SettlementDetail[] {
   const partners = ['张三的旅游工作室', '李四的酒店预订', '王五的旅游服务'];
   const suppliers = ['北京希尔顿酒店集团', '上海万豪酒店集团', '深圳洲际酒店集团'];
   
+  // 预先生成批次ID列表，确保格式与结算批次一致
+  const partnerBatchIds: string[] = [];
+  const supplierBatchIds: string[] = [];
+  
+  // 生成客户结算批次ID（格式：BATCH-B-2025MMDD-XXX）
+  for (let i = 0; i < 25; i++) {
+    const month = Math.floor(1 + i / 4);
+    const day = (i % 4) * 7 + 1;
+    partnerBatchIds.push(`BATCH-B-2025${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}-${String(i + 1).padStart(3, '0')}`);
+  }
+  
+  // 生成供应商结算批次ID（格式：BATCH-S-2025MM-XXX）
+  for (let i = 0; i < 15; i++) {
+    const month = (i % 12) + 1;
+    supplierBatchIds.push(`BATCH-S-2025${String(month).padStart(2, '0')}-${String(i + 1).padStart(3, '0')}`);
+  }
+  
   for (let i = 0; i < 60; i++) {
     const settlementType = settlementTypes[i % 2];
     const objectType = objectTypes[i % 2];
@@ -321,11 +338,14 @@ export function getMockSettlementDetails(): SettlementDetail[] {
     const paidTime = (status === 'paid' || status === 'completed') ?
       `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} 14:00:00` : undefined;
     
+    // 使用与结算批次一致的批次ID格式
+    const batchId = settlementType === 'partner_settlement' ? 
+      partnerBatchIds[i % partnerBatchIds.length] :
+      supplierBatchIds[i % supplierBatchIds.length];
+    
     records.push({
       detailId: `SETTLE-${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}-${String(i + 1).padStart(3, '0')}`,
-      batchId: settlementType === 'partner_settlement' ? 
-        `BATCH-B-${year}${String(month).padStart(2, '0')}${String(Math.floor((i % 30) / 7) + 1).padStart(2, '0')}-${String(Math.floor(i / 30) + 1).padStart(3, '0')}` :
-        `BATCH-S-${year}${String(month).padStart(2, '0')}-${String(Math.floor(i / 30) + 1).padStart(3, '0')}`,
+      batchId,
       orderId: `ORD-${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}-${String(i + 1).padStart(3, '0')}`,
       relatedObjectId: objectType === 'partner' ? `PARTNER-${String(i % 3 + 1).padStart(3, '0')}` : `SUPPLIER-${String(i % 3 + 1).padStart(3, '0')}`,
       relatedObjectName,
