@@ -34,7 +34,8 @@ import { SettlementDetailList, type SettlementDetail } from './components/Settle
 import { SettlementDetailDetail } from './components/SettlementDetailDetail';
 import { getMockOrders } from './data/mockOrders';
 import { getMockSettlementBatches, getMockSupplierSettlementBatches, getMockPartnerSettlementBatches } from './data/mockSettlementBatches';
-import { ApiKeyManagement } from './components/ApiKeyManagement';
+import { ApiKeyManagement, type ApiKeyInfo } from './components/ApiKeyManagement';
+import { ApiKeyDetail } from './components/ApiKeyDetail';
 import { PriceConfiguration } from './components/PriceConfiguration';
 import { UserLayout } from './components/UserLayout';
 import { ServiceSidebar } from './components/ServiceSidebar';
@@ -44,6 +45,9 @@ import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
 import type { User, ServiceType, ServiceStatus } from './types/user';
 import { getDefaultMenuId } from './config/menuConfig';
+import { formatDateTime } from './utils/dateFormat';
+import type { BusinessModel } from './components/BusinessModelSelection';
+import type { IdentityType } from './components/IdentityTypeSelection';
 
 // MCP 组件
 import { MCPConfiguration } from './components/mcp/MCPConfiguration';
@@ -62,9 +66,6 @@ import { AffiliateDashboard } from './components/affiliate/AffiliateDashboard';
 import { AffiliateLink } from './components/affiliate/AffiliateLink';
 import { AffiliateData } from './components/affiliate/AffiliateData';
 import { AffiliatePoints } from './components/affiliate/AffiliatePoints';
-
-type BusinessModel = 'mcp' | 'saas' | 'affiliate' | null;
-type IdentityType = 'individual' | 'influencer' | 'enterprise' | null;
 type AuthView = 'login' | 'register' | null;
 
 type UserView = 'registration' | 'userCenter';
@@ -74,14 +75,23 @@ export default function App() {
   const [authView, setAuthView] = useState<AuthView>('login');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<string>('registration');
-  const [selectedBusinessModel, setSelectedBusinessModel] = useState<BusinessModel>(null);
-  const [selectedIdentity, setSelectedIdentity] = useState<IdentityType>(null);
+  const [selectedBusinessModel, setSelectedBusinessModel] = useState<BusinessModel | null>(null);
+  const [selectedIdentity, setSelectedIdentity] = useState<IdentityType | null>(null);
   const [currentApplicationId, setCurrentApplicationId] = useState<string | null>(null);
   const [selectedAdminApplication, setSelectedAdminApplication] = useState<ApplicationData | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<Withdrawal | null>(null);
   const [selectedReconciliation, setSelectedReconciliation] = useState<Reconciliation | null>(null);
+  const [selectedApiKey, setSelectedApiKey] = useState<ApiKeyInfo | null>(() => {
+    const stored = localStorage.getItem('selectedApiKeyId');
+    if (stored) {
+      const { getMockApiKeys } = require('./data/mockApiKeys');
+      const keys = getMockApiKeys();
+      return keys.find((k: ApiKeyInfo) => k.id === stored) || null;
+    }
+    return null;
+  });
   const [selectedPartnerBatch, setSelectedPartnerBatch] = useState<PartnerSettlementBatch | null>(null);
   const [selectedSupplierBatch, setSelectedSupplierBatch] = useState<SupplierSettlementBatch | null>(null);
   const [selectedViolationFeeRecord, setSelectedViolationFeeRecord] = useState<ViolationFeeRecord | null>(() => {
@@ -285,6 +295,12 @@ export default function App() {
 
 
   const handleFormSubmit = (formData: any) => {
+    // 验证必需的选择
+    if (!selectedBusinessModel || !selectedIdentity) {
+      toast.error('请先完成身份类型和业务模式选择');
+      return;
+    }
+
     const currentApp = getCurrentApplication();
     
     // 如果是重新申请（已有被驳回的申请），更新现有记录
@@ -295,17 +311,12 @@ export default function App() {
               ...app,
               applicantName: formData.realName || formData.companyName || formData.contactName,
               status: 'pending' as const,
-              submittedAt: new Date().toLocaleString('zh-CN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-              }),
+              submittedAt: formatDateTime(new Date()),
               reviewedAt: undefined,
               rejectionReason: undefined,
               data: formData,
+              businessModel: selectedBusinessModel,
+              identityType: selectedIdentity,
             }
           : app
       );
@@ -316,17 +327,10 @@ export default function App() {
       const newApplication: ApplicationData = {
         id: `APP-${String(applications.length + 1).padStart(3, '0')}`,
         applicantName: formData.realName || formData.companyName || formData.contactName,
-        businessModel: selectedBusinessModel!,
-        identityType: selectedIdentity!,
+        businessModel: selectedBusinessModel,
+        identityType: selectedIdentity,
         status: 'pending',
-        submittedAt: new Date().toLocaleString('zh-CN', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        }),
+        submittedAt: formatDateTime(new Date()),
         data: formData,
         userEmail: currentUser?.email,
       };
@@ -339,8 +343,11 @@ export default function App() {
   };
 
   const handleReapply = () => {
-    // 重新申请时，不删除旧记录，保留驳回原因供用户查看
-    // 只是允许用户重新编辑表单，提交时会更新现有记录
+    // 重新申请：清空身份类型和业务模式选择，让用户从身份选择开始
+    setSelectedBusinessModel(null);
+    setSelectedIdentity(null);
+    // 注意：不删除旧记录，保留驳回原因供用户查看
+    // 当用户重新提交时，handleFormSubmit 会更新现有记录
   };
 
   const handleAdminApprove = (id: string) => {
@@ -349,14 +356,7 @@ export default function App() {
         ? {
             ...app,
             status: 'approved' as const,
-            reviewedAt: new Date().toLocaleString('zh-CN', {
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            }),
+            reviewedAt: formatDateTime(new Date()),
           }
         : app
     );
@@ -541,6 +541,21 @@ export default function App() {
   if (isLoggedIn && currentUser?.role === 'admin') {
     const renderAdminContent = () => {
       // 详情页面的显示逻辑：只有在对应菜单下才显示详情页面
+      // 如果正在查看API密钥详情，且当前菜单是密钥管理
+      if (selectedApiKey && adminCurrentMenu === 'apikeys') {
+        // 保存API密钥ID到localStorage
+        localStorage.setItem('selectedApiKeyId', selectedApiKey.id);
+        return (
+          <ApiKeyDetail
+            apiKey={selectedApiKey}
+            onBack={() => {
+              setSelectedApiKey(null);
+              localStorage.removeItem('selectedApiKeyId');
+            }}
+          />
+        );
+      }
+
       // 如果正在查看订单详情，且当前菜单是订单管理
       if (selectedOrder && adminCurrentMenu === 'orders') {
         // 保存订单ID到localStorage
@@ -1106,7 +1121,7 @@ export default function App() {
           return <SettlementCenter />;
           }
         case 'apikeys':
-          return <ApiKeyManagement />;
+          return <ApiKeyManagement onViewApiKeyDetail={setSelectedApiKey} />;
         case 'pricing':
           return <PriceConfiguration />;
         default:
@@ -1132,6 +1147,7 @@ export default function App() {
       setSelectedReconciliation(null);
       setSelectedPartnerBatch(null);
       setSelectedSupplierBatch(null);
+      setSelectedApiKey(null);
       setAdminCurrentMenu(menu);
       // 保存到 localStorage
       localStorage.setItem('adminCurrentMenu', menu);
@@ -1150,6 +1166,7 @@ export default function App() {
       setSelectedInvoice(null);
       setSelectedWithdrawal(null);
       setSelectedReconciliation(null);
+      setSelectedApiKey(null);
       setSelectedPartnerBatch(null);
       setSelectedSupplierBatch(null);
       setAdminCurrentFinanceSubMenu(subMenu);
@@ -1183,6 +1200,7 @@ export default function App() {
       setSelectedOrder(null);
       setSelectedAdminApplication(null);
       setSelectedInvoice(null);
+      setSelectedApiKey(null);
       setAdminCurrentPartnerAccountSubMenu(subMenu);
       // 保存到 localStorage
       if (subMenu) {
@@ -1297,6 +1315,8 @@ export default function App() {
             reviewedAt: currentApp.reviewedAt,
             rejectionReason: currentApp.rejectionReason,
             data: currentApp.data,
+            identityType: currentApp.identityType,
+            businessModel: currentApp.businessModel,
           } : null}
           onGoToDashboard={() => {
             // 使用当前申请数据进行判断，避免依赖尚未同步的 currentUser
@@ -1361,6 +1381,8 @@ export default function App() {
           reviewedAt: currentApp.reviewedAt,
           rejectionReason: currentApp.rejectionReason,
           data: currentApp.data,
+          identityType: currentApp.identityType,
+          businessModel: currentApp.businessModel,
         } : null}
         onGoToDashboard={() => {
           const app = getCurrentApplication();

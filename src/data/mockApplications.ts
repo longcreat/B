@@ -1,10 +1,15 @@
 // 申请相关的 mock 数据
 
+// 新的身份类型定义
+export type IdentityType = 'developer' | 'influencer' | 'enterprise' | 'agent';
+// 兼容旧的身份类型（向后兼容）
+export type LegacyIdentityType = 'individual' | 'influencer' | 'enterprise';
+
 export interface ApplicationData {
   id: string;
   applicantName: string;
   businessModel: 'mcp' | 'saas' | 'affiliate';
-  identityType: 'individual' | 'influencer' | 'enterprise';
+  identityType: IdentityType | LegacyIdentityType; // 支持新旧两种类型
   status: 'pending' | 'approved' | 'rejected';
   submittedAt: string;
   reviewedAt?: string;

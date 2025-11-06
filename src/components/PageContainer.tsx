@@ -35,7 +35,7 @@ export function PageContainer({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50">
       <div className={`mx-auto ${maxWidthClasses[maxWidth]} px-6 py-8`}>
         {/* Breadcrumbs */}
         {breadcrumbs && breadcrumbs.length > 0 && (

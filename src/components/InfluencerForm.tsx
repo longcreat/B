@@ -50,6 +50,7 @@ interface InfluencerFormProps {
   onBack: () => void;
   onSubmit?: (data: any) => void;
   initialData?: any;
+  businessModel?: 'saas' | 'affiliate'; // 业务模式
 }
 
 const STORAGE_KEY = 'influencer_form_data';
@@ -87,7 +88,27 @@ const BANK_OPTIONS = [
   '北京银行',
 ];
 
-export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: InfluencerFormProps) {
+// 粉丝数门槛配置
+const FOLLOWER_THRESHOLDS = {
+  saas: {
+    '微信公众号': 5000,
+    '小红书': 10000,
+    'default': 5000,
+  },
+  affiliate: {
+    '微信公众号': 1000,
+    '小红书': 5000,
+    'default': 3000,
+  },
+};
+
+const getFollowerThreshold = (platform: string, businessModel?: 'saas' | 'affiliate'): number => {
+  if (!businessModel) return 0;
+  const thresholds = FOLLOWER_THRESHOLDS[businessModel];
+  return thresholds[platform as keyof typeof thresholds] || thresholds.default;
+};
+
+export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData, businessModel }: InfluencerFormProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [idPhotoFront, setIdPhotoFront] = useState<File | null>(null);
   const [idPhotoBack, setIdPhotoBack] = useState<File | null>(null);
@@ -114,6 +135,19 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: 
   const accountType = watch('accountType');
   const mainPlatform = watch('mainPlatform');
   const bankName = watch('bankName');
+  const mainFollowersCount = watch('mainFollowersCount');
+
+  // 获取当前平台的粉丝数门槛
+  const followerThreshold = mainPlatform && businessModel 
+    ? getFollowerThreshold(mainPlatform, businessModel)
+    : 0;
+  
+  // 验证粉丝数是否满足门槛
+  const followersCountNum = parseInt(mainFollowersCount || '0');
+  const isFollowerCountValid = followersCountNum >= followerThreshold;
+  const followerCountError = mainFollowersCount && !isFollowerCountValid 
+    ? `粉丝数需≥${followerThreshold.toLocaleString()}` 
+    : null;
 
   useEffect(() => {
     if (realName && accountType === 'bank') {
@@ -226,6 +260,16 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: 
       return;
     }
 
+    // 验证粉丝数是否满足门槛
+    if (businessModel && data.mainPlatform) {
+      const threshold = getFollowerThreshold(data.mainPlatform, businessModel);
+      const followersNum = parseInt(data.mainFollowersCount || '0');
+      if (followersNum < threshold) {
+        toast.error(`粉丝数需≥${threshold.toLocaleString()}，当前为${followersNum.toLocaleString()}`);
+        return;
+      }
+    }
+
     if (accountType === 'bank') {
       if (!data.bankName || !data.bankBranch || !data.bankCardNumber) {
         toast.error('请完善银行卡信息');
@@ -269,16 +313,15 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: 
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle>博主认证</CardTitle>
-            <p className="text-gray-600 mt-2">
-              认证核心：个人身份真实性、商业影响力评估、收款账户有效性
-            </p>
-          </CardHeader>
-          <CardContent>
+    <>
+    <Card className="border-gray-200">
+      <CardHeader className="pb-4 border-b bg-gray-50/50">
+        <CardTitle className="text-lg font-semibold text-gray-900">博主认证</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          认证核心：个人身份真实性、商业影响力评估、收款账户有效性
+        </p>
+      </CardHeader>
+      <CardContent className="pt-6">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
               {/* A. 身份信息 - 继承个人认证 */}
               <div>
@@ -417,15 +460,36 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                   </div>
 
                   <div>
-                    <Label>粉丝数/订阅数 <span className="text-red-500">*</span></Label>
+                    <Label>
+                      粉丝数/订阅数 <span className="text-red-500">*</span>
+                      {businessModel && mainPlatform && (
+                        <span className="text-gray-500 text-sm ml-2">
+                          （{businessModel === 'saas' ? 'SaaS' : 'Affiliate'}业务要求：≥{followerThreshold.toLocaleString()}）
+                        </span>
+                      )}
+                    </Label>
                     <Input
                       type="number"
-                      {...register('mainFollowersCount', { required: '粉丝数为必填项' })}
+                      {...register('mainFollowersCount', { 
+                        required: '粉丝数为必填项',
+                        validate: (value) => {
+                          if (!businessModel || !mainPlatform) return true;
+                          const num = parseInt(value || '0');
+                          const threshold = getFollowerThreshold(mainPlatform, businessModel);
+                          return num >= threshold || `粉丝数需≥${threshold.toLocaleString()}`;
+                        }
+                      })}
                       placeholder="请输入粉丝数"
                       className="mt-2"
                     />
                     {errors.mainFollowersCount && (
                       <p className="text-red-500 mt-1">{errors.mainFollowersCount.message}</p>
+                    )}
+                    {followerCountError && !errors.mainFollowersCount && (
+                      <p className="text-red-500 mt-1">{followerCountError}</p>
+                    )}
+                    {businessModel && mainPlatform && isFollowerCountValid && (
+                      <p className="text-green-600 mt-1 text-sm">✓ 粉丝数满足要求</p>
                     )}
                   </div>
 
@@ -696,9 +760,8 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: 
             </form>
           </CardContent>
         </Card>
-      </div>
 
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>确认提交</AlertDialogTitle>
@@ -712,7 +775,7 @@ export function InfluencerForm({ onBack, onSubmit: onSubmitProp, initialData }: 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
 

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 import { Badge } from './ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -11,34 +11,20 @@ import {
   BreadcrumbPage,
 } from './ui/breadcrumb';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from './ui/dialog';
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { Label } from './ui/label';
 import { 
   Search,
   Eye,
   Ban,
-  CheckCircle,
-  AlertCircle,
+  RefreshCw,
   Download,
   Key,
-  TrendingUp,
-  Users,
-  Activity,
-  RefreshCw,
-  Calendar,
+  Filter,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
@@ -55,13 +41,16 @@ import { getMockApiKeys, type ApiKeyInfo, type ApiKeyStatus, type PartnerType } 
 
 export { type ApiKeyInfo };
 
-export function ApiKeyManagement() {
+interface ApiKeyManagementProps {
+  onViewApiKeyDetail?: (apiKey: ApiKeyInfo) => void;
+}
+
+export function ApiKeyManagement({ onViewApiKeyDetail }: ApiKeyManagementProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | ApiKeyStatus>('all');
   const [filterUserType, setFilterUserType] = useState<'all' | PartnerType>('all');
   const [filterRiskLevel, setFilterRiskLevel] = useState<'all' | 'L0' | 'L1' | 'L2' | 'L3' | 'L4'>('all');
-  const [selectedApiKey, setSelectedApiKey] = useState<ApiKeyInfo | null>(null);
-  const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [showSuspendDialog, setShowSuspendDialog] = useState(false);
   const [suspendReason, setSuspendReason] = useState('');
   const [keyToSuspend, setKeyToSuspend] = useState<ApiKeyInfo | null>(null);
@@ -103,9 +92,45 @@ export function ApiKeyManagement() {
     return <Badge variant="outline" className={className}>{label}</Badge>;
   };
 
+  const filteredApiKeys = useMemo(() => {
+    return apiKeys.filter((key) => {
+      const matchesSearch =
+        key.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        key.userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        key.userPhone.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        key.keyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        key.keyPrefix.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (key.realName && key.realName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (key.companyName && key.companyName.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchesStatus = filterStatus === 'all' || key.status === filterStatus;
+      const matchesUserType = filterUserType === 'all' || key.userType === filterUserType;
+      const matchesRiskLevel = filterRiskLevel === 'all' || key.riskLevel === filterRiskLevel;
+
+      return matchesSearch && matchesStatus && matchesUserType && matchesRiskLevel;
+    });
+  }, [apiKeys, searchQuery, filterStatus, filterUserType, filterRiskLevel]);
+
+  // 计算分页数据
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const totalItems = filteredApiKeys.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedApiKeys = filteredApiKeys.slice(startIndex, endIndex);
+
+  // 当筛选条件改变时，重置到第一页
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterStatus, filterUserType, filterRiskLevel]);
+
   const handleViewDetail = (apiKey: ApiKeyInfo) => {
-    setSelectedApiKey(apiKey);
-    setShowDetailDialog(true);
+    if (onViewApiKeyDetail) {
+      onViewApiKeyDetail(apiKey);
+      // 保存API密钥ID到localStorage，以便刷新后恢复
+      localStorage.setItem('selectedApiKeyId', apiKey.id);
+    }
   };
 
   const handleSuspendKey = (apiKey: ApiKeyInfo) => {
@@ -135,34 +160,6 @@ export function ApiKeyManagement() {
     setKeyToReactivate(null);
   };
 
-  const filteredApiKeys = apiKeys.filter((key) => {
-    const matchesSearch =
-      key.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      key.userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      key.keyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      key.keyPrefix.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesStatus = filterStatus === 'all' || key.status === filterStatus;
-    const matchesUserType = filterUserType === 'all' || key.userType === filterUserType;
-    const matchesRiskLevel = filterRiskLevel === 'all' || key.riskLevel === filterRiskLevel;
-
-    return matchesSearch && matchesStatus && matchesUserType && matchesRiskLevel;
-  });
-
-  // 计算分页数据
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-  const totalItems = filteredApiKeys.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedApiKeys = filteredApiKeys.slice(startIndex, endIndex);
-
-  // 当筛选条件改变时，重置到第一页
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, filterStatus, filterUserType, filterRiskLevel]);
-
   return (
     <div className="p-6 space-y-6">
       {/* 面包屑导航 */}
@@ -186,50 +183,21 @@ export function ApiKeyManagement() {
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
-                  placeholder="搜索用户、邮箱或密钥"
+                  placeholder="搜索用户、邮箱、手机或密钥"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
                 />
               </div>
 
-              <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
-                <SelectTrigger className="w-[130px]">
-                  <SelectValue placeholder="状态" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部状态</SelectItem>
-                  <SelectItem value="active">活跃</SelectItem>
-                  <SelectItem value="suspended">已暂停</SelectItem>
-                  <SelectItem value="revoked">已吊销</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filterUserType} onValueChange={(value: any) => setFilterUserType(value)}>
-                <SelectTrigger className="w-[130px]">
-                  <SelectValue placeholder="用户类型" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部类型</SelectItem>
-                  <SelectItem value="individual">个人</SelectItem>
-                  <SelectItem value="influencer">博主</SelectItem>
-                  <SelectItem value="enterprise">企业</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filterRiskLevel} onValueChange={(value: any) => setFilterRiskLevel(value)}>
-                <SelectTrigger className="w-[130px]">
-                  <SelectValue placeholder="风控等级" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部等级</SelectItem>
-                  <SelectItem value="L0">L0-战略级</SelectItem>
-                  <SelectItem value="L1">L1-高级</SelectItem>
-                  <SelectItem value="L2">L2-标准</SelectItem>
-                  <SelectItem value="L3">L3-基础</SelectItem>
-                  <SelectItem value="L4">L4-入门</SelectItem>
-                </SelectContent>
-              </Select>
+              <Button
+                variant={showFilters ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <Filter className="w-4 h-4 mr-2" />
+                筛选
+              </Button>
 
               <Button variant="outline" size="sm">
                 <Download className="w-4 h-4 mr-2" />
@@ -237,83 +205,165 @@ export function ApiKeyManagement() {
               </Button>
             </div>
           </div>
+
+          {/* 筛选器 */}
+          {showFilters && (
+            <div className="pt-4 border-t mt-4 space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">密钥状态</Label>
+                  <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="全部状态" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部状态</SelectItem>
+                      <SelectItem value="active">活跃</SelectItem>
+                      <SelectItem value="suspended">已暂停</SelectItem>
+                      <SelectItem value="revoked">已吊销</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">用户类型</Label>
+                  <Select value={filterUserType} onValueChange={(value: any) => setFilterUserType(value)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="全部类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部类型</SelectItem>
+                      <SelectItem value="individual">个人</SelectItem>
+                      <SelectItem value="influencer">博主</SelectItem>
+                      <SelectItem value="enterprise">企业</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">风控等级</Label>
+                  <Select value={filterRiskLevel} onValueChange={(value: any) => setFilterRiskLevel(value)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="全部等级" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部等级</SelectItem>
+                      <SelectItem value="L0">L0-战略级</SelectItem>
+                      <SelectItem value="L1">L1-高级</SelectItem>
+                      <SelectItem value="L2">L2-标准</SelectItem>
+                      <SelectItem value="L3">L3-基础</SelectItem>
+                      <SelectItem value="L4">L4-入门</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* 清除筛选按钮 */}
+              {(filterStatus !== 'all' || filterUserType !== 'all' || filterRiskLevel !== 'all') && (
+                <div className="flex items-center justify-end pt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setFilterStatus('all');
+                      setFilterUserType('all');
+                      setFilterRiskLevel('all');
+                    }}
+                  >
+                    清除所有筛选
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </CardHeader>
 
-        <CardContent>
-          <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>用户信息</TableHead>
-                  <TableHead>密钥信息</TableHead>
-                  <TableHead>风控等级</TableHead>
-                  <TableHead>调用统计</TableHead>
-                  <TableHead>服务质量</TableHead>
-                  <TableHead>最后使用</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+        <CardContent className={showFilters ? "py-4" : "py-3"}>
+          <style>{`
+            .api-key-table-container table {
+              table-layout: auto;
+              min-width: 100%;
+              width: max-content;
+            }
+            .api-key-table-container table td:last-child,
+            .api-key-table-container table th:last-child {
+              position: sticky;
+              right: 0;
+              background: white;
+              z-index: 10;
+              box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+            }
+            .api-key-table-container table td,
+            .api-key-table-container table th {
+              white-space: nowrap;
+            }
+          `}</style>
+          <div className="api-key-table-container overflow-x-auto">
+            <table className="border-collapse">
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">用户ID</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">用户类型</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">显示名称</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">手机号</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">邮箱</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">密钥名称</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">密钥前缀</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">风控等级</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">总调用次数</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">今日调用</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">本月调用</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">成功率</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">平均响应时间</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">最后使用</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">创建时间</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">状态</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">操作</th>
+                </tr>
+              </thead>
+              <tbody>
                 {paginatedApiKeys.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12 text-gray-500">
+                  <tr>
+                    <td colSpan={17} className="px-4 py-8 text-center text-gray-500">
                       暂无API密钥数据
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ) : (
                   paginatedApiKeys.map((key) => (
-                    <TableRow key={key.id}>
-                      <TableCell>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p>{key.userName}</p>
-                            {getUserTypeBadge(key.userType)}
-                          </div>
-                          <p className="text-sm text-gray-500">{key.userEmail}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{key.keyName}</p>
-                          <p className="text-sm text-gray-500 font-mono">{key.keyPrefix}...</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>{getRiskLevelBadge(key.riskLevel)}</TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <p>总计: {key.totalCalls.toLocaleString()}</p>
-                          <p className="text-gray-500">今日: {key.callsToday.toLocaleString()}</p>
-                          <p className="text-blue-600">本月: {key.callsThisMonth.toLocaleString()}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <p className="text-green-600">成功率: {key.successRate}%</p>
-                          <p className="text-gray-500">响应: {key.avgResponseTime}ms</p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {key.lastUsed}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(key.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
+                    <tr key={key.id} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-900">{key.userId}</td>
+                      <td className="px-4 py-3 text-sm">{getUserTypeBadge(key.userType)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{key.userName}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{key.userPhone}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{key.userEmail}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{key.keyName}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 font-mono">{key.keyPrefix}...</td>
+                      <td className="px-4 py-3 text-sm">{getRiskLevelBadge(key.riskLevel)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{key.totalCalls.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{key.callsToday.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{key.callsThisMonth.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-green-600 font-medium">{key.successRate}%</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{key.avgResponseTime}ms</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{key.lastUsed}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{key.createdAt}</td>
+                      <td className="px-4 py-3 text-sm">{getStatusBadge(key.status)}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <div className="flex gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleViewDetail(key)}
+                            className="h-8 px-2"
                           >
-                            <Eye className="w-4 h-4 mr-1" />
-                            详情
+                            查看详情
                           </Button>
                           {key.status === 'active' && (
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleSuspendKey(key)}
+                              className="h-8 px-2 text-orange-600 hover:text-orange-700"
                             >
-                              <Ban className="w-4 h-4 mr-1" />
                               暂停
                             </Button>
                           )}
@@ -322,25 +372,25 @@ export function ApiKeyManagement() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleReactivateKey(key)}
+                              className="h-8 px-2 text-green-600 hover:text-green-700"
                             >
-                              <RefreshCw className="w-4 h-4 mr-1" />
                               恢复
                             </Button>
                           )}
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   ))
                 )}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>
 
           {/* 分页 */}
           {totalPages >= 1 && totalItems > 0 && (
-            <div className="mt-6 flex items-center justify-between">
+            <div className="flex items-center justify-between mt-6">
               <div className="text-sm text-gray-600">
-                共 {totalItems} 条数据，第 {currentPage} / {totalPages} 页
+                共 {totalItems} 条记录，第 {currentPage} / {totalPages} 页
               </div>
               <Pagination>
                 <PaginationContent>
@@ -387,172 +437,6 @@ export function ApiKeyManagement() {
           )}
         </CardContent>
       </Card>
-
-      {/* API密钥详情对话框 */}
-      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Key className="w-5 h-5" />
-              API密钥详情
-            </DialogTitle>
-            <DialogDescription>查看API密钥的完整信息和使用统计</DialogDescription>
-          </DialogHeader>
-          
-          {selectedApiKey && (
-            <div className="space-y-6">
-              {/* 用户信息 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  用户信息
-                </h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">用户名称</Label>
-                    <p className="mt-1">{selectedApiKey.userName}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">邮箱</Label>
-                    <p className="mt-1">{selectedApiKey.userEmail}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">用户类型</Label>
-                    <div className="mt-1">{getUserTypeBadge(selectedApiKey.userType)}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 密钥信息 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b flex items-center gap-2">
-                  <Key className="w-4 h-4" />
-                  密钥信息
-                </h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">密钥名称</Label>
-                    <p className="mt-1">{selectedApiKey.keyName}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">密钥前缀</Label>
-                    <p className="mt-1 font-mono text-sm">{selectedApiKey.keyPrefix}...</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">创建时间</Label>
-                    <p className="mt-1">{selectedApiKey.createdAt}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">风控等级</Label>
-                    <div className="mt-1">{getRiskLevelBadge(selectedApiKey.riskLevel)}</div>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">当前状态</Label>
-                    <div className="mt-1">{getStatusBadge(selectedApiKey.status)}</div>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">最后使用</Label>
-                    <p className="mt-1 text-sm">{selectedApiKey.lastUsed}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 调用统计 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b flex items-center gap-2">
-                  <Activity className="w-4 h-4" />
-                  调用统计
-                </h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <Label className="text-gray-600">总调用次数</Label>
-                    <p className="text-2xl mt-2 text-blue-700">{selectedApiKey.totalCalls.toLocaleString()}</p>
-                  </div>
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <Label className="text-gray-600">今日调用</Label>
-                    <p className="text-2xl mt-2 text-green-700">{selectedApiKey.callsToday.toLocaleString()}</p>
-                  </div>
-                  <div className="p-4 bg-purple-50 rounded-lg">
-                    <Label className="text-gray-600">本月调用</Label>
-                    <p className="text-2xl mt-2 text-purple-700">{selectedApiKey.callsThisMonth.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 服务质量 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4" />
-                  服务质量监控
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 border rounded-lg">
-                    <Label className="text-gray-600">成功率</Label>
-                    <div className="flex items-baseline gap-2 mt-2">
-                      <span className="text-3xl text-green-600">{selectedApiKey.successRate}%</span>
-                      {selectedApiKey.successRate >= 99 && (
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                      )}
-                    </div>
-                    <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-green-600 h-2 rounded-full"
-                        style={{ width: `${selectedApiKey.successRate}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="p-4 border rounded-lg">
-                    <Label className="text-gray-600">平均响应时间</Label>
-                    <div className="flex items-baseline gap-2 mt-2">
-                      <span className="text-3xl text-blue-600">{selectedApiKey.avgResponseTime}</span>
-                      <span className="text-gray-500">ms</span>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-2">
-                      {selectedApiKey.avgResponseTime < 150 ? '✅ 响应速度优秀' : 
-                       selectedApiKey.avgResponseTime < 200 ? '⚠️ 响应速度正常' : 
-                       '❌ 响应速度较慢'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* MCP服务说明 */}
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-start gap-3">
-                  <Activity className="w-5 h-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="text-blue-900 mb-1">MCP酒店资源服务</p>
-                    <p className="text-sm text-blue-700">
-                      该密钥用于查询酒店资源信息，包括房型、价格、库存等数据。MCP服务不限制调用次数，
-                      但系统会监控异常调用模式以确保服务质量。
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 暂停信息 */}
-              {selectedApiKey.status === 'suspended' && selectedApiKey.suspendedAt && (
-                <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-orange-900 mb-1">密钥已暂停</p>
-                      <p className="text-sm text-orange-700 mb-2">暂停时间: {selectedApiKey.suspendedAt}</p>
-                      <p className="text-sm text-orange-700">暂停原因: {selectedApiKey.suspendReason}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDetailDialog(false)}>
-              关闭
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* 暂停API密钥对话框 */}
       <AlertDialog open={showSuspendDialog} onOpenChange={setShowSuspendDialog}>

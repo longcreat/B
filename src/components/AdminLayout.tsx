@@ -12,6 +12,9 @@ import {
 } from './ui/dropdown-menu';
 import { Badge } from './ui/badge';
 
+// 统一的菜单图标大小配置
+const MENU_ICON_SIZE = 'w-4 h-4';
+
 export type AdminMenuItem = 'review' | 'users' | 'orders' | 'finance' | 'apikeys' | 'pricing';
 export type FinanceSubMenu = 'platform-account' | 'partner-account' | 'business-documents' | 'settlement' | 'reconciliation' | 'withdrawal' | 'invoice';
 export type PartnerAccountSubMenu = 'partner-balance';
@@ -62,6 +65,15 @@ export function AdminLayout({
 }: AdminLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notifications] = useState(3); // 示例：3个未读通知
+
+  // 统一的图标大小配置 - 确保所有菜单层级的图标大小一致
+  const ICON_SIZES = {
+    level1: 'w-5 h-5',      // 一级菜单（资格审核、用户管理、订单管理等）
+    level2: 'w-4 h-4',      // 二级菜单（财务中心下的子菜单）
+    level3: 'w-4 h-4',      // 三级菜单（管控账单、交易记录、结算明细等）
+    level4: 'w-4 h-4',      // 四级菜单（违约扣费记录、订单交易等）- 与三级菜单统一大小
+    chevron: 'w-3 h-3',     // 展开/收起箭头
+  } as const;
   
   // 菜单展开状态管理
   const [financeMenuExpanded, setFinanceMenuExpanded] = useState(false);
@@ -390,7 +402,7 @@ export function AdminLayout({
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onLogout}>
-                  <LogOut className="w-4 h-4 mr-2" />
+                  <LogOut className={`${ICON_SIZES.level2} mr-2`} />
                   退出登录
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -403,7 +415,7 @@ export function AdminLayout({
         {/* 侧边栏 */}
         <aside
           className={`bg-white border-r transition-all duration-300 flex flex-col ${
-            sidebarCollapsed ? 'w-16' : 'w-56'
+            sidebarCollapsed ? 'w-16' : 'w-64'
           }`}
         >
           <div className="sticky top-16 flex flex-col h-[calc(100vh-4rem)]">
@@ -426,7 +438,7 @@ export function AdminLayout({
                             : 'text-gray-700 hover:bg-gray-100'
                         }`}
                       >
-                        <Icon className="w-5 h-5 flex-shrink-0" />
+                        <Icon className={`${ICON_SIZES.level1} flex-shrink-0`} />
                         <span className="flex-1 text-left">{item.label}</span>
                         {item.count > 0 && (
                           <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">
@@ -434,9 +446,9 @@ export function AdminLayout({
                           </Badge>
                         )}
                         {financeMenuExpanded ? (
-                          <ChevronUp className="w-4 h-4 flex-shrink-0" />
+                          <ChevronUp className={`${ICON_SIZES.level2} flex-shrink-0`} />
                         ) : (
-                          <ChevronDown className="w-4 h-4 flex-shrink-0" />
+                          <ChevronDown className={`${ICON_SIZES.level2} flex-shrink-0`} />
                         )}
                       </button>
                       {financeMenuExpanded && isActive && (
@@ -467,7 +479,7 @@ export function AdminLayout({
                                         : 'text-gray-600 hover:bg-gray-50'
                                     }`}
                                   >
-                                    <SubIcon className={`w-4 h-4 flex-shrink-0 ${
+                                    <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0 ${
                                       isSubMenuActive
                                         ? 'text-blue-700'
                                         : isSubActive
@@ -476,7 +488,7 @@ export function AdminLayout({
                                     }`} />
                                     <span className="flex-1 text-left">{subMenu.label}</span>
                                     {partnerAccountMenuExpanded ? (
-                                      <ChevronUp className={`w-3 h-3 flex-shrink-0 ${
+                                      <ChevronUp className={`${ICON_SIZES.chevron} flex-shrink-0 ${
                                         isSubMenuActive
                                           ? 'text-blue-700'
                                           : isSubActive
@@ -484,7 +496,7 @@ export function AdminLayout({
                                           : 'text-gray-600'
                                       }`} />
                                     ) : (
-                                      <ChevronDown className={`w-3 h-3 flex-shrink-0 ${
+                                      <ChevronDown className={`${ICON_SIZES.chevron} flex-shrink-0 ${
                                         isSubMenuActive
                                           ? 'text-blue-700'
                                           : isSubActive
@@ -514,7 +526,7 @@ export function AdminLayout({
                                                 : 'text-gray-600 hover:bg-gray-50'
                                             }`}
                                           >
-                                            <ThirdIcon className={`w-4 h-4 flex-shrink-0 ${
+                                            <ThirdIcon className={`${ICON_SIZES.level3} flex-shrink-0 ${
                                               isThirdActive
                                                 ? 'text-blue-800'
                                                 : 'text-gray-600'
@@ -547,7 +559,7 @@ export function AdminLayout({
                                         : 'text-gray-600 hover:bg-gray-50'
                                     }`}
                                   >
-                                    <SubIcon className={`w-4 h-4 flex-shrink-0 ${
+                                    <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0 ${
                                       isSubMenuActive
                                         ? 'text-blue-700'
                                         : isSubActive
@@ -556,7 +568,7 @@ export function AdminLayout({
                                     }`} />
                                     <span className="flex-1 text-left">{subMenu.label}</span>
                                     {reconciliationMenuExpanded ? (
-                                      <ChevronUp className={`w-3 h-3 flex-shrink-0 ${
+                                      <ChevronUp className={`${ICON_SIZES.chevron} flex-shrink-0 ${
                                         isSubMenuActive
                                           ? 'text-blue-700'
                                           : isSubActive
@@ -564,7 +576,7 @@ export function AdminLayout({
                                           : 'text-gray-600'
                                       }`} />
                                     ) : (
-                                      <ChevronDown className={`w-3 h-3 flex-shrink-0 ${
+                                      <ChevronDown className={`${ICON_SIZES.chevron} flex-shrink-0 ${
                                         isSubMenuActive
                                           ? 'text-blue-700'
                                           : isSubActive
@@ -594,7 +606,7 @@ export function AdminLayout({
                                                 : 'text-gray-600 hover:bg-gray-50'
                                             }`}
                                           >
-                                            <ThirdIcon className={`w-4 h-4 flex-shrink-0 ${
+                                            <ThirdIcon className={`${ICON_SIZES.level3} flex-shrink-0 ${
                                               isThirdActive
                                                 ? 'text-blue-800'
                                                 : 'text-gray-600'
@@ -627,7 +639,7 @@ export function AdminLayout({
                                         : 'text-gray-600 hover:bg-gray-50'
                                     }`}
                                   >
-                                    <SubIcon className={`w-4 h-4 flex-shrink-0 ${
+                                    <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0 ${
                                       isSubMenuActive
                                         ? 'text-blue-700'
                                         : isSubActive
@@ -636,7 +648,7 @@ export function AdminLayout({
                                     }`} />
                                     <span className="flex-1 text-left">{subMenu.label}</span>
                                     {settlementMenuExpanded ? (
-                                      <ChevronUp className={`w-3 h-3 flex-shrink-0 ${
+                                      <ChevronUp className={`${ICON_SIZES.chevron} flex-shrink-0 ${
                                         isSubMenuActive
                                           ? 'text-blue-700'
                                           : isSubActive
@@ -644,7 +656,7 @@ export function AdminLayout({
                                           : 'text-gray-600'
                                       }`} />
                                     ) : (
-                                      <ChevronDown className={`w-3 h-3 flex-shrink-0 ${
+                                      <ChevronDown className={`${ICON_SIZES.chevron} flex-shrink-0 ${
                                         isSubMenuActive
                                           ? 'text-blue-700'
                                           : isSubActive
@@ -674,7 +686,7 @@ export function AdminLayout({
                                                 : 'text-gray-600 hover:bg-gray-50'
                                             }`}
                                           >
-                                            <ThirdIcon className={`w-4 h-4 flex-shrink-0 ${
+                                            <ThirdIcon className={`${ICON_SIZES.level3} flex-shrink-0 ${
                                               isThirdActive
                                                 ? 'text-blue-800'
                                                 : 'text-gray-600'
@@ -707,7 +719,7 @@ export function AdminLayout({
                                         : 'text-gray-600 hover:bg-gray-50'
                                     }`}
                                   >
-                                    <SubIcon className={`w-4 h-4 flex-shrink-0 ${
+                                    <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0 ${
                                       isSubMenuActive
                                         ? 'text-blue-700'
                                         : isSubActive
@@ -716,7 +728,7 @@ export function AdminLayout({
                                     }`} />
                                     <span className="flex-1 text-left">{subMenu.label}</span>
                                     {businessDocumentsMenuExpanded ? (
-                                      <ChevronUp className={`w-3 h-3 flex-shrink-0 ${
+                                      <ChevronUp className={`${ICON_SIZES.chevron} flex-shrink-0 ${
                                         isSubMenuActive
                                           ? 'text-blue-700'
                                           : isSubActive
@@ -724,7 +736,7 @@ export function AdminLayout({
                                           : 'text-gray-600'
                                       }`} />
                                     ) : (
-                                      <ChevronDown className={`w-3 h-3 flex-shrink-0 ${
+                                      <ChevronDown className={`${ICON_SIZES.chevron} flex-shrink-0 ${
                                         isSubMenuActive
                                           ? 'text-blue-700'
                                           : isSubActive
@@ -736,7 +748,7 @@ export function AdminLayout({
                                   
                                   {/* 三级菜单（管控账单、交易记录、结算明细） */}
                                   {businessDocumentsMenuExpanded && (
-                                    <div className="ml-6 space-y-1">
+                                    <div className="ml-4 space-y-1">
                                       {businessDocumentsThirdMenus.map((thirdMenu) => {
                                         const ThirdIcon = thirdMenu.icon;
                                         const hasFourthMenuActive = thirdMenu.subMenus.some(sub => currentBusinessDocumentsSubMenu === sub);
@@ -767,24 +779,24 @@ export function AdminLayout({
                                                   : 'text-gray-600 hover:bg-gray-50'
                                               }`}
                                             >
-                                              <ThirdIcon className={`w-4 h-4 flex-shrink-0 ${
+                                              <ThirdIcon className={`${ICON_SIZES.level3} flex-shrink-0 ${
                                                 isThirdMenuActive
                                                   ? 'text-blue-700'
                                                   : 'text-gray-600'
                                               }`} />
-                                              <span className="flex-1 text-left">{thirdMenu.label}</span>
+                                              <span className="flex-1 text-left truncate">{thirdMenu.label}</span>
                                               {thirdMenu.subMenus.length > 1 && (
                                                 hasFourthMenuActive ? (
-                                                  <ChevronUp className="w-3 h-3 flex-shrink-0" />
+                                                  <ChevronUp className={`${ICON_SIZES.chevron} flex-shrink-0`} />
                                                 ) : (
-                                                  <ChevronDown className="w-3 h-3 flex-shrink-0" />
+                                                  <ChevronDown className={`${ICON_SIZES.chevron} flex-shrink-0`} />
                                                 )
                                               )}
                                             </button>
                                             
                                             {/* 四级菜单 */}
                                             {thirdMenu.subMenus.length > 0 && (
-                                              <div className="ml-6 space-y-1">
+                                              <div className="ml-4 space-y-1">
                                                 {thirdMenu.subMenus.map((fourthMenuId) => {
                                                   const fourthMenu = businessDocumentsSubMenus.find(m => m.id === fourthMenuId);
                                                   if (!fourthMenu) return null;
@@ -800,18 +812,18 @@ export function AdminLayout({
                                                         e.stopPropagation();
                                                         handleBusinessDocumentsThirdMenuClick(fourthMenuId);
                                                       }}
-                                                      className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${
+                                                      className={`flex items-center rounded-lg transition-colors w-full gap-2 px-2 py-1.5 text-sm ${
                                                         isFourthActive
                                                           ? 'bg-blue-200 text-blue-800 font-medium'
                                                           : 'text-gray-600 hover:bg-gray-50'
                                                       }`}
                                                     >
-                                                      <FourthIcon className={`w-4 h-4 flex-shrink-0 ${
+                                                      <FourthIcon className={`${ICON_SIZES.level4} flex-shrink-0 ${
                                                         isFourthActive
                                                           ? 'text-blue-800'
                                                           : 'text-gray-600'
                                                       }`} />
-                                                      <span className="flex-1 text-left">{fourthMenu.label}</span>
+                                                      <span className="flex-1 text-left truncate">{fourthMenu.label}</span>
                                                     </button>
                                                   );
                                                 })}
@@ -837,7 +849,7 @@ export function AdminLayout({
                                     : 'text-gray-600 hover:bg-gray-50'
                                 }`}
                               >
-                                <SubIcon className="w-4 h-4 flex-shrink-0" />
+                                <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0`} />
                                 <span className="flex-1 text-left">{subMenu.label}</span>
                               </button>
                             );
@@ -863,7 +875,7 @@ export function AdminLayout({
                         : 'text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    <Icon className={`${ICON_SIZES.level1} flex-shrink-0`} />
                     {!sidebarCollapsed && (
                       <>
                         <span className="flex-1 text-left">{item.label}</span>
@@ -888,10 +900,10 @@ export function AdminLayout({
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               >
                 {sidebarCollapsed ? (
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className={`${ICON_SIZES.level2}`} />
                 ) : (
                   <>
-                    <ChevronLeft className="w-4 h-4 mr-2" />
+                    <ChevronLeft className={`${ICON_SIZES.level2} mr-2`} />
                     收起
                   </>
                 )}

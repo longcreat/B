@@ -2,14 +2,30 @@ import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Code, Globe, Share2 } from 'lucide-react';
 import React from 'react';
-type BusinessModel = 'mcp' | 'saas' | 'affiliate';
+import type { IdentityType } from './IdentityTypeSelection';
+
+export type BusinessModel = 'mcp' | 'saas' | 'affiliate';
+
+// 身份类型与业务模式的映射关系
+const identityBusinessModelMap: Record<IdentityType, BusinessModel[]> = {
+  developer: ['mcp', 'affiliate'], // 独立开发者：MCP、Affiliate
+  influencer: ['saas', 'affiliate'], // 旅行达人：SaaS、Affiliate
+  enterprise: ['mcp', 'saas', 'affiliate'], // 旅行相关企业：全部
+  agent: ['saas', 'affiliate'], // 个人旅行代理：SaaS、Affiliate
+};
 
 interface BusinessModelSelectionProps {
   onSelect: (model: BusinessModel) => void;
   selectedModel?: BusinessModel | null;
+  identityType?: IdentityType | null; // 新增：身份类型，用于过滤业务模式
 }
 
-export function BusinessModelSelection({ onSelect, selectedModel }: BusinessModelSelectionProps) {
+export function BusinessModelSelection({ onSelect, selectedModel, identityType }: BusinessModelSelectionProps) {
+  // 根据身份类型过滤可用的业务模式
+  const availableModels = identityType 
+    ? identityBusinessModelMap[identityType] 
+    : ['mcp', 'saas', 'affiliate'] as BusinessModel[];
+
   const businessModels = [
     {
       id: 'mcp' as const,
@@ -37,22 +53,27 @@ export function BusinessModelSelection({ onSelect, selectedModel }: BusinessMode
     },
   ];
 
+  // 过滤出可用的业务模式
+  const filteredModels = businessModels.filter(model => 
+    availableModels.includes(model.id)
+  );
+
   return (
-    <div>
+    <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {businessModels.map((model) => (
+        {filteredModels.map((model) => (
           <Card
             key={model.id}
-            className={`cursor-pointer transition-all border-2 relative group ${
+            className={`cursor-pointer transition-all border relative group ${
               selectedModel === model.id
-                ? 'border-blue-500 bg-blue-50 shadow-xl'
-                : 'hover:shadow-xl hover:border-blue-300'
+                ? 'border-blue-500 bg-blue-50/50 shadow-md'
+                : 'border-gray-200 hover:shadow-md hover:border-blue-300 bg-white'
             }`}
             onClick={() => onSelect(model.id)}
           >
             {model.recommended && (
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                <Badge className="bg-blue-600 hover:bg-blue-700 px-4 py-1">
+                <Badge variant="outline" className="bg-blue-600 text-white border-blue-700 px-4 py-1">
                   推荐
                 </Badge>
               </div>
@@ -60,24 +81,32 @@ export function BusinessModelSelection({ onSelect, selectedModel }: BusinessMode
             
             <CardContent className="p-6">
               <div className="mb-4 flex justify-center">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                  model.recommended ? 'bg-blue-100' : 'bg-gray-100'
-                } group-hover:scale-110 transition-transform`}>
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-colors ${
+                  selectedModel === model.id
+                    ? 'bg-blue-500'
+                    : model.recommended 
+                      ? 'bg-blue-100' 
+                      : 'bg-gray-100'
+                }`}>
                   <model.icon className={`w-8 h-8 ${
-                    model.recommended ? 'text-blue-600' : 'text-gray-600'
+                    selectedModel === model.id
+                      ? 'text-white'
+                      : model.recommended 
+                        ? 'text-blue-600' 
+                        : 'text-gray-600'
                   }`} />
                 </div>
               </div>
 
-              <h3 className="text-center mb-3">{model.title}</h3>
+              <h3 className="text-center mb-3 text-lg font-semibold text-gray-900">{model.title}</h3>
               
-              <p className="text-gray-600 mb-4 min-h-[100px]">
+              <p className="text-gray-600 mb-4 min-h-[100px] text-sm leading-relaxed">
                 {model.description}
               </p>
 
               <div className="pt-4 border-t border-gray-200">
-                <p className="text-gray-500">
-                  <span className="block mb-1">适用人群：</span>
+                <p className="text-gray-500 text-sm">
+                  <span className="block mb-1 font-medium">适用人群：</span>
                   <span className="text-gray-700">{model.targetAudience}</span>
                 </p>
               </div>
@@ -85,8 +114,6 @@ export function BusinessModelSelection({ onSelect, selectedModel }: BusinessMode
           </Card>
         ))}
       </div>
-
-
     </div>
   );
 }

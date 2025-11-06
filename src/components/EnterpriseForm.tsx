@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
@@ -29,12 +30,22 @@ interface EnterpriseFormData {
   bankName: string;
   bankBranch: string;
   accountNumber: string;
+  // MCP业务额外字段
+  techTeamSize?: number;
+  techTeamDescription?: string;
+  companyScale?: string;
+  // SaaS业务额外字段
+  existingBusinessLink?: string;
+  existingBusinessScreenshots?: File[];
+  // Affiliate业务额外字段
+  businessScenario?: string;
 }
 
 interface EnterpriseFormProps {
   onBack: () => void;
   onSubmit?: (data: any) => void;
   initialData?: any;
+  businessModel?: 'mcp' | 'saas' | 'affiliate'; // 业务模式
 }
 
 const STORAGE_KEY = 'enterprise_form_data';
@@ -60,11 +71,12 @@ const BANK_OPTIONS = [
   '北京银行',
 ];
 
-export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData }: EnterpriseFormProps) {
+export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData, businessModel }: EnterpriseFormProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [businessLicense, setBusinessLicense] = useState<File | null>(null);
   const [legalRepIdPhotoFront, setLegalRepIdPhotoFront] = useState<File | null>(null);
   const [legalRepIdPhotoBack, setLegalRepIdPhotoBack] = useState<File | null>(null);
+  const [existingBusinessScreenshots, setExistingBusinessScreenshots] = useState<File[]>(initialData?.existingBusinessScreenshots || []);
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [faceVerified, setFaceVerified] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
@@ -174,6 +186,21 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData }: 
       businessLicense: businessLicense ? URL.createObjectURL(businessLicense) : null,
       legalRepIdPhotoFront: legalRepIdPhotoFront ? URL.createObjectURL(legalRepIdPhotoFront) : null,
       legalRepIdPhotoBack: legalRepIdPhotoBack ? URL.createObjectURL(legalRepIdPhotoBack) : null,
+      // MCP业务额外字段
+      ...(businessModel === 'mcp' ? {
+        techTeamSize: formData.techTeamSize,
+        techTeamDescription: formData.techTeamDescription,
+        companyScale: formData.companyScale,
+      } : {}),
+      // SaaS业务额外字段
+      ...(businessModel === 'saas' ? {
+        existingBusinessLink: formData.existingBusinessLink,
+        existingBusinessScreenshots: existingBusinessScreenshots.map(file => URL.createObjectURL(file)),
+      } : {}),
+      // Affiliate业务额外字段
+      ...(businessModel === 'affiliate' ? {
+        businessScenario: formData.businessScenario,
+      } : {}),
       agreementAccepted: {
         accepted: true,
         timestamp: new Date().toISOString(),
@@ -191,16 +218,15 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData }: 
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle>企业认证</CardTitle>
-            <p className="text-gray-600 mt-2">
-              认证核心：企业主体合法性、业务操作人授权、对公账户有效性
-            </p>
-          </CardHeader>
-          <CardContent>
+    <>
+    <Card className="border-gray-200">
+      <CardHeader className="pb-4 border-b bg-gray-50/50">
+        <CardTitle className="text-lg font-semibold text-gray-900">企业认证</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          认证核心：企业主体合法性、业务操作人授权、对公账户有效性
+        </p>
+      </CardHeader>
+      <CardContent className="pt-6">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
               {/* A. 企业主体信息 */}
               <div>
@@ -483,6 +509,111 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                 </div>
               </div>
 
+              {/* D. 业务模式额外信息 */}
+              {businessModel && (
+                <div>
+                  <h3 className="mb-4 pb-2 border-b">D. 业务模式补充信息（选填）</h3>
+                  
+                  {/* MCP业务额外字段 */}
+                  {businessModel === 'mcp' && (
+                    <div className="space-y-4">
+                      <div>
+                        <Label>技术团队规模</Label>
+                        <Input
+                          type="number"
+                          {...register('techTeamSize', { valueAsNumber: true })}
+                          placeholder="请输入技术团队人数"
+                          className="mt-2"
+                        />
+                      </div>
+                      <div>
+                        <Label>技术团队说明</Label>
+                        <Textarea
+                          {...register('techTeamDescription')}
+                          placeholder="请简要描述技术团队情况，如技术负责人、主要技术栈等"
+                          className="mt-2"
+                          rows={3}
+                        />
+                      </div>
+                      <div>
+                        <Label>企业规模说明</Label>
+                        <Textarea
+                          {...register('companyScale')}
+                          placeholder="请简要描述企业规模，如员工总数、业务范围等"
+                          className="mt-2"
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SaaS业务额外字段 */}
+                  {businessModel === 'saas' && (
+                    <div className="space-y-4">
+                      <div>
+                        <Label>现有业务链接</Label>
+                        <Input
+                          {...register('existingBusinessLink')}
+                          placeholder="网站、APP链接或相关业务链接"
+                          className="mt-2"
+                        />
+                      </div>
+                      <div>
+                        <Label>现有业务截图（最多3张）</Label>
+                        <div className="mt-2">
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/jpg"
+                            multiple
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []).slice(0, 3);
+                              setExistingBusinessScreenshots(files);
+                            }}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                          />
+                          {existingBusinessScreenshots.length > 0 && (
+                            <div className="mt-2 flex gap-2 flex-wrap">
+                              {existingBusinessScreenshots.map((file, index) => (
+                                <div key={index} className="relative">
+                                  <img
+                                    src={URL.createObjectURL(file)}
+                                    alt={`业务截图${index + 1}`}
+                                    className="w-20 h-20 object-cover rounded border"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newScreenshots = existingBusinessScreenshots.filter((_, i) => i !== index);
+                                      setExistingBusinessScreenshots(newScreenshots);
+                                    }}
+                                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Affiliate业务额外字段 */}
+                  {businessModel === 'affiliate' && (
+                    <div>
+                      <Label>业务场景说明</Label>
+                      <Textarea
+                        {...register('businessScenario')}
+                        placeholder="请简要描述B2B分销场景，如目标客户群体、业务模式等"
+                        className="mt-2"
+                        rows={3}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-4 pt-6 border-t">
                 <AgreementCheckbox
                   checked={agreementAccepted}
@@ -509,9 +640,8 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData }: 
             </form>
           </CardContent>
         </Card>
-      </div>
 
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>确认提交</AlertDialogTitle>
@@ -525,6 +655,6 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData }: 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }

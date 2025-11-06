@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -34,12 +35,20 @@ interface IndividualFormData {
   bankCardNumber?: string;
   alipayAccount?: string;
   alipayRealName?: string;
+  // 独立开发者MCP业务额外字段
+  githubAccount?: string;
+  portfolioLink?: string;
+  appScreenshots?: File[];
+  // 个人代理额外字段
+  businessScenario?: string;
 }
 
 interface IndividualFormProps {
   onBack: () => void;
   onSubmit?: (data: any) => void;
   initialData?: any;
+  identityType?: 'developer' | 'agent'; // 身份类型
+  businessModel?: 'mcp' | 'saas' | 'affiliate'; // 业务模式
 }
 
 const STORAGE_KEY = 'individual_form_data';
@@ -65,14 +74,24 @@ const BANK_OPTIONS = [
   '北京银行',
 ];
 
-export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: IndividualFormProps) {
+export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData, identityType, businessModel }: IndividualFormProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [idPhotoFront, setIdPhotoFront] = useState<File | null>(null);
   const [idPhotoBack, setIdPhotoBack] = useState<File | null>(null);
   const [promotionChannels, setPromotionChannels] = useState<string[]>(initialData?.promotionChannels || []);
+  const [appScreenshots, setAppScreenshots] = useState<File[]>(initialData?.appScreenshots || []);
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [faceVerified, setFaceVerified] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
+
+  // 判断是否为独立开发者
+  const isDeveloper = identityType === 'developer';
+  // 判断是否为MCP业务
+  const isMCPBusiness = businessModel === 'mcp';
+  // 判断是否为Affiliate业务
+  const isAffiliateBusiness = businessModel === 'affiliate';
+  // 推广渠道是否必填（个人代理必填，独立开发者可选）
+  const isPromotionChannelsRequired = identityType === 'agent';
 
   const {
     register,
@@ -183,7 +202,8 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
       return;
     }
 
-    if (promotionChannels.length === 0) {
+    // 个人代理必填推广渠道，独立开发者可选
+    if (isPromotionChannelsRequired && promotionChannels.length === 0) {
       toast.error('请至少选择一个主要推广渠道');
       return;
     }
@@ -219,6 +239,16 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
       promotionChannels,
       idPhotoFront: idPhotoFront ? URL.createObjectURL(idPhotoFront) : null,
       idPhotoBack: idPhotoBack ? URL.createObjectURL(idPhotoBack) : null,
+      // 独立开发者MCP业务额外字段
+      ...(isDeveloper && isMCPBusiness ? {
+        githubAccount: formData.githubAccount,
+        portfolioLink: formData.portfolioLink,
+        appScreenshots: appScreenshots.map(file => URL.createObjectURL(file)),
+      } : {}),
+      // 独立开发者Affiliate业务或个人代理额外字段
+      ...((isDeveloper && isAffiliateBusiness) || identityType === 'agent' ? {
+        businessScenario: formData.businessScenario,
+      } : {}),
       agreementAccepted: {
         accepted: true,
         timestamp: new Date().toISOString(),
@@ -236,16 +266,15 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle>个人认证</CardTitle>
-            <p className="text-gray-600 mt-2">
-              认证核心：身份真实性、收款账户有效性
-            </p>
-          </CardHeader>
-          <CardContent>
+    <>
+    <Card className="border-gray-200">
+      <CardHeader className="pb-4 border-b bg-gray-50/50">
+        <CardTitle className="text-lg font-semibold text-gray-900">个人认证</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          认证核心：身份真实性、收款账户有效性
+        </p>
+      </CardHeader>
+      <CardContent className="pt-6">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
               {/* A. 身份信息 */}
               <div>
@@ -382,7 +411,7 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                 <div className="space-y-4">
                   <div>
                     <Label>
-                      主要推广渠道 <span className="text-red-500">*</span>
+                      主要推广渠道 {isPromotionChannelsRequired && <span className="text-red-500">*</span>}
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -475,10 +504,100 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
                         )}
                       </div>
                     </div>
-                    {promotionChannels.length === 0 && (
+                    {isPromotionChannelsRequired && promotionChannels.length === 0 && (
                       <p className="text-red-500 mt-2">请至少选择一个主要推广渠道</p>
                     )}
                   </div>
+
+                  {/* 独立开发者MCP业务额外字段 */}
+                  {isDeveloper && isMCPBusiness && (
+                    <div className="mt-6 space-y-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">技术能力证明（选填）</h4>
+                      
+                      <div>
+                        <Label>GitHub账号</Label>
+                        <Input
+                          {...register('githubAccount')}
+                          placeholder="例如：username"
+                          className="mt-2"
+                        />
+                      </div>
+
+                      <div>
+                        <Label>作品集链接</Label>
+                        <Input
+                          {...register('portfolioLink')}
+                          placeholder="应用/网站/小程序链接"
+                          className="mt-2"
+                        />
+                      </div>
+
+                      <div>
+                        <Label>应用截图（最多3张）</Label>
+                        <div className="mt-2">
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/jpg"
+                            multiple
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []).slice(0, 3);
+                              setAppScreenshots(files);
+                            }}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                          />
+                          {appScreenshots.length > 0 && (
+                            <div className="mt-2 flex gap-2 flex-wrap">
+                              {appScreenshots.map((file, index) => (
+                                <div key={index} className="relative">
+                                  <img
+                                    src={URL.createObjectURL(file)}
+                                    alt={`截图${index + 1}`}
+                                    className="w-20 h-20 object-cover rounded border"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newScreenshots = appScreenshots.filter((_, i) => i !== index);
+                                      setAppScreenshots(newScreenshots);
+                                    }}
+                                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 独立开发者Affiliate业务额外字段 */}
+                  {isDeveloper && isAffiliateBusiness && (
+                    <div className="mt-6">
+                      <Label>业务场景说明（选填）</Label>
+                      <Textarea
+                        {...register('businessScenario')}
+                        placeholder="请简要描述您的业务场景和需求"
+                        className="mt-2"
+                        rows={3}
+                      />
+                    </div>
+                  )}
+
+                  {/* 个人代理额外字段 */}
+                  {identityType === 'agent' && (
+                    <div className="mt-6">
+                      <Label>业务场景说明（选填）</Label>
+                      <Textarea
+                        {...register('businessScenario')}
+                        placeholder="请简要描述您的业务场景和需求"
+                        className="mt-2"
+                        rows={3}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -685,7 +804,6 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
             </form>
           </CardContent>
         </Card>
-      </div>
 
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
@@ -701,6 +819,6 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData }: 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }

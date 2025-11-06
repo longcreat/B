@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Alert, AlertDescription } from './ui/alert';
 import { toast } from 'sonner';
 import { Mail, Phone, Eye, EyeOff, Loader2, Info } from 'lucide-react';
+import { formatDateTime } from '../utils/dateFormat';
 
 interface LoginPageProps {
   onLoginSuccess: (userData: { phone?: string; email?: string; role?: 'admin' | 'user'; name?: string; registeredAt?: string }) => void;
@@ -153,14 +154,14 @@ const initializeTestAccounts = () => {
   const testApplicationsDefinition = [
     // 待审核申请
     {
-      id: 'APP-PENDING-001',
+      id: 'APP-001',
       userId: 'test-pending',
       userEmail: 'pending@test.com',
       applicantName: '张三',
       businessModel: 'mcp',
       identityType: 'individual',
       status: 'pending',
-      submittedAt: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+      submittedAt: formatDateTime(new Date(now.getTime() - 2 * 60 * 60 * 1000)),
       data: {
         realName: '张三',
         idNumber: '110101199001011234',
@@ -174,15 +175,15 @@ const initializeTestAccounts = () => {
     },
     // 审核通过申请 - MCP模式
     {
-      id: 'APP-APPROVED-MCP',
+      id: 'APP-002',
       userId: 'test-approved-mcp',
       userEmail: 'mcp@test.com',
       applicantName: '李四',
       businessModel: 'mcp',
       identityType: 'influencer',
       status: 'approved',
-      submittedAt: new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString(),
-      reviewedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+      submittedAt: formatDateTime(new Date(now.getTime() - 48 * 60 * 60 * 1000)),
+      reviewedAt: formatDateTime(new Date(now.getTime() - 24 * 60 * 60 * 1000)),
       reviewedBy: '系统管理员',
       data: {
         realName: '李四',
@@ -203,15 +204,15 @@ const initializeTestAccounts = () => {
     },
     // 审核通过申请 - SaaS模式
     {
-      id: 'APP-APPROVED-SAAS',
+      id: 'APP-003',
       userId: 'test-approved-saas',
       userEmail: 'saas@test.com',
       applicantName: '赵六',
       businessModel: 'saas',
       identityType: 'individual',
       status: 'approved',
-      submittedAt: new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString(),
-      reviewedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+      submittedAt: formatDateTime(new Date(now.getTime() - 48 * 60 * 60 * 1000)),
+      reviewedAt: formatDateTime(new Date(now.getTime() - 24 * 60 * 60 * 1000)),
       reviewedBy: '系统管理员',
       data: {
         realName: '赵六',
@@ -225,15 +226,15 @@ const initializeTestAccounts = () => {
     },
     // 审核通过申请 - 推广联盟模式
     {
-      id: 'APP-APPROVED-AFFILIATE',
+      id: 'APP-004',
       userId: 'test-approved-affiliate',
       userEmail: 'affiliate@test.com',
       applicantName: '孙七',
       businessModel: 'affiliate',
       identityType: 'influencer',
       status: 'approved',
-      submittedAt: new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString(),
-      reviewedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+      submittedAt: formatDateTime(new Date(now.getTime() - 48 * 60 * 60 * 1000)),
+      reviewedAt: formatDateTime(new Date(now.getTime() - 24 * 60 * 60 * 1000)),
       reviewedBy: '系统管理员',
       data: {
         realName: '孙七',
@@ -250,15 +251,15 @@ const initializeTestAccounts = () => {
     },
     // 已驳回申请
     {
-      id: 'APP-REJECTED-001',
+      id: 'APP-005',
       userId: 'test-rejected',
       userEmail: 'rejected@test.com',
       applicantName: '王五',
       businessModel: 'saas',
       identityType: 'enterprise',
       status: 'rejected',
-      submittedAt: new Date(now.getTime() - 72 * 60 * 60 * 1000).toISOString(),
-      reviewedAt: new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString(),
+      submittedAt: formatDateTime(new Date(now.getTime() - 72 * 60 * 60 * 1000)),
+      reviewedAt: formatDateTime(new Date(now.getTime() - 48 * 60 * 60 * 1000)),
       reviewedBy: '系统管理员',
       rejectionReason: '营业执照图片不清晰，无法核实企业信息。请重新上传高清营业执照照片，确保所有文字信息清晰可见。',
       data: {
