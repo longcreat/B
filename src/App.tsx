@@ -10,6 +10,8 @@ import { UserManagement } from './components/UserManagement';
 import { OrderManagement, type Order } from './components/OrderManagement';
 import { OrderDetail } from './components/OrderDetail';
 import { SettlementCenter } from './components/SettlementCenter';
+import { PlatformAccount } from './components/PlatformAccount';
+import { PartnerAccount } from './components/PartnerAccount';
 import { InvoiceManagement, type Invoice } from './components/InvoiceManagement';
 import { InvoiceDetail } from './components/InvoiceDetail';
 import { WithdrawalManagement, type Withdrawal } from './components/WithdrawalManagement';
@@ -960,14 +962,14 @@ export default function App() {
           // 根据财务中心二级菜单显示不同内容
           switch (adminCurrentFinanceSubMenu) {
             case 'platform-account':
-              return <div className="p-6"><div className="text-lg font-semibold">平台账户</div><div className="text-gray-500 mt-2">平台账户管理功能开发中...</div></div>;
+              return <PlatformAccount />;
             case 'partner-account':
               // 小B账户下的三级菜单
               if (adminCurrentPartnerAccountSubMenu === 'partner-balance') {
                 return <SettlementCenter />;
               }
-              // 如果三级菜单未选中，显示小B账户的占位内容
-              return <div className="p-6"><div className="text-lg font-semibold">小B账户</div><div className="text-gray-500 mt-2">请选择具体的菜单项</div></div>;
+              // 默认显示小B账户列表
+              return <PartnerAccount />;
             case 'settlement':
               // 结算管理下的三级菜单
               if (adminCurrentSettlementSubMenu === 'partner-batches') {

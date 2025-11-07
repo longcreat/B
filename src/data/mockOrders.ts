@@ -6,6 +6,7 @@ export type SettlementStatus = 'pending' | 'ready' | 'processing' | 'completed';
 export interface Order {
   orderId: string;
   hotelName: string;
+  hotelNameEn?: string; // 酒店英文名（可选）
   hotelAddress: string;
   roomType: string;
   checkInDate: string;
@@ -24,7 +25,10 @@ export interface Order {
   partnerType: 'individual' | 'influencer' | 'enterprise';
   
   // 客户信息
-  customerName: string;
+  customerName: string; // 客户姓名（用于显示）
+  guestName?: string; // 入住人姓名（可选，如果没有则使用customerName）
+  adultCount?: number; // 成人数量（可选）
+  childCount?: number; // 儿童数量（可选）
   customerPhone: string;
   
   // 价格体系
@@ -78,6 +82,7 @@ export function getMockOrders(): Order[] {
     {
       orderId: 'ORD-2025001',
       hotelName: '北京希尔顿酒店',
+      hotelNameEn: 'Beijing Hilton Hotel',
       hotelAddress: '北京市朝阳区东三环北路8号',
       roomType: '豪华大床房',
       checkInDate: '2025-10-18',
@@ -91,6 +96,9 @@ export function getMockOrders(): Order[] {
       partnerEmail: 'zhangsan@example.com',
       partnerType: 'individual',
       customerName: '王先生',
+      guestName: '王先生',
+      adultCount: 2,
+      childCount: 0,
       customerPhone: '138****5678',
       p0_supplierCost: 800,
       p1_platformPrice: 880,
@@ -116,6 +124,7 @@ export function getMockOrders(): Order[] {
     {
       orderId: 'ORD-2025002',
       hotelName: '上海浦东香格里拉',
+      hotelNameEn: 'Pudong Shangri-La Shanghai',
       hotelAddress: '上海市浦东新区富城路33号',
       roomType: '行政套房',
       checkInDate: '2025-10-23',
@@ -125,6 +134,9 @@ export function getMockOrders(): Order[] {
       partnerEmail: 'lisi@example.com',
       partnerType: 'enterprise',
       customerName: '刘女士',
+      guestName: '刘女士',
+      adultCount: 1,
+      childCount: 1,
       customerPhone: '139****1234',
       p0_supplierCost: 1200,
       p1_platformPrice: 1320,
@@ -147,6 +159,7 @@ export function getMockOrders(): Order[] {
     {
       orderId: 'ORD-2025003',
       hotelName: '深圳湾万豪酒店',
+      hotelNameEn: 'Shenzhen Bay Marriott Hotel',
       hotelAddress: '深圳市南山区后海滨路3101号',
       roomType: '海景大床房',
       checkInDate: '2025-10-20',
@@ -160,6 +173,9 @@ export function getMockOrders(): Order[] {
       partnerEmail: 'zhangsan@example.com',
       partnerType: 'individual',
       customerName: '赵先生',
+      guestName: '赵先生',
+      adultCount: 2,
+      childCount: 1,
       customerPhone: '136****9876',
       p0_supplierCost: 950,
       p1_platformPrice: 1045,

@@ -27,8 +27,21 @@ import {
   Package,
   Filter,
   ArrowLeft,
+  XCircle,
+  DollarSign,
+  Upload,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
+import { Textarea } from './ui/textarea';
+import { toast } from 'sonner';
 import {
   Pagination,
   PaginationContent,
@@ -66,6 +79,17 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
   const [filterActualAmountMin, setFilterActualAmountMin] = useState('');
   const [filterActualAmountMax, setFilterActualAmountMax] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+
+  // 免费取消对话框状态
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelReason, setCancelReason] = useState<'hotel_agree' | 'free_period' | 'platform_cover' | ''>('');
+  const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<Order | null>(null);
+
+  // 部分退款对话框状态
+  const [showRefundDialog, setShowRefundDialog] = useState(false);
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundProof, setRefundProof] = useState<File | null>(null);
+  const [selectedOrderForRefund, setSelectedOrderForRefund] = useState<Order | null>(null);
 
   // 使用 mock 数据
   const allOrders: Order[] = getMockOrders();
@@ -131,12 +155,77 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
     }
   };
 
+  // 打开免费取消对话框
+  const handleOpenCancelDialog = (order: Order) => {
+    setSelectedOrderForCancel(order);
+    setCancelReason('');
+    setShowCancelDialog(true);
+  };
+
+  // 确认免费取消
+  const handleConfirmCancel = () => {
+    if (!cancelReason) {
+      toast.error('请选择取消原因');
+      return;
+    }
+    if (!selectedOrderForCancel) return;
+
+    // 这里应该调用API更新订单状态
+    toast.success(`订单 ${selectedOrderForCancel.orderId} 已免费取消`);
+    setShowCancelDialog(false);
+    setSelectedOrderForCancel(null);
+    setCancelReason('');
+  };
+
+  // 打开部分退款对话框
+  const handleOpenRefundDialog = (order: Order) => {
+    setSelectedOrderForRefund(order);
+    setRefundAmount('');
+    setRefundProof(null);
+    setShowRefundDialog(true);
+  };
+
+  // 确认部分退款
+  const handleConfirmRefund = () => {
+    if (!refundAmount || parseFloat(refundAmount) <= 0) {
+      toast.error('请输入有效的退款金额');
+      return;
+    }
+    if (!refundProof) {
+      toast.error('请上传退款凭证');
+      return;
+    }
+    if (!selectedOrderForRefund) return;
+
+    const refundValue = parseFloat(refundAmount);
+    if (refundValue > selectedOrderForRefund.p2_salePrice) {
+      toast.error('退款金额不能超过订单金额');
+      return;
+    }
+
+    // 这里应该调用API处理退款
+    toast.success(`订单 ${selectedOrderForRefund.orderId} 部分退款 ¥${refundValue.toFixed(2)} 已提交`);
+    setShowRefundDialog(false);
+    setSelectedOrderForRefund(null);
+    setRefundAmount('');
+    setRefundProof(null);
+  };
+
+  // 处理文件上传
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setRefundProof(file);
+    }
+  };
+
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
       order.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.hotelName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.partnerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(searchQuery.toLowerCase());
+      order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (order.guestName && order.guestName.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesOrderStatus = filterOrderStatus === 'all' || order.orderStatus === filterOrderStatus;
     const matchesSettlementStatus = filterSettlementStatus === 'all' || order.settlementStatus === filterSettlementStatus;
@@ -471,9 +560,10 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                     <TableHead className="min-w-[140px] sticky left-0 bg-white z-10 shadow-[2px_0_4px_rgba(0,0,0,0.05)]">订单号</TableHead>
                     <TableHead className="min-w-[150px]">酒店名称</TableHead>
                     <TableHead className="min-w-[120px]">房型</TableHead>
+                    <TableHead className="min-w-[100px]">入住人姓名</TableHead>
+                    <TableHead className="min-w-[100px]">入住人数</TableHead>
                     <TableHead className="min-w-[120px]">入住日期</TableHead>
                     <TableHead className="min-w-[120px]">离店日期</TableHead>
-                    <TableHead className="min-w-[80px]">晚数</TableHead>
                     <TableHead className="min-w-[150px]">小B商户名称</TableHead>
                     <TableHead className="min-w-[100px]">商户类型</TableHead>
                     <TableHead className="min-w-[180px]">商户邮箱</TableHead>
@@ -488,7 +578,7 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={15} className="text-center py-12 text-gray-500">
+                    <TableCell colSpan={16} className="text-center py-12 text-gray-500">
                       暂无订单数据
                     </TableCell>
                   </TableRow>
@@ -496,11 +586,31 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                   paginatedOrders.map((order) => (
                       <TableRow key={order.orderId}>
                         <TableCell className="font-mono text-sm sticky left-0 bg-white z-10 shadow-[2px_0_4px_rgba(0,0,0,0.05)]">{order.orderId}</TableCell>
-                        <TableCell>{order.hotelName}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{order.hotelName}</span>
+                            {order.hotelNameEn && (
+                              <span className="text-xs text-gray-500">{order.hotelNameEn}</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-gray-600">{order.roomType}</TableCell>
+                        <TableCell>{order.guestName || order.customerName}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {order.adultCount !== undefined && (
+                              <span>{order.adultCount}成人</span>
+                            )}
+                            {order.childCount !== undefined && order.childCount > 0 && (
+                              <span className="ml-1">{order.childCount}儿童</span>
+                            )}
+                            {order.adultCount === undefined && order.childCount === undefined && (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>{order.checkInDate}</TableCell>
                         <TableCell>{order.checkOutDate}</TableCell>
-                        <TableCell className="text-gray-500">{order.nights} 晚</TableCell>
                         <TableCell>{order.partnerName}</TableCell>
                         <TableCell>{getPartnerTypeBadge(order.partnerType)}</TableCell>
                         <TableCell className="text-sm text-gray-500">{order.partnerEmail}</TableCell>
@@ -516,21 +626,61 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                         <TableCell>{getOrderStatusBadge(order.orderStatus)}</TableCell>
                         <TableCell>{getSettlementStatusBadge(order.settlementStatus)}</TableCell>
                         <TableCell className="text-right sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => handleViewOrderDetail(order)}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>查看详情</p>
-                            </TooltipContent>
-                          </Tooltip>
+                          <div className="flex items-center justify-end gap-2">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleViewOrderDetail(order)}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>查看详情</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            
+                            {/* 免费取消按钮 */}
+                            {(order.orderStatus === 'confirmed' || order.orderStatus === 'pending_confirm') && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    onClick={() => handleOpenCancelDialog(order)}
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>免费取消</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            
+                            {/* 部分退款按钮 */}
+                            {(order.orderStatus === 'completed' || order.orderStatus === 'completed_settleable') && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                    onClick={() => handleOpenRefundDialog(order)}
+                                  >
+                                    <DollarSign className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>部分退款</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -590,6 +740,104 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
           )}
         </CardContent>
       </Card>
+
+      {/* 免费取消对话框 */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>免费取消预订</DialogTitle>
+            <DialogDescription>
+              订单号: {selectedOrderForCancel?.orderId}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="cancel-reason">取消原因 *</Label>
+              <Select value={cancelReason} onValueChange={(value: any) => setCancelReason(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择取消原因" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hotel_agree">酒店同意免费取消</SelectItem>
+                  <SelectItem value="free_period">在免费取消时间内</SelectItem>
+                  <SelectItem value="platform_cover">平台兜底</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <p className="text-sm text-yellow-800">
+                <strong>注意：</strong>免费取消后，订单将无法恢复，请确认操作。
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+              取消
+            </Button>
+            <Button onClick={handleConfirmCancel} className="bg-red-600 hover:bg-red-700">
+              确认取消订单
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 部分退款对话框 */}
+      <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>部分退款</DialogTitle>
+            <DialogDescription>
+              订单号: {selectedOrderForRefund?.orderId} | 订单金额: ¥{selectedOrderForRefund?.p2_salePrice.toFixed(2)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="refund-amount">退款金额 *</Label>
+              <Input
+                id="refund-amount"
+                type="number"
+                placeholder="请输入退款金额"
+                value={refundAmount}
+                onChange={(e) => setRefundAmount(e.target.value)}
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="refund-proof">上传凭证 *</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="refund-proof"
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={handleFileChange}
+                  className="flex-1"
+                />
+                {refundProof && (
+                  <div className="flex items-center gap-1 text-sm text-green-600">
+                    <Upload className="w-4 h-4" />
+                    <span>{refundProof.name}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">支持图片或PDF格式</p>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                <strong>说明：</strong>退款后，订单底价和订单金额将按比例调整。
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRefundDialog(false)}>
+              取消
+            </Button>
+            <Button onClick={handleConfirmRefund} className="bg-orange-600 hover:bg-orange-700">
+              确认退款
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
