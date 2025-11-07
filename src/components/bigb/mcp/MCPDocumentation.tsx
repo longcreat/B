@@ -1,7 +1,9 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../ui/card';
+import { Button } from '../../ui/button';
+import { Badge } from '../../ui/badge';
 import { ExternalLink, BookOpen, FileText, Code, HelpCircle, Mail, MessageCircle } from 'lucide-react';
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from '../../ui/breadcrumb';
 
 export function MCPDocumentation() {
   const docLinks = [
@@ -32,12 +34,15 @@ export function MCPDocumentation() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* 页面标题 */}
-      <div>
-        <h2 className="text-2xl font-bold mb-2">文档与支持</h2>
-        <p className="text-gray-600">获取技术文档、查看服务信息、联系技术支持</p>
-      </div>
+    <div className="space-y-6 p-6">
+      {/* 面包屑导航 */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbPage>文档与支持</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       {/* 1. 集成文档入口 */}
       <Card>

@@ -34,17 +34,23 @@ interface EnterpriseFormData {
   techTeamSize?: number;
   techTeamDescription?: string;
   companyScale?: string;
+  applicationLink?: string;
+  applicationScreenshots?: File[];
   // SaaS业务额外字段
   existingBusinessLink?: string;
   existingBusinessScreenshots?: File[];
   // Affiliate业务额外字段
   businessScenario?: string;
+  // 旅行代理业务证明材料（必填）
+  businessProofMaterials?: File[];
 }
 
 interface EnterpriseFormProps {
   onBack: () => void;
   onSubmit?: (data: any) => void;
   initialData?: any;
+  userType?: 'travel_agent' | 'influencer' | 'travel_app'; // 用户信息类型
+  certificationType?: 'individual' | 'enterprise'; // 认证方式
   businessModel?: 'mcp' | 'saas' | 'affiliate'; // 业务模式
 }
 
@@ -71,15 +77,20 @@ const BANK_OPTIONS = [
   '北京银行',
 ];
 
-export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData, businessModel }: EnterpriseFormProps) {
+export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData, userType, certificationType, businessModel }: EnterpriseFormProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [businessLicense, setBusinessLicense] = useState<File | null>(null);
   const [legalRepIdPhotoFront, setLegalRepIdPhotoFront] = useState<File | null>(null);
   const [legalRepIdPhotoBack, setLegalRepIdPhotoBack] = useState<File | null>(null);
   const [existingBusinessScreenshots, setExistingBusinessScreenshots] = useState<File[]>(initialData?.existingBusinessScreenshots || []);
+  const [businessProofMaterials, setBusinessProofMaterials] = useState<File[]>(initialData?.businessProofMaterials || []);
+  const [applicationScreenshots, setApplicationScreenshots] = useState<File[]>(initialData?.applicationScreenshots || []);
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [faceVerified, setFaceVerified] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
+  
+  // 判断是否为旅行代理
+  const isTravelAgent = userType === 'travel_agent';
 
   const {
     register,
@@ -176,6 +187,12 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData, bu
       return;
     }
 
+    // 旅行代理必填业务证明材料
+    if (isTravelAgent && businessProofMaterials.length === 0) {
+      toast.error('请上传业务证明材料');
+      return;
+    }
+
     setShowConfirmDialog(true);
   };
 
@@ -191,11 +208,19 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData, bu
         techTeamSize: formData.techTeamSize,
         techTeamDescription: formData.techTeamDescription,
         companyScale: formData.companyScale,
+        applicationLink: formData.applicationLink,
+        ...(applicationScreenshots.length > 0 ? {
+          applicationScreenshots: applicationScreenshots.map(file => URL.createObjectURL(file)),
+        } : {}),
       } : {}),
       // SaaS业务额外字段
       ...(businessModel === 'saas' ? {
         existingBusinessLink: formData.existingBusinessLink,
         existingBusinessScreenshots: existingBusinessScreenshots.map(file => URL.createObjectURL(file)),
+      } : {}),
+      // 旅行代理业务证明材料
+      ...(isTravelAgent && businessProofMaterials.length > 0 ? {
+        businessProofMaterials: businessProofMaterials.map(file => URL.createObjectURL(file)),
       } : {}),
       // Affiliate业务额外字段
       ...(businessModel === 'affiliate' ? {
@@ -544,6 +569,52 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData, bu
                           rows={2}
                         />
                       </div>
+                      <div>
+                        <Label>应用链接</Label>
+                        <Input
+                          {...register('applicationLink')}
+                          placeholder="应用截图、官网链接"
+                          className="mt-2"
+                        />
+                      </div>
+                      <div>
+                        <Label>应用截图（最多3张）</Label>
+                        <div className="mt-2">
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/jpg"
+                            multiple
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []).slice(0, 3);
+                              setApplicationScreenshots(files);
+                            }}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                          />
+                          {applicationScreenshots.length > 0 && (
+                            <div className="mt-2 flex gap-2 flex-wrap">
+                              {applicationScreenshots.map((file, index) => (
+                                <div key={index} className="relative">
+                                  <img
+                                    src={URL.createObjectURL(file)}
+                                    alt={`应用截图${index + 1}`}
+                                    className="w-20 h-20 object-cover rounded border"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newScreenshots = applicationScreenshots.filter((_, i) => i !== index);
+                                      setApplicationScreenshots(newScreenshots);
+                                    }}
+                                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -599,13 +670,75 @@ export function EnterpriseForm({ onBack, onSubmit: onSubmitProp, initialData, bu
                     </div>
                   )}
 
+                  {/* 旅行代理业务证明材料（必填） */}
+                  {isTravelAgent && (
+                    <div className="mt-6">
+                      <h3 className="mb-4 pb-2 border-b">业务证明（必填）</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>
+                            业务证明材料 <span className="text-red-500">*</span>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <HelpCircle className="w-4 h-4 inline ml-1 text-gray-400 cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>旅行社经营许可证、从事旅游订酒店业务的材料，最多5张，JPG/PNG，≤5MB</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </Label>
+                          <div className="mt-2">
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/jpg"
+                              multiple
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files || []).slice(0, 5);
+                                setBusinessProofMaterials(files);
+                              }}
+                              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                            />
+                            {businessProofMaterials.length > 0 && (
+                              <div className="mt-2 flex gap-2 flex-wrap">
+                                {businessProofMaterials.map((file, index) => (
+                                  <div key={index} className="relative">
+                                    <img
+                                      src={URL.createObjectURL(file)}
+                                      alt={`业务证明${index + 1}`}
+                                      className="w-20 h-20 object-cover rounded border"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newMaterials = businessProofMaterials.filter((_, i) => i !== index);
+                                        setBusinessProofMaterials(newMaterials);
+                                      }}
+                                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          {businessProofMaterials.length === 0 && (
+                            <p className="text-red-500 mt-1">请上传业务证明材料</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Affiliate业务额外字段 */}
                   {businessModel === 'affiliate' && (
                     <div>
-                      <Label>业务场景说明</Label>
+                      <Label>业务场景说明（选填）</Label>
                       <Textarea
                         {...register('businessScenario')}
-                        placeholder="请简要描述B2B分销场景，如目标客户群体、业务模式等"
+                        placeholder={isTravelAgent ? "预订场景描述" : "B2B分销场景描述"}
                         className="mt-2"
                         rows={3}
                       />

@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { toast } from 'sonner';
-import { CreditCard, DollarSign, Calendar, Download, Wallet } from 'lucide-react';
+import { CreditCard, DollarSign, Calendar, Download, Wallet, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from '../ui/breadcrumb';
 
 interface SettlementRecord {
   id: string;
@@ -21,6 +23,7 @@ const settlementRecords: SettlementRecord[] = [
 
 export function AffiliateSettlement() {
   const [records] = useState<SettlementRecord[]>(settlementRecords);
+  const [isRulesOpen, setIsRulesOpen] = useState(false);
 
   const pendingCommission = records
     .filter(r => r.status === 'pending')
@@ -50,12 +53,15 @@ export function AffiliateSettlement() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* 页面标题 */}
-      <div>
-        <h2 className="text-2xl font-bold mb-2">结算管理</h2>
-        <p className="text-gray-600">查看佣金收益和结算记录</p>
-      </div>
+    <div className="space-y-6 p-6">
+      {/* 面包屑导航 */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbPage>结算管理</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       {/* 佣金概览 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -168,12 +174,26 @@ export function AffiliateSettlement() {
         </CardContent>
       </Card>
 
-      {/* 结算说明 */}
-      <Card className="border-blue-200 bg-blue-50">
-        <CardHeader>
-          <CardTitle className="text-blue-900">结算规则</CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* 结算说明 - 可折叠 */}
+      <Collapsible open={isRulesOpen} onOpenChange={setIsRulesOpen}>
+        <Card className="border-blue-200 bg-blue-50">
+          <CollapsibleTrigger asChild>
+            <CardContent className="py-4 cursor-pointer hover:bg-blue-100/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Info className="w-5 h-5 text-blue-600" />
+                  <span className="text-blue-900 font-medium">结算规则</span>
+                </div>
+                {isRulesOpen ? (
+                  <ChevronUp className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-blue-600" />
+                )}
+              </div>
+            </CardContent>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 pb-6">
           <div className="space-y-3 text-sm text-blue-800">
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
@@ -212,8 +232,10 @@ export function AffiliateSettlement() {
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* 收款账户信息 */}
       <Card>

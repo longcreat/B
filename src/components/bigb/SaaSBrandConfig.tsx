@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -21,9 +21,14 @@ import {
   Plus,
   Trash2,
   Edit,
-  ChevronsUpDown
+  ChevronsUpDown,
+  Image,
+  ChevronDown,
+  ChevronUp,
+  Info
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -40,6 +45,12 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { ScrollArea } from '../ui/scroll-area';
+
+// 导入预览图片
+import headerPreview from '../../image/header.png';
+import backgroundPreview from '../../image/background.png';
+import titlePreview from '../../image/title.png';
+import specialPreview from '../../image/special.png';
 
 interface FeatureItem {
   id: string;
@@ -89,6 +100,7 @@ export function SaaSBrandConfig() {
   });
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isTipOpen, setIsTipOpen] = useState(false);
   const [featureLibrary, setFeatureLibrary] = useState<FeatureItem[]>(defaultFeatureLibrary);
   const [showFeatureDialog, setShowFeatureDialog] = useState(false);
   const [editingFeature, setEditingFeature] = useState<FeatureItem | null>(null);
@@ -243,9 +255,8 @@ export function SaaSBrandConfig() {
   const defaultCopyright = `© ${currentYear} ${config.storeName} All rights reserved.`;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* 面包屑导航 */}
-      <div className="flex items-center justify-between">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -254,6 +265,7 @@ export function SaaSBrandConfig() {
           </BreadcrumbList>
         </Breadcrumb>
         
+      <div className="flex items-center justify-end">
         <div className="flex items-center gap-3">
           {hasUnsavedChanges && (
             <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
@@ -271,20 +283,33 @@ export function SaaSBrandConfig() {
         </div>
       </div>
 
-      {/* 提示信息 */}
-      <Card className="border-blue-200 bg-blue-50">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-900">
-              <p className="font-medium mb-1">打造您的专属品牌预订站</p>
-              <p className="text-blue-800">
+      {/* 提示信息 - 可折叠 */}
+      <Collapsible open={isTipOpen} onOpenChange={setIsTipOpen}>
+        <Card className="border-blue-200 bg-blue-50">
+          <CollapsibleTrigger asChild>
+            <CardContent className="py-4 cursor-pointer hover:bg-blue-100/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-5 h-5 text-blue-600" />
+                  <span className="text-blue-900 font-medium">打造您的专属品牌预订站</span>
+                </div>
+                {isTipOpen ? (
+                  <ChevronUp className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-blue-600" />
+                )}
+              </div>
+            </CardContent>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 pb-6">
+              <p className="text-sm text-blue-800">
                 无需任何技术背景，通过简单配置即可拥有专业的在线预订门户。所有修改将实时同步到您的H5页面。
               </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* A. 品牌与身份 */}
       <Card>
@@ -309,6 +334,18 @@ export function SaaSBrandConfig() {
                     <p className="max-w-xs text-xs">
                       建议上传透明背景的PNG格式图片，尺寸128x128px。将显示在页面顶部作为您的品牌标识。
                     </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="text-blue-600 hover:text-blue-700 transition-colors">
+                      <Image className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="p-0 border-0 bg-transparent shadow-none">
+                    <img src={headerPreview} alt="Logo预览" className="w-96 h-auto rounded-lg shadow-xl border border-gray-200" />
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -466,6 +503,18 @@ export function SaaSBrandConfig() {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="text-blue-600 hover:text-blue-700 transition-colors">
+                      <Image className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="p-0 border-0 bg-transparent shadow-none">
+                    <img src={backgroundPreview} alt="主宣传图预览" className="w-96 h-auto rounded-lg shadow-xl border border-gray-200" />
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <div className="space-y-3">
               <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
@@ -501,6 +550,18 @@ export function SaaSBrandConfig() {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="text-blue-600 hover:text-blue-700 transition-colors">
+                      <Image className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="p-0 border-0 bg-transparent shadow-none">
+                    <img src={titlePreview} alt="标题预览" className="w-96 h-auto rounded-lg shadow-xl border border-gray-200" />
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <Input
               id="mainTitle"
@@ -523,6 +584,18 @@ export function SaaSBrandConfig() {
                     <p className="max-w-xs text-xs">
                       显示在主标题下方的副标题，用于补充说明或展示品牌理念。
                     </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="text-blue-600 hover:text-blue-700 transition-colors">
+                      <Image className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="p-0 border-0 bg-transparent shadow-none">
+                    <img src={titlePreview} alt="标题预览" className="w-96 h-auto rounded-lg shadow-xl border border-gray-200" />
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -552,6 +625,18 @@ export function SaaSBrandConfig() {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button className="text-blue-600 hover:text-blue-700 transition-colors">
+                        <Image className="w-4 h-4" />
+                      </button>
+                    </TooltipTrigger>
+                  <TooltipContent side="right" className="p-0 border-0 bg-transparent shadow-none">
+                    <img src={specialPreview} alt="特色内容预览" className="w-96 h-auto rounded-lg shadow-xl border border-gray-200" />
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               </div>
               <Button variant="outline" size="sm" onClick={openAddFeatureDialog}>
                 <Plus className="w-4 h-4 mr-2" />

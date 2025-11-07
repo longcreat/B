@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Check, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { BusinessModelSelection } from './BusinessModelSelection';
-import { IdentityTypeSelection, type IdentityType } from './IdentityTypeSelection';
+import { IdentityTypeSelection, type UserType } from './IdentityTypeSelection';
+import { CertificationTypeSelection, type CertificationType } from './CertificationTypeSelection';
 import { IndividualForm } from './IndividualForm';
 import { InfluencerForm } from './InfluencerForm';
 import { EnterpriseForm } from './EnterpriseForm';
@@ -21,15 +22,19 @@ interface ApplicationData {
   rejectionReason?: string;
   data?: any; // 原有的表单数据
   businessModel?: BusinessModel;
-  identityType?: IdentityType | 'individual'; // 兼容旧类型
+  userType?: UserType; // 用户信息类型
+  certificationType?: CertificationType; // 认证方式
+  identityType?: string; // 兼容旧类型
 }
 
 interface RegistrationStepsProps {
   onSubmit: (data: any) => void;
   initialBusinessModel?: BusinessModel | null;
-  initialIdentityType?: IdentityType | null;
+  initialUserType?: UserType | null;
+  initialCertificationType?: CertificationType | null;
   onBusinessModelChange?: (model: BusinessModel) => void;
-  onIdentityTypeChange?: (identity: IdentityType) => void;
+  onUserTypeChange?: (userType: UserType) => void;
+  onCertificationTypeChange?: (certType: CertificationType) => void;
   existingApplicationId?: string | null;
   applicationData?: ApplicationData | null;
   onGoToDashboard?: () => void;
@@ -39,18 +44,21 @@ interface RegistrationStepsProps {
 export function RegistrationSteps({
   onSubmit,
   initialBusinessModel = null,
-  initialIdentityType = null,
+  initialUserType = null,
+  initialCertificationType = null,
   onBusinessModelChange,
-  onIdentityTypeChange,
+  onUserTypeChange,
+  onCertificationTypeChange,
   existingApplicationId = null,
   applicationData = null,
   onGoToDashboard,
   onReapply,
 }: RegistrationStepsProps) {
-  // 新流程：身份类型 → 业务模式 → 表单 → 状态
-  // 如果有现有申请，直接显示申请状态；否则从身份类型选择开始
-  const [currentStep, setCurrentStep] = useState(existingApplicationId ? 'status' : 'identity');
-  const [selectedIdentityType, setSelectedIdentityType] = useState<IdentityType | null>(initialIdentityType);
+  // 新流程：用户信息类型 → 认证方式 → 业务模式 → 表单 → 状态
+  // 如果有现有申请，直接显示申请状态；否则从用户信息类型选择开始
+  const [currentStep, setCurrentStep] = useState(existingApplicationId ? 'status' : 'userType');
+  const [selectedUserType, setSelectedUserType] = useState<UserType | null>(initialUserType);
+  const [selectedCertificationType, setSelectedCertificationType] = useState<CertificationType | null>(initialCertificationType);
   const [selectedBusinessModel, setSelectedBusinessModel] = useState<BusinessModel | null>(initialBusinessModel);
   // 是否为修改信息模式（驳回后选择修改信息）
   const [isEditMode, setIsEditMode] = useState(false);
@@ -73,11 +81,11 @@ export function RegistrationSteps({
         // 非驳回状态：显示状态页
         setCurrentStep('status');
         // 从申请数据恢复选择的状态
-        if (applicationData.identityType) {
-          // 兼容旧的身份类型
-          const identityType = applicationData.identityType === 'individual' ? 'developer' : 
-                              applicationData.identityType as IdentityType;
-          setSelectedIdentityType(identityType);
+        if (applicationData.userType) {
+          setSelectedUserType(applicationData.userType);
+        }
+        if (applicationData.certificationType) {
+          setSelectedCertificationType(applicationData.certificationType);
         }
         if (applicationData.businessModel) {
           setSelectedBusinessModel(applicationData.businessModel);
@@ -85,19 +93,27 @@ export function RegistrationSteps({
       }
       // 驳回状态但非编辑模式：保持在状态页（用户可以点击重新申请）
     } else if (!existingApplicationId && !applicationData) {
-      // 没有申请ID和数据（首次访问），从身份类型选择开始
-      setCurrentStep('identity');
+      // 没有申请ID和数据（首次访问），从用户信息类型选择开始
+      setCurrentStep('userType');
       setIsEditMode(false); // 重置编辑模式
       setIsReapplying(false); // 重置重新申请模式
     }
   }, [existingApplicationId, applicationData, isEditMode, isReapplying]);
 
-  const handleIdentitySelect = (identity: IdentityType) => {
-    setSelectedIdentityType(identity);
-    onIdentityTypeChange?.(identity);
-    setSelectedBusinessModel(null); // 切换身份类型时清空业务模式选择
-    setIsEditMode(false); // 切换身份类型时退出编辑模式
-    // 如果处于重新申请模式，保持重新申请模式
+  const handleUserTypeSelect = (userType: UserType) => {
+    setSelectedUserType(userType);
+    onUserTypeChange?.(userType);
+    setSelectedCertificationType(null); // 切换用户类型时清空认证方式选择
+    setSelectedBusinessModel(null); // 切换用户类型时清空业务模式选择
+    setIsEditMode(false); // 切换用户类型时退出编辑模式
+    setCurrentStep('certification');
+  };
+
+  const handleCertificationTypeSelect = (certType: CertificationType) => {
+    setSelectedCertificationType(certType);
+    onCertificationTypeChange?.(certType);
+    setSelectedBusinessModel(null); // 切换认证方式时清空业务模式选择
+    setIsEditMode(false); // 切换认证方式时退出编辑模式
     setCurrentStep('business');
   };
 
@@ -105,33 +121,36 @@ export function RegistrationSteps({
     setSelectedBusinessModel(model);
     onBusinessModelChange?.(model);
     setIsEditMode(false); // 选择业务模式时退出编辑模式
-    // 如果处于重新申请模式，保持重新申请模式
     setCurrentStep('form');
   };
 
-  // 处理重新申请：清空所有选择，从身份选择开始
+  // 处理重新申请：清空所有选择，从用户信息类型选择开始
   const handleReapply = () => {
-    setSelectedIdentityType(null);
+    setSelectedUserType(null);
+    setSelectedCertificationType(null);
     setSelectedBusinessModel(null);
     setIsEditMode(false);
     setIsReapplying(true); // 进入重新申请模式
-    onIdentityTypeChange?.(null);
+    onUserTypeChange?.(null as any);
+    onCertificationTypeChange?.(null as any);
     onBusinessModelChange?.(null);
     if (onReapply) {
       onReapply();
     }
-    setCurrentStep('identity');
+    setCurrentStep('userType');
   };
 
   // 处理修改信息：恢复之前的选择，直接跳转到表单
   const handleEditInfo = () => {
     if (applicationData) {
-      // 恢复身份类型和业务模式
-      if (applicationData.identityType) {
-        const identityType = applicationData.identityType === 'individual' ? 'developer' : 
-                            applicationData.identityType as IdentityType;
-        setSelectedIdentityType(identityType);
-        onIdentityTypeChange?.(identityType);
+      // 恢复用户信息类型、认证方式和业务模式
+      if (applicationData.userType) {
+        setSelectedUserType(applicationData.userType);
+        onUserTypeChange?.(applicationData.userType);
+      }
+      if (applicationData.certificationType) {
+        setSelectedCertificationType(applicationData.certificationType);
+        onCertificationTypeChange?.(applicationData.certificationType);
       }
       if (applicationData.businessModel) {
         setSelectedBusinessModel(applicationData.businessModel);
@@ -154,9 +173,10 @@ export function RegistrationSteps({
   const canAccessTab = (tab: string) => {
     // 如果处于重新申请模式，按照正常流程逐步解锁
     if (isReapplying) {
-      if (tab === 'identity') return true;
-      if (tab === 'business') return selectedIdentityType !== null;
-      if (tab === 'form') return selectedIdentityType !== null && selectedBusinessModel !== null;
+      if (tab === 'userType') return true;
+      if (tab === 'certification') return selectedUserType !== null;
+      if (tab === 'business') return selectedUserType !== null && selectedCertificationType !== null;
+      if (tab === 'form') return selectedUserType !== null && selectedCertificationType !== null && selectedBusinessModel !== null;
       if (tab === 'status') return false; // 重新申请模式下，status tab 在提交前不可访问
       return false;
     }
@@ -173,8 +193,8 @@ export function RegistrationSteps({
           // 修改信息模式：只能访问form tab，其他tab禁用
           return tab === 'form';
         } else {
-          // 非编辑模式：可以访问status tab和identity tab（用于重新申请）
-          return tab === 'status' || tab === 'identity';
+          // 非编辑模式：可以访问status tab和userType tab（用于重新申请）
+          return tab === 'status' || tab === 'userType';
         }
       }
       // 审核通过：只能访问status tab（会显示进入管理后台按钮）
@@ -184,9 +204,10 @@ export function RegistrationSteps({
     }
     
     // 没有申请数据，按照正常流程逐步解锁
-    if (tab === 'identity') return true;
-    if (tab === 'business') return selectedIdentityType !== null;
-    if (tab === 'form') return selectedIdentityType !== null && selectedBusinessModel !== null;
+    if (tab === 'userType') return true;
+    if (tab === 'certification') return selectedUserType !== null;
+    if (tab === 'business') return selectedUserType !== null && selectedCertificationType !== null;
+    if (tab === 'form') return selectedUserType !== null && selectedCertificationType !== null && selectedBusinessModel !== null;
     if (tab === 'status') return existingApplicationId !== null;
     return false;
   };
@@ -197,9 +218,9 @@ export function RegistrationSteps({
     }
   };
 
-  // 根据身份类型选择对应的表单组件
+  // 根据用户信息类型和认证方式选择对应的表单组件
   const getFormComponent = () => {
-    if (!selectedIdentityType || !selectedBusinessModel) return null;
+    if (!selectedUserType || !selectedCertificationType || !selectedBusinessModel) return null;
 
     // 如果是被驳回的申请，传递原有数据用于预加载
     const initialData = applicationData?.status === 'rejected' && applicationData?.data 
@@ -218,21 +239,37 @@ export function RegistrationSteps({
       },
       onSubmit: handleFormSubmit,
       initialData: initialData,
-      identityType: selectedIdentityType, // 传递身份类型给表单
+      userType: selectedUserType, // 传递用户信息类型给表单
+      certificationType: selectedCertificationType, // 传递认证方式给表单
       businessModel: selectedBusinessModel, // 传递业务模式给表单
-    };
+    } as any; // 使用as any以兼容新旧接口
 
-    // developer 和 agent 都使用个人表单，但需要区分
-    if (selectedIdentityType === 'developer' || selectedIdentityType === 'agent') {
-      return <IndividualForm {...formProps} />;
+    // 根据用户信息类型和认证方式选择表单
+    // 旅行代理
+    if (selectedUserType === 'travel_agent') {
+      if (selectedCertificationType === 'individual') {
+        return <IndividualForm {...formProps} />;
+      } else {
+        return <EnterpriseForm {...formProps} />;
+      }
     }
     
-    if (selectedIdentityType === 'influencer') {
-      return <InfluencerForm {...formProps} />;
+    // 网络博主
+    if (selectedUserType === 'influencer') {
+      if (selectedCertificationType === 'individual') {
+        return <InfluencerForm {...formProps} />;
+      } else {
+        return <EnterpriseForm {...formProps} />;
+      }
     }
     
-    if (selectedIdentityType === 'enterprise') {
-      return <EnterpriseForm {...formProps} />;
+    // 旅游类相关应用
+    if (selectedUserType === 'travel_app') {
+      if (selectedCertificationType === 'individual') {
+        return <IndividualForm {...formProps} />;
+      } else {
+        return <EnterpriseForm {...formProps} />;
+      }
     }
 
     return null;
@@ -240,11 +277,19 @@ export function RegistrationSteps({
 
   const renderStepContent = () => {
     switch (currentStep) {
-      case 'identity':
+      case 'userType':
         return (
           <IdentityTypeSelection
-            onSelect={handleIdentitySelect}
-            selectedType={selectedIdentityType}
+            onSelect={handleUserTypeSelect}
+            selectedType={selectedUserType}
+          />
+        );
+
+      case 'certification':
+        return (
+          <CertificationTypeSelection
+            onSelect={handleCertificationTypeSelect}
+            selectedType={selectedCertificationType}
           />
         );
 
@@ -253,15 +298,16 @@ export function RegistrationSteps({
           <BusinessModelSelection
             onSelect={handleBusinessModelSelect}
             selectedModel={selectedBusinessModel}
-            identityType={selectedIdentityType}
+            userType={selectedUserType}
+            certificationType={selectedCertificationType}
           />
         );
 
       case 'form':
-        if (!selectedIdentityType || !selectedBusinessModel) {
+        if (!selectedUserType || !selectedCertificationType || !selectedBusinessModel) {
           return (
             <div className="text-center py-12">
-              <p className="text-gray-500">请先完成身份类型和业务模式选择</p>
+              <p className="text-gray-500">请先完成用户信息类型、认证方式和业务模式选择</p>
             </div>
           );
         }
@@ -347,13 +393,19 @@ export function RegistrationSteps({
           return names[model as keyof typeof names] || model;
         };
 
-        const getIdentityTypeName = (type: string) => {
+        const getUserTypeName = (type: string) => {
           const names = {
-            developer: '独立开发者',
-            influencer: '旅行达人',
-            enterprise: '旅行相关企业',
-            agent: '个人旅行代理',
-            individual: '个人认证', // 兼容旧类型
+            travel_agent: '旅行代理',
+            influencer: '网络博主',
+            travel_app: '旅游类相关应用',
+          };
+          return names[type as keyof typeof names] || type;
+        };
+
+        const getCertificationTypeName = (type: string) => {
+          const names = {
+            individual: '个人认证',
+            enterprise: '企业认证',
           };
           return names[type as keyof typeof names] || type;
         };
@@ -377,12 +429,16 @@ export function RegistrationSteps({
                 {/* 申请信息 */}
                 <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg mb-6">
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">业务模式</p>
-                    <p className="text-sm font-medium text-gray-900">{selectedBusinessModel ? getBusinessModelName(selectedBusinessModel) : '-'}</p>
+                    <p className="text-sm text-gray-500 mb-1">用户信息类型</p>
+                    <p className="text-sm font-medium text-gray-900">{selectedUserType ? getUserTypeName(selectedUserType) : '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">身份类型</p>
-                    <p className="text-sm font-medium text-gray-900">{selectedIdentityType ? getIdentityTypeName(selectedIdentityType) : '-'}</p>
+                    <p className="text-sm text-gray-500 mb-1">认证方式</p>
+                    <p className="text-sm font-medium text-gray-900">{selectedCertificationType ? getCertificationTypeName(selectedCertificationType) : '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">业务模式</p>
+                    <p className="text-sm font-medium text-gray-900">{selectedBusinessModel ? getBusinessModelName(selectedBusinessModel) : '-'}</p>
                   </div>
                   <div className="col-span-2">
                     <p className="text-sm text-gray-500 mb-1">提交时间</p>
@@ -473,38 +529,49 @@ export function RegistrationSteps({
       maxWidth="6xl"
     >
       <Tabs value={currentStep} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-8 h-12 bg-gray-100">
+        <TabsList className="flex w-full mb-8 h-auto min-h-[48px] bg-gray-100 rounded-lg p-1 gap-1">
           <TabsTrigger 
-            value="identity"
-            disabled={!canAccessTab('identity') || (isEditMode && !isReapplying)}
-            className="data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-sm"
+            value="userType"
+            disabled={!canAccessTab('userType') || (isEditMode && !isReapplying)}
+            className="data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-sm text-xs sm:text-sm px-2 py-2 whitespace-nowrap flex-1"
           >
-            身份选择
+            用户信息类型
+          </TabsTrigger>
+          <TabsTrigger 
+            value="certification"
+            disabled={!canAccessTab('certification') || (isEditMode && !isReapplying)}
+            className="data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-sm text-xs sm:text-sm px-2 py-2 whitespace-nowrap flex-1"
+          >
+            认证方式
           </TabsTrigger>
           <TabsTrigger 
             value="business"
             disabled={!canAccessTab('business') || (isEditMode && !isReapplying)}
-            className="data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-sm"
+            className="data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-sm text-xs sm:text-sm px-2 py-2 whitespace-nowrap flex-1"
           >
-            业务选择
+            业务模式
           </TabsTrigger>
           <TabsTrigger 
             value="form"
             disabled={!canAccessTab('form')}
-            className="data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-sm"
+            className="data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-sm text-xs sm:text-sm px-2 py-2 whitespace-nowrap flex-1"
           >
             填写信息
           </TabsTrigger>
           <TabsTrigger 
             value="status"
             disabled={!canAccessTab('status') || (isEditMode && !isReapplying)}
-            className="data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-sm"
+            className="data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-sm text-xs sm:text-sm px-2 py-2 whitespace-nowrap flex-1"
           >
             申请状态
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="identity" className="min-h-[400px]">
+        <TabsContent value="userType" className="min-h-[400px]">
+          {renderStepContent()}
+        </TabsContent>
+
+        <TabsContent value="certification" className="min-h-[400px]">
           {renderStepContent()}
         </TabsContent>
 

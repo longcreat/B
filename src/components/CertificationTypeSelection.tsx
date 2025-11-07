@@ -1,44 +1,34 @@
 import { Card, CardContent } from './ui/card';
-import { Users, Building2, Briefcase } from 'lucide-react';
+import { User, Building2 } from 'lucide-react';
 import React from 'react';
 
-// 新的用户信息类型
-export type UserType = 'travel_agent' | 'influencer' | 'travel_app';
+export type CertificationType = 'individual' | 'enterprise';
 
-// 兼容旧的IdentityType类型
-export type IdentityType = UserType | 'developer' | 'enterprise' | 'agent';
-
-interface IdentityTypeSelectionProps {
-  onSelect: (type: UserType) => void;
-  selectedType?: UserType | null;
+interface CertificationTypeSelectionProps {
+  onSelect: (type: CertificationType) => void;
+  selectedType?: CertificationType | null;
 }
 
-const userTypes = [
+const certificationTypes = [
   {
-    id: 'travel_agent' as const,
-    title: '旅行代理',
-    description: '含旅行社、个人代理',
-    icon: Briefcase,
+    id: 'individual' as const,
+    title: '个人认证',
+    description: '个人身份认证',
+    icon: User,
   },
   {
-    id: 'influencer' as const,
-    title: '网络博主',
-    description: '网络博主、KOL',
-    icon: Users,
-  },
-  {
-    id: 'travel_app' as const,
-    title: '旅游类相关应用',
-    description: '旅游类相关应用、开发者',
+    id: 'enterprise' as const,
+    title: '企业认证',
+    description: '企业身份认证',
     icon: Building2,
   },
 ];
 
-export function IdentityTypeSelection({ onSelect, selectedType }: IdentityTypeSelectionProps) {
+export function CertificationTypeSelection({ onSelect, selectedType }: CertificationTypeSelectionProps) {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {userTypes.map((type) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {certificationTypes.map((type) => (
           <Card
             key={type.id}
             className={`cursor-pointer transition-all border ${

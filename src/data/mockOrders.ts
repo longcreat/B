@@ -12,7 +12,13 @@ export interface Order {
   checkOutDate: string;
   nights: number;
   
-  // 小B信息
+  // Partner关联信息（根据系统架构图新增）
+  bigBPartnerId?: string; // 大B客户ID（订单必须关联大B客户）
+  smallBPartnerId?: string; // 小B客户ID（可选，当订单由小B链接生成时必填）
+  partnerBusinessModel: 'mcp' | 'saas' | 'affiliate'; // 业务模式（来自大B客户）
+  partnerCanSetMarkupRate: boolean; // 是否允许设置加价率（来自大B客户）
+  
+  // 小B信息（冗余字段，用于显示）
   partnerName: string;
   partnerEmail: string;
   partnerType: 'individual' | 'influencer' | 'enterprise';
@@ -22,13 +28,19 @@ export interface Order {
   customerPhone: string;
   
   // 价格体系
-  p0_supplierCost: number; // 供应商底价
-  p1_platformPrice: number; // 平台供货价
-  p2_salePrice: number; // 小B销售价
+  p0_supplierCost: number; // 供应商底价P0
+  p1_platformPrice?: number; // 平台供货价P1（SaaS模式有效，MCP/推广联盟可为空或等于P2）
+  p2_salePrice: number; // 销售价P2
+  
+  // 价格比例（订单级别）
+  platformMarkupRate: number; // 平台加价率（百分比，SaaS模式为P0到P1的加价率；MCP/推广联盟模式为平台从P0直接加价到P2的加价率）
+  partnerMarkupRate?: number; // 小B加价率（百分比，从P1到P2的加价率，仅SaaS模式有效）
+  partnerCommissionRate?: number; // 小B佣金率（百分比，从P0到P2的总利润中给MCP/推广联盟的分成比例，仅MCP/推广联盟有效）
   
   // 利润计算
-  platformProfit: number; // 平台利润 = P1 - P0
-  partnerProfit: number; // 小B利润 = P2 - P1
+  platformProfit: number; // 平台利润
+  partnerProfit: number; // 小B利润/佣金（SaaS模式为利润，MCP/推广联盟模式为佣金）
+  bigBProfit?: number; // 大B利润（当订单由小B链接生成时，大B利润 = 总利润 - 小B佣金）
   
   // 实付金额和退款金额
   actualAmount: number; // 实付金额
@@ -71,6 +83,10 @@ export function getMockOrders(): Order[] {
       checkInDate: '2025-10-18',
       checkOutDate: '2025-10-20',
       nights: 2,
+      bigBPartnerId: 'P002', // 挂载在大B客户P002（旅游达人小李）下
+      smallBPartnerId: 'P001', // 小B客户P001（张三）
+      partnerBusinessModel: 'affiliate',
+      partnerCanSetMarkupRate: false,
       partnerName: '张三的旅游工作室',
       partnerEmail: 'zhangsan@example.com',
       partnerType: 'individual',
@@ -79,8 +95,11 @@ export function getMockOrders(): Order[] {
       p0_supplierCost: 800,
       p1_platformPrice: 880,
       p2_salePrice: 968,
+      platformMarkupRate: 10, // 平台加价率10%
+      partnerCommissionRate: 10, // 小B佣金率10%
       platformProfit: 80,
-      partnerProfit: 88,
+      partnerProfit: 16.8, // 小B佣金 = (968-800) * 10% = 16.8
+      bigBProfit: 151.2, // 大B利润 = 总利润 - 小B佣金 = 168 - 16.8 = 151.2
       actualAmount: 968,
       refundAmount: 0,
       orderStatus: 'completed_settleable',
@@ -133,6 +152,10 @@ export function getMockOrders(): Order[] {
       checkInDate: '2025-10-20',
       checkOutDate: '2025-10-22',
       nights: 2,
+      bigBPartnerId: 'P002', // 挂载在大B客户P002下
+      smallBPartnerId: 'P001', // 小B客户P001
+      partnerBusinessModel: 'affiliate',
+      partnerCanSetMarkupRate: false,
       partnerName: '张三的旅游工作室',
       partnerEmail: 'zhangsan@example.com',
       partnerType: 'individual',
@@ -141,8 +164,11 @@ export function getMockOrders(): Order[] {
       p0_supplierCost: 950,
       p1_platformPrice: 1045,
       p2_salePrice: 1149.5,
+      platformMarkupRate: 10,
+      partnerCommissionRate: 10,
       platformProfit: 95,
-      partnerProfit: 104.5,
+      partnerProfit: 19.95, // 小B佣金 = (1149.5-950) * 10% = 19.95
+      bigBProfit: 179.55, // 大B利润 = 总利润 - 小B佣金 = 199.5 - 19.95 = 179.55
       actualAmount: 459.8, // 1149.5 - 689.7 (大量退款)
       refundAmount: 689.7,
       orderStatus: 'completed',

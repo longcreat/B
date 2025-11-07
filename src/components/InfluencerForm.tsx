@@ -32,7 +32,7 @@ interface InfluencerFormData {
   idPhotoFront: File | null;
   idPhotoBack: File | null;
   phone: string;
-  email?: string;
+  email?: string; // 选填（根据PRD）
   accountType: 'bank' | 'alipay';
   bankCardholderName?: string;
   bankName?: string;
@@ -50,6 +50,8 @@ interface InfluencerFormProps {
   onBack: () => void;
   onSubmit?: (data: any) => void;
   initialData?: any;
+  userType?: 'travel_agent' | 'influencer' | 'travel_app'; // 用户信息类型
+  certificationType?: 'individual' | 'enterprise'; // 认证方式
   businessModel?: 'saas' | 'affiliate'; // 业务模式
 }
 
@@ -88,17 +90,17 @@ const BANK_OPTIONS = [
   '北京银行',
 ];
 
-// 粉丝数门槛配置
+// 粉丝数门槛配置（根据PRD：公众号≥100，小红书≥100，其他平台≥100）
 const FOLLOWER_THRESHOLDS = {
   saas: {
-    '微信公众号': 5000,
-    '小红书': 10000,
-    'default': 5000,
+    '微信公众号': 100,
+    '小红书': 100,
+    'default': 100,
   },
   affiliate: {
-    '微信公众号': 1000,
-    '小红书': 5000,
-    'default': 3000,
+    '微信公众号': 100,
+    '小红书': 100,
+    'default': 100,
   },
 };
 

@@ -4,6 +4,8 @@ export type PartnerType = 'individual' | 'influencer' | 'enterprise';
 export type AccountStatus = 'active' | 'frozen' | 'closed';
 export type SettlementStatus = 'normal' | 'on-hold';
 export type PermissionLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4';
+export type BusinessModel = 'mcp' | 'saas' | 'affiliate';
+export type ManagedBy = 'admin' | 'bigb';
 
 export interface Partner {
   id: string;
@@ -14,8 +16,29 @@ export interface Partner {
   email: string;
   phone: string;
   
+  // 业务模式属性（根据系统架构图新增）
+  businessModel: BusinessModel; // 业务模式：mcp / saas / affiliate
+  canSetMarkupRate: boolean; // 是否允许自己设置加价率（SaaS/MCP为true，推广联盟为false）
+  defaultCommissionRate?: number; // 默认佣金比例（百分比，推广联盟用户使用，由大B或管理员设置）
+  
+  // 小B客户挂载关系（根据系统架构图新增）
+  parentPartnerId?: string | null; // 上级大B客户ID，NULL表示直接由管理员管理，非NULL表示挂载在大B客户下
+  managedBy: ManagedBy; // 管理方：admin=管理员直接管理，bigb=大B客户管理
+  
+  // 小B客户申请状态（挂载在大B下时，根据系统架构图新增）
+  smallbApplicationStatus?: 'pending' | 'approved' | 'rejected' | null; // 小B申请状态，仅当parent_partner_id不为NULL时有效
+  smallbReviewedAt?: string | null; // 小B审核时间
+  smallbReviewedBy?: string | null; // 小B审核人（大B客户ID）
+  smallbRejectionReason?: string | null; // 小B驳回原因
+  
+  // 小B客户状态管理（根据系统架构图新增）
+  smallbStatus?: 'active' | 'suspended' | null; // 小B客户状态：active=启用，suspended=停用，仅当parent_partner_id不为NULL时有效
+  smallbSuspendedAt?: string | null; // 小B停用时间
+  smallbSuspendedBy?: string | null; // 小B停用操作人（大B客户ID）
+  
   // 认证信息
   certificationStatus: 'pending' | 'approved' | 'rejected';
+  certificationType?: 'individual' | 'enterprise'; // 认证方式：个人认证/企业认证
   certifiedAt?: string;
   
   // 账户状态
@@ -82,7 +105,17 @@ export function getMockPartners(): Partner[] {
       displayName: '张三',
       email: 'zhangsan@example.com',
       phone: '13800138000',
+      businessModel: 'affiliate', // 推广联盟模式（小B）
+      canSetMarkupRate: false,
+      defaultCommissionRate: 10.0,
+      parentPartnerId: 'P002', // 挂载在大B客户P002下
+      managedBy: 'bigb',
+      smallbApplicationStatus: 'approved',
+      smallbReviewedAt: '2025-10-20 15:30:00',
+      smallbReviewedBy: 'P002',
+      smallbStatus: 'active',
       certificationStatus: 'approved',
+      certificationType: 'individual',
       certifiedAt: '2025-10-20 15:30:00',
       accountStatus: 'active',
       settlementStatus: 'normal',
@@ -118,7 +151,12 @@ export function getMockPartners(): Partner[] {
       displayName: '旅游达人小李',
       email: 'xiaoli@example.com',
       phone: '13900139000',
+      businessModel: 'saas', // SaaS模式（大B）
+      canSetMarkupRate: true,
+      parentPartnerId: null, // 直接由管理员管理
+      managedBy: 'admin',
       certificationStatus: 'approved',
+      certificationType: 'individual',
       certifiedAt: '2025-10-22 11:20:00',
       accountStatus: 'active',
       settlementStatus: 'normal',
@@ -157,7 +195,12 @@ export function getMockPartners(): Partner[] {
       displayName: '某某商旅服务有限公司',
       email: 'business@example.com',
       phone: '010-12345678',
+      businessModel: 'mcp', // MCP模式（大B）
+      canSetMarkupRate: true,
+      parentPartnerId: null, // 直接由管理员管理
+      managedBy: 'admin',
       certificationStatus: 'approved',
+      certificationType: 'enterprise',
       certifiedAt: '2025-10-25 16:00:00',
       accountStatus: 'active',
       settlementStatus: 'normal',
@@ -194,7 +237,19 @@ export function getMockPartners(): Partner[] {
       displayName: '赵六',
       email: 'zhaoliu@example.com',
       phone: '13700137000',
+      businessModel: 'affiliate', // 推广联盟模式（小B）
+      canSetMarkupRate: false,
+      defaultCommissionRate: 8.0,
+      parentPartnerId: 'P003', // 挂载在大B客户P003下
+      managedBy: 'bigb',
+      smallbApplicationStatus: 'approved',
+      smallbReviewedAt: '2025-10-26 10:15:00',
+      smallbReviewedBy: 'P003',
+      smallbStatus: 'suspended', // 已停用
+      smallbSuspendedAt: '2025-10-28 15:20:00',
+      smallbSuspendedBy: 'P003',
       certificationStatus: 'approved',
+      certificationType: 'individual',
       certifiedAt: '2025-10-26 10:15:00',
       accountStatus: 'frozen',
       settlementStatus: 'on-hold',

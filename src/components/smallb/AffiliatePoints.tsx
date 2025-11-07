@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -15,9 +15,13 @@ import {
   Download,
   Filter,
   CreditCard,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Info
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -93,6 +97,7 @@ const mockTransactions: Transaction[] = [
 export function AffiliatePoints() {
   const [transactions] = useState<Transaction[]>(mockTransactions);
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [isPointsInfoOpen, setIsPointsInfoOpen] = useState(false);
   const [bankInfo, setBankInfo] = useState({
     bankName: '工商银行',
     branchName: '北京分行',
@@ -158,12 +163,12 @@ export function AffiliatePoints() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* 面包屑导航 */}
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbPage>积分中心</BreadcrumbPage>
+            <BreadcrumbPage>积分管理</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -432,30 +437,48 @@ export function AffiliatePoints() {
         </CardContent>
       </Card>
 
-      {/* 说明卡片 */}
-      <Card className="border-blue-200 bg-blue-50">
-        <CardContent className="pt-6">
-          <h4 className="font-medium text-blue-900 mb-3">积分说明</h4>
-          <div className="space-y-2 text-sm text-blue-800">
-            <div className="flex items-start gap-2">
-              <span className="font-medium min-w-[100px]">可用积分：</span>
-              <span>已结算的积分，可立即在积分商城兑换商品或服务</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="font-medium min-w-[100px]">冻结积分：</span>
-              <span>订单进行中的预估积分，客人离店后7-15天安全期内自动解冻</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="font-medium min-w-[100px]">积分欠款：</span>
-              <span>因客诉追索等原因产生的负积分，将从后续收益中扣除</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="font-medium min-w-[100px]">兑换方式：</span>
-              <span>积分可兑换京东卡、话费充值、酒店券等，部分情况下可通过灵活用工平台合规提现</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* 积分说明 - 可折叠 */}
+      <Collapsible open={isPointsInfoOpen} onOpenChange={setIsPointsInfoOpen}>
+        <Card className="border-blue-200 bg-blue-50">
+          <CollapsibleTrigger asChild>
+            <CardContent className="py-4 cursor-pointer hover:bg-blue-100/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Info className="w-5 h-5 text-blue-600" />
+                  <span className="text-blue-900 font-medium">积分说明</span>
+                </div>
+                {isPointsInfoOpen ? (
+                  <ChevronUp className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-blue-600" />
+                )}
+              </div>
+            </CardContent>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 pb-6">
+              <div className="space-y-2 text-sm text-blue-800">
+                <div className="flex items-start gap-2">
+                  <span className="font-medium min-w-[100px]">可用积分：</span>
+                  <span>已结算的积分，可立即在积分商城兑换商品或服务</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-medium min-w-[100px]">冻结积分：</span>
+                  <span>订单进行中的预估积分，客人离店后7-15天安全期内自动解冻</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-medium min-w-[100px]">积分欠款：</span>
+                  <span>因客诉追索等原因产生的负积分，将从后续收益中扣除</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-medium min-w-[100px]">兑换方式：</span>
+                  <span>积分可兑换京东卡、话费充值、酒店券等，部分情况下可通过灵活用工平台合规提现</span>
+                </div>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
     </div>
   );
 }

@@ -1,6 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
+import { Badge } from '../../ui/badge';
+import { Button } from '../../ui/button';
 import { TrendingUp, Activity, AlertCircle, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import {
@@ -9,7 +10,7 @@ import {
   BreadcrumbItem,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '../ui/breadcrumb';
+} from '../../ui/breadcrumb';
 
 // 近7天的API调用数据
 const apiCallsData = [
@@ -30,7 +31,7 @@ export function MCPMonitoring() {
   const isWarning = usageRate >= 80;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* 面包屑导航 */}
       <Breadcrumb>
         <BreadcrumbList>

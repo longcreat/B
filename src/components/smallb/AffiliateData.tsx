@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { MousePointerClick, ShoppingCart, Percent, DollarSign, TrendingUp, Filter } from 'lucide-react';
+import { MousePointerClick, ShoppingCart, Percent, DollarSign, TrendingUp, Filter, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -46,6 +47,7 @@ export function AffiliateData() {
   const [orders] = useState<Order[]>(mockOrders);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [campaignFilter, setCampaignFilter] = useState<string>('all');
+  const [isDataInfoOpen, setIsDataInfoOpen] = useState(false);
 
   const getDataByRange = () => {
     const days = parseInt(dateRange);
@@ -95,16 +97,18 @@ export function AffiliateData() {
   const uniqueCampaigns = Array.from(new Set(orders.filter(o => o.campaign).map(o => o.campaign)));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* 面包屑导航 */}
-      <div className="flex items-center justify-between">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbPage>效果报表</BreadcrumbPage>
+            <BreadcrumbPage>数据报表</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
+
+
+      <div className="flex items-center justify-between">
         <Select value={dateRange} onValueChange={setDateRange}>
           <SelectTrigger className="w-[180px]">
             <SelectValue />
@@ -368,30 +372,48 @@ export function AffiliateData() {
         </CardContent>
       </Card>
 
-      {/* 数据说明 */}
-      <Card className="border-blue-200 bg-blue-50">
-        <CardContent className="pt-6">
-          <h4 className="font-medium text-blue-900 mb-3">数据说明</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
-            <div>
-              <p className="font-medium mb-1">点击量</p>
-              <p className="text-blue-700">用户点击您的推广链接的次数</p>
-            </div>
-            <div>
-              <p className="font-medium mb-1">成交订单</p>
-              <p className="text-blue-700">通过您的链接成功预订的订单数量</p>
-            </div>
-            <div>
-              <p className="font-medium mb-1">转化率</p>
-              <p className="text-blue-700">成交订单数 ÷ 点击量 × 100%</p>
-            </div>
-            <div>
-              <p className="font-medium mb-1">累计佣金</p>
-              <p className="text-blue-700">所选时间范围内获得的佣金总额</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* 数据说明 - 可折叠 */}
+      <Collapsible open={isDataInfoOpen} onOpenChange={setIsDataInfoOpen}>
+        <Card className="border-blue-200 bg-blue-50">
+          <CollapsibleTrigger asChild>
+            <CardContent className="py-4 cursor-pointer hover:bg-blue-100/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Info className="w-5 h-5 text-blue-600" />
+                  <span className="text-blue-900 font-medium">数据说明</span>
+                </div>
+                {isDataInfoOpen ? (
+                  <ChevronUp className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-blue-600" />
+                )}
+              </div>
+            </CardContent>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 pb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
+                <div>
+                  <p className="font-medium mb-1">点击量</p>
+                  <p className="text-blue-700">用户点击您的推广链接的次数</p>
+                </div>
+                <div>
+                  <p className="font-medium mb-1">成交订单</p>
+                  <p className="text-blue-700">通过您的链接成功预订的订单数量</p>
+                </div>
+                <div>
+                  <p className="font-medium mb-1">转化率</p>
+                  <p className="text-blue-700">成交订单数 ÷ 点击量 × 100%</p>
+                </div>
+                <div>
+                  <p className="font-medium mb-1">累计佣金</p>
+                  <p className="text-blue-700">所选时间范围内获得的佣金总额</p>
+                </div>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
     </div>
   );
 }

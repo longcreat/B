@@ -34,7 +34,13 @@ import { SettlementDetailList, type SettlementDetail } from './components/Settle
 import { SettlementDetailDetail } from './components/SettlementDetailDetail';
 import { getMockOrders } from './data/mockOrders';
 import { getMockSettlementBatches, getMockSupplierSettlementBatches, getMockPartnerSettlementBatches } from './data/mockSettlementBatches';
-import { ApiKeyManagement, type ApiKeyInfo } from './components/ApiKeyManagement';
+import { getMockApiKeys, type ApiKeyInfo } from './data/mockApiKeys';
+import { getMockViolationFeeRecords } from './data/mockBusinessDocuments';
+import { getMockSettlementDetails } from './data/mockBusinessDocuments';
+import { getMockOrderTransactions } from './data/mockBusinessDocuments';
+import { getMockOrderPriceChangeRecords } from './data/mockBusinessDocuments';
+import { getMockOrderRefundRecords } from './data/mockBusinessDocuments';
+import { ApiKeyManagement } from './components/ApiKeyManagement';
 import { ApiKeyDetail } from './components/ApiKeyDetail';
 import { PriceConfiguration } from './components/PriceConfiguration';
 import { UserLayout } from './components/UserLayout';
@@ -47,25 +53,42 @@ import type { User, ServiceType, ServiceStatus } from './types/user';
 import { getDefaultMenuId } from './config/menuConfig';
 import { formatDateTime } from './utils/dateFormat';
 import type { BusinessModel } from './components/BusinessModelSelection';
-import type { IdentityType } from './components/IdentityTypeSelection';
+import type { UserType } from './components/IdentityTypeSelection';
+import type { CertificationType } from './components/CertificationTypeSelection';
+import { BusinessModelConfigManagement } from './components/BusinessModelConfigManagement';
+import { FeaturePermissionManagement } from './components/FeaturePermissionManagement';
+import { getUserType } from './utils/partnerUtils';
+import { createPartnerFromApplication, findPartnerByEmail } from './utils/partnerHelper';
+import { getMockPartners, type Partner } from './data/mockPartners';
+import { BigBLayout, type BigBMenuItem } from './components/BigBLayout';
+import { SmallBLayout, type SmallBMenuItem } from './components/SmallBLayout';
 
-// MCP 组件
-import { MCPConfiguration } from './components/mcp/MCPConfiguration';
-import { MCPMonitoring } from './components/mcp/MCPMonitoring';
-import { MCPDocumentation } from './components/mcp/MCPDocumentation';
+// MCP 组件（大B客户系统）
+import { MCPConfiguration } from './components/bigb/MCPConfiguration';
+import { MCPMonitoring } from './components/bigb/mcp/MCPMonitoring';
+import { MCPDocumentation } from './components/bigb/mcp/MCPDocumentation';
 
-// SaaS 组件
-import { SaaSDashboard } from './components/saas/SaaSDashboard';
-import { SaaSBrandConfig } from './components/saas/SaaSBrandConfig';
-import { SaaSPricing } from './components/saas/SaaSPricing';
-import { SaaSOrders } from './components/saas/SaaSOrders';
-import { SaaSWallet } from './components/saas/SaaSWallet';
+// SaaS 组件（大B客户系统）
+import { SaaSBrandConfig } from './components/bigb/SaaSBrandConfig';
+import { FeatureProtected } from './components/FeatureProtected';
 
-// 推广联盟组件
-import { AffiliateDashboard } from './components/affiliate/AffiliateDashboard';
-import { AffiliateLink } from './components/affiliate/AffiliateLink';
-import { AffiliateData } from './components/affiliate/AffiliateData';
-import { AffiliatePoints } from './components/affiliate/AffiliatePoints';
+// 推广联盟组件（小B客户系统）
+import { AffiliateLink } from './components/smallb/AffiliateLink';
+import { AffiliatePoints } from './components/smallb/AffiliatePoints';
+
+// 通用组件（大B和小B共用）
+import { Dashboard } from './components/shared/Dashboard';
+import { Withdrawal } from './components/shared/Withdrawal';
+import { BankCardManagement } from './components/shared/BankCardManagement';
+import { AccountHelp } from './components/shared/AccountHelp';
+import { Reports } from './components/shared/Reports';
+
+// 大B客户系统组件
+import { SmallBManagement } from './components/bigb/SmallBManagement';
+import { PricingStrategy } from './components/bigb/PricingStrategy';
+
+// 小B客户系统组件
+import { CommissionDetail } from './components/smallb/CommissionDetail';
 type AuthView = 'login' | 'register' | null;
 
 type UserView = 'registration' | 'userCenter';
@@ -76,7 +99,8 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<string>('registration');
   const [selectedBusinessModel, setSelectedBusinessModel] = useState<BusinessModel | null>(null);
-  const [selectedIdentity, setSelectedIdentity] = useState<IdentityType | null>(null);
+  const [selectedUserType, setSelectedUserType] = useState<UserType | null>(null);
+  const [selectedCertificationType, setSelectedCertificationType] = useState<CertificationType | null>(null);
   const [currentApplicationId, setCurrentApplicationId] = useState<string | null>(null);
   const [selectedAdminApplication, setSelectedAdminApplication] = useState<ApplicationData | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -86,7 +110,6 @@ export default function App() {
   const [selectedApiKey, setSelectedApiKey] = useState<ApiKeyInfo | null>(() => {
     const stored = localStorage.getItem('selectedApiKeyId');
     if (stored) {
-      const { getMockApiKeys } = require('./data/mockApiKeys');
       const keys = getMockApiKeys();
       return keys.find((k: ApiKeyInfo) => k.id === stored) || null;
     }
@@ -97,8 +120,6 @@ export default function App() {
   const [selectedViolationFeeRecord, setSelectedViolationFeeRecord] = useState<ViolationFeeRecord | null>(() => {
     const stored = localStorage.getItem('selectedViolationFeeRecordId');
     if (stored) {
-      // 动态导入以避免循环依赖
-      const { getMockViolationFeeRecords } = require('./data/mockBusinessDocuments');
       const records = getMockViolationFeeRecords();
       return records.find((r: ViolationFeeRecord) => r.feeId === stored) || null;
     }
@@ -107,8 +128,6 @@ export default function App() {
   const [selectedSettlementDetail, setSelectedSettlementDetail] = useState<SettlementDetail | null>(() => {
     const stored = localStorage.getItem('selectedSettlementDetailId');
     if (stored) {
-      // 动态导入以避免循环依赖
-      const { getMockSettlementDetails } = require('./data/mockBusinessDocuments');
       const details = getMockSettlementDetails();
       return details.find((d: SettlementDetail) => d.detailId === stored) || null;
     }
@@ -117,7 +136,6 @@ export default function App() {
   const [selectedOrderTransaction, setSelectedOrderTransaction] = useState<OrderTransaction | null>(() => {
     const stored = localStorage.getItem('selectedOrderTransactionId');
     if (stored) {
-      const { getMockOrderTransactions } = require('./data/mockBusinessDocuments');
       const transactions = getMockOrderTransactions();
       return transactions.find((t: OrderTransaction) => t.transactionId === stored) || null;
     }
@@ -126,7 +144,6 @@ export default function App() {
   const [selectedOrderPriceChangeRecord, setSelectedOrderPriceChangeRecord] = useState<OrderPriceChangeRecord | null>(() => {
     const stored = localStorage.getItem('selectedOrderPriceChangeRecordId');
     if (stored) {
-      const { getMockOrderPriceChangeRecords } = require('./data/mockBusinessDocuments');
       const records = getMockOrderPriceChangeRecords();
       return records.find((r: OrderPriceChangeRecord) => r.priceChangeId === stored) || null;
     }
@@ -135,13 +152,17 @@ export default function App() {
   const [selectedOrderRefundRecord, setSelectedOrderRefundRecord] = useState<OrderRefundRecord | null>(() => {
     const stored = localStorage.getItem('selectedOrderRefundRecordId');
     if (stored) {
-      const { getMockOrderRefundRecords } = require('./data/mockBusinessDocuments');
       const records = getMockOrderRefundRecords();
       return records.find((r: OrderRefundRecord) => r.refundId === stored) || null;
     }
     return null;
   });
   const [hasCheckedExistingApplication, setHasCheckedExistingApplication] = useState(false);
+  
+  // Partner数据状态（用于大B/小B系统）
+  const [currentPartner, setCurrentPartner] = useState<Partner | null>(null);
+  const [bigBCurrentMenu, setBigBCurrentMenu] = useState<BigBMenuItem>('smallb-management');
+  const [smallBCurrentMenu, setSmallBCurrentMenu] = useState<SmallBMenuItem>('affiliate-link');
   
   // 从 localStorage 恢复管理员页面状态
   const [adminCurrentMenu, setAdminCurrentMenu] = useState<AdminMenuItem>(() => {
@@ -231,7 +252,7 @@ export default function App() {
         if (existingApp) {
           setCurrentApplicationId(existingApp.id);
           setSelectedBusinessModel(existingApp.businessModel as BusinessModel);
-          setSelectedIdentity(existingApp.identityType as IdentityType);
+          // setSelectedIdentity 已移除，使用新的 userType 和 certificationType
           setApplications(storedApplications);
           
           // 同步用户的服务类型和状态
@@ -284,20 +305,34 @@ export default function App() {
         localStorage.setItem('currentUser', JSON.stringify(updatedUser));
       }
 
+      // 创建或查找Partner数据
+      const partners = getMockPartners();
+      let partner = findPartnerByEmail(currentUser.email || '', partners);
+      
+      // 如果找不到Partner，从Application创建
+      if (!partner && app) {
+        partner = createPartnerFromApplication(app, currentUser.email || '');
+      }
+      
+      setCurrentPartner(partner || null);
+
       // 如果当前仍在注册页，则跳转到默认服务页
       if (currentView === 'registration') {
         const defaultView = getDefaultMenuId(app.businessModel as ServiceType, 'approved');
         setCurrentView(defaultView);
       }
+    } else {
+      // 如果申请未通过，清除Partner数据
+      setCurrentPartner(null);
     }
-  }, [applications, currentApplicationId]);
+  }, [applications, currentApplicationId, currentUser]);
 
 
 
   const handleFormSubmit = (formData: any) => {
     // 验证必需的选择
-    if (!selectedBusinessModel || !selectedIdentity) {
-      toast.error('请先完成身份类型和业务模式选择');
+    if (!selectedBusinessModel || !selectedUserType || !selectedCertificationType) {
+      toast.error('请先完成用户信息类型、认证方式和业务模式选择');
       return;
     }
 
@@ -316,7 +351,8 @@ export default function App() {
               rejectionReason: undefined,
               data: formData,
               businessModel: selectedBusinessModel,
-              identityType: selectedIdentity,
+              userType: selectedUserType,
+              certificationType: selectedCertificationType,
             }
           : app
       );
@@ -328,7 +364,8 @@ export default function App() {
         id: `APP-${String(applications.length + 1).padStart(3, '0')}`,
         applicantName: formData.realName || formData.companyName || formData.contactName,
         businessModel: selectedBusinessModel,
-        identityType: selectedIdentity,
+        userType: selectedUserType,
+        certificationType: selectedCertificationType,
         status: 'pending',
         submittedAt: formatDateTime(new Date()),
         data: formData,
@@ -343,9 +380,10 @@ export default function App() {
   };
 
   const handleReapply = () => {
-    // 重新申请：清空身份类型和业务模式选择，让用户从身份选择开始
+    // 重新申请：清空用户信息类型、认证方式和业务模式选择，让用户从用户信息类型选择开始
     setSelectedBusinessModel(null);
-    setSelectedIdentity(null);
+    setSelectedUserType(null);
+    setSelectedCertificationType(null);
     // 注意：不删除旧记录，保留驳回原因供用户查看
     // 当用户重新提交时，handleFormSubmit 会更新现有记录
   };
@@ -437,7 +475,8 @@ export default function App() {
       if (existingApp) {
         setCurrentApplicationId(existingApp.id);
         setSelectedBusinessModel(existingApp.businessModel as BusinessModel);
-        setSelectedIdentity(existingApp.identityType as IdentityType);
+        setSelectedUserType(existingApp.userType as UserType || null);
+        setSelectedCertificationType(existingApp.certificationType as CertificationType || null);
         setApplications(storedApplications);
         // Set view based on application status
         if (existingApp.status === 'approved') {
@@ -473,7 +512,8 @@ export default function App() {
     setCurrentUser(null);
     setCurrentView('registration');
     setSelectedBusinessModel(null);
-    setSelectedIdentity(null);
+    setSelectedUserType(null);
+    setSelectedCertificationType(null);
     setCurrentApplicationId(null);
     setHasCheckedExistingApplication(false);
     localStorage.removeItem('currentUser');
@@ -836,20 +876,20 @@ export default function App() {
                   const oldBatches = getMockSettlementBatches();
                   const oldBatch = oldBatches.find(b => b.batchId === batchId);
                   if (oldBatch) {
-                    // 转换为新的格式
+                    // 转换为新的格式（SettlementBatch 没有这些字段，使用默认值）
                     batch = {
                       batchId: oldBatch.batchId,
-                      partnerId: oldBatch.partnerId || `PARTNER-${oldBatch.batchId}`,
+                      partnerId: `PARTNER-${oldBatch.batchId}`,
                       partnerName: oldBatch.partnerName || '未知客户',
-                      partnerType: 'individual',
-                      settlementPeriodStart: oldBatch.settlementPeriodStart || '',
-                      settlementPeriodEnd: oldBatch.settlementPeriodEnd || '',
+                      partnerType: 'individual' as const,
+                      settlementPeriodStart: '',
+                      settlementPeriodEnd: '',
                       orderCount: oldBatch.orderCount || 0,
-                      settlementAmount: oldBatch.settlementAmount || 0,
-                      status: oldBatch.status as any,
+                      settlementAmount: oldBatch.totalProfit || 0,
+                      status: oldBatch.status === 'pending' ? 'pending' as const : oldBatch.status === 'approved' ? 'approved' as const : 'credited' as const,
                       createdAt: oldBatch.createdAt || '',
-                      totalC2cAmount: oldBatch.totalC2cAmount,
-                      totalPlatformProfit: oldBatch.totalPlatformProfit,
+                      totalC2cAmount: 0,
+                      totalPlatformProfit: 0,
                     };
                   }
                 }
@@ -1050,20 +1090,20 @@ export default function App() {
                         const oldBatches = getMockSettlementBatches();
                         const oldBatch = oldBatches.find(b => b.batchId === batchId);
                         if (oldBatch) {
-                          // 转换为新的格式
+                          // 转换为新的格式（SettlementBatch 没有这些字段，使用默认值）
                           batch = {
                             batchId: oldBatch.batchId,
-                            partnerId: oldBatch.partnerId || `PARTNER-${oldBatch.batchId}`,
+                            partnerId: `PARTNER-${oldBatch.batchId}`,
                             partnerName: oldBatch.partnerName || '未知客户',
-                            partnerType: 'individual',
-                            settlementPeriodStart: oldBatch.settlementPeriodStart || '',
-                            settlementPeriodEnd: oldBatch.settlementPeriodEnd || '',
+                            partnerType: 'individual' as const,
+                            settlementPeriodStart: '',
+                            settlementPeriodEnd: '',
                             orderCount: oldBatch.orderCount || 0,
-                            settlementAmount: oldBatch.settlementAmount || 0,
-                            status: oldBatch.status as any,
+                            settlementAmount: oldBatch.totalProfit || 0,
+                            status: oldBatch.status === 'pending' ? 'pending' as const : oldBatch.status === 'approved' ? 'approved' as const : 'credited' as const,
                             createdAt: oldBatch.createdAt || '',
-                            totalC2cAmount: oldBatch.totalC2cAmount,
-                            totalPlatformProfit: oldBatch.totalPlatformProfit,
+                            totalC2cAmount: 0,
+                            totalPlatformProfit: 0,
                           };
                         }
                       }
@@ -1124,6 +1164,10 @@ export default function App() {
           return <ApiKeyManagement onViewApiKeyDetail={setSelectedApiKey} />;
         case 'pricing':
           return <PriceConfiguration />;
+        case 'business-model-config':
+          return <BusinessModelConfigManagement />;
+        case 'feature-permissions':
+          return <FeaturePermissionManagement />;
         default:
           return (
             <AdminReviewList
@@ -1282,9 +1326,142 @@ export default function App() {
     setCurrentView(view);
   };
 
+  // 根据用户类型和Partner信息判断应该显示哪个系统
+  const getUserSystemType = (): 'admin' | 'bigb' | 'smallb' | 'registration' => {
+    if (!currentUser) return 'registration';
+    if (currentUser.role === 'admin') return 'admin';
+    
+    // 如果申请已通过，根据业务模式判断
+    const app = getCurrentApplication();
+    if (app && app.status === 'approved' && currentPartner) {
+      const userType = getUserType(currentUser, currentPartner);
+      if (userType === 'bigb') return 'bigb';
+      if (userType === 'smallb') return 'smallb';
+    }
+    
+    // 默认显示注册页面
+    return 'registration';
+  };
+
+  // 大B客户系统内容渲染
+  const renderBigBContent = () => {
+    if (!currentUser || !currentPartner) return null;
+    
+    switch (bigBCurrentMenu) {
+      case 'dashboard':
+        return <Dashboard currentPartner={currentPartner} userType="bigb" />;
+      case 'orders':
+        return <OrderManagement 
+          onViewOrderDetail={setSelectedOrder} 
+          currentPartner={currentPartner}
+          userType="bigb"
+        />;
+      case 'withdrawal':
+        // 提现管理作为一级菜单，默认显示提现中心
+        return <Withdrawal currentPartner={currentPartner} userType="bigb" />;
+      case 'withdrawal-center':
+        return <Withdrawal currentPartner={currentPartner} userType="bigb" />;
+      case 'bank-cards':
+        return <BankCardManagement currentPartner={currentPartner} userType="bigb" />;
+      case 'account-help':
+        return <AccountHelp currentPartner={currentPartner} userType="bigb" />;
+      case 'smallb-management':
+        return <SmallBManagement />;
+      case 'pricing':
+        return <PricingStrategy currentPartner={currentPartner} />;
+      case 'reports':
+        return <Reports currentPartner={currentPartner} userType="bigb" />;
+      case 'brand-config':
+        return (
+          <FeatureProtected 
+            featureCode="brand-config" 
+            currentPartner={currentPartner} 
+            userType="bigb"
+          >
+            <SaaSBrandConfig />
+          </FeatureProtected>
+        );
+      case 'links':
+        return currentPartner.businessModel === 'saas' ? <AffiliateLink /> : null;
+      case 'mcp-config':
+        return currentPartner.businessModel === 'mcp' ? <MCPConfiguration /> : null;
+      case 'mcp-monitoring':
+        return currentPartner.businessModel === 'mcp' ? <MCPMonitoring /> : null;
+      default:
+        return <Dashboard currentPartner={currentPartner} userType="bigb" />;
+    }
+  };
+
+  // 小B客户系统内容渲染
+  const renderSmallBContent = () => {
+    if (!currentUser || !currentPartner) return null;
+    
+    switch (smallBCurrentMenu) {
+      case 'dashboard':
+        return <Dashboard currentPartner={currentPartner} userType="smallb" />;
+      case 'orders':
+        return <OrderManagement 
+          onViewOrderDetail={setSelectedOrder} 
+          currentPartner={currentPartner}
+          userType="smallb"
+        />;
+      case 'withdrawal':
+        // 提现管理作为一级菜单，默认显示提现中心
+        return <Withdrawal currentPartner={currentPartner} userType="smallb" />;
+      case 'withdrawal-center':
+        return <Withdrawal currentPartner={currentPartner} userType="smallb" />;
+      case 'bank-cards':
+        return <BankCardManagement currentPartner={currentPartner} userType="smallb" />;
+      case 'account-help':
+        return <AccountHelp currentPartner={currentPartner} userType="smallb" />;
+      case 'affiliate-link':
+        return <AffiliateLink />;
+      case 'commission':
+        return <CommissionDetail currentPartner={currentPartner} />;
+      case 'reports':
+        return <Reports currentPartner={currentPartner} userType="smallb" />;
+      default:
+        return <Dashboard currentPartner={currentPartner} userType="smallb" />;
+    }
+  };
+
   // 用户视图 - 根据当前视图和服务类型渲染内容
   const renderUserContent = () => {
     if (!currentUser) return null;
+    
+    const systemType = getUserSystemType();
+    
+    // 大B客户系统
+    if (systemType === 'bigb') {
+      return (
+        <BigBLayout
+          currentUser={currentUser}
+          currentPartner={currentPartner}
+          onLogout={handleLogout}
+          currentMenu={bigBCurrentMenu}
+          onMenuChange={setBigBCurrentMenu}
+        >
+          {renderBigBContent()}
+          <Toaster />
+        </BigBLayout>
+      );
+    }
+    
+    // 小B客户系统
+    if (systemType === 'smallb') {
+      return (
+        <SmallBLayout
+          currentUser={currentUser}
+          currentPartner={currentPartner}
+          onLogout={handleLogout}
+          currentMenu={smallBCurrentMenu}
+          onMenuChange={setSmallBCurrentMenu}
+        >
+          {renderSmallBContent()}
+          <Toaster />
+        </SmallBLayout>
+      );
+    }
 
     // 个人中心
     if (currentView === 'userCenter') {
@@ -1304,9 +1481,11 @@ export default function App() {
         <RegistrationSteps
           onSubmit={handleFormSubmit}
           initialBusinessModel={selectedBusinessModel}
-          initialIdentityType={selectedIdentity}
+          initialUserType={selectedUserType}
+          initialCertificationType={selectedCertificationType}
           onBusinessModelChange={setSelectedBusinessModel}
-          onIdentityTypeChange={setSelectedIdentity}
+          onUserTypeChange={setSelectedUserType}
+          onCertificationTypeChange={setSelectedCertificationType}
           existingApplicationId={currentApplicationId}
           applicationData={currentApp ? {
             id: currentApp.id,
@@ -1315,7 +1494,8 @@ export default function App() {
             reviewedAt: currentApp.reviewedAt,
             rejectionReason: currentApp.rejectionReason,
             data: currentApp.data,
-            identityType: currentApp.identityType,
+            userType: currentApp.userType,
+            certificationType: currentApp.certificationType,
             businessModel: currentApp.businessModel,
           } : null}
           onGoToDashboard={() => {
@@ -1341,38 +1521,20 @@ export default function App() {
       );
     }
 
-    // MCP 服务页面
-    if (currentUser.serviceType === 'mcp' && currentUser.serviceStatus === 'approved') {
-      if (currentView === 'mcp-config') return <MCPConfiguration />;
-      if (currentView === 'mcp-monitoring') return <MCPMonitoring />;
-      if (currentView === 'mcp-docs') return <MCPDocumentation />;
-    }
-
-    // SaaS 服务页面
-    if (currentUser.serviceType === 'saas' && currentUser.serviceStatus === 'approved') {
-      if (currentView === 'saas-dashboard') return <SaaSDashboard />;
-      if (currentView === 'saas-brand') return <SaaSBrandConfig />;
-      if (currentView === 'saas-pricing') return <SaaSPricing />;
-      if (currentView === 'saas-orders') return <SaaSOrders />;
-      if (currentView === 'saas-wallet') return <SaaSWallet />;
-    }
-
-    // 推广联盟服务页面
-    if (currentUser.serviceType === 'affiliate' && currentUser.serviceStatus === 'approved') {
-      if (currentView === 'affiliate-dashboard') return <AffiliateDashboard />;
-      if (currentView === 'affiliate-link') return <AffiliateLink />;
-      if (currentView === 'affiliate-data') return <AffiliateData />;
-      if (currentView === 'affiliate-points') return <AffiliatePoints />;
-    }
+    // 注意：旧的基于 serviceType 的路由逻辑已废弃
+    // 现在使用新的 BigBLayout/SmallBLayout 系统
+    // 这些代码保留作为向后兼容，但实际不会执行（因为 systemType 判断在前面）
 
     // 默认显示注册服务
     return (
       <RegistrationSteps
         onSubmit={handleFormSubmit}
         initialBusinessModel={selectedBusinessModel}
-        initialIdentityType={selectedIdentity}
+        initialUserType={selectedUserType}
+        initialCertificationType={selectedCertificationType}
         onBusinessModelChange={setSelectedBusinessModel}
-        onIdentityTypeChange={setSelectedIdentity}
+        onUserTypeChange={setSelectedUserType}
+        onCertificationTypeChange={setSelectedCertificationType}
         existingApplicationId={currentApplicationId}
         applicationData={currentApp ? {
           id: currentApp.id,
@@ -1381,7 +1543,8 @@ export default function App() {
           reviewedAt: currentApp.reviewedAt,
           rejectionReason: currentApp.rejectionReason,
           data: currentApp.data,
-          identityType: currentApp.identityType,
+          userType: currentApp.userType,
+          certificationType: currentApp.certificationType,
           businessModel: currentApp.businessModel,
         } : null}
         onGoToDashboard={() => {
@@ -1406,7 +1569,16 @@ export default function App() {
     );
   };
 
-  // Render user view with layout
+  // 根据用户类型决定使用哪个布局
+  const systemType = getUserSystemType();
+  
+  // 大B或小B客户系统，直接返回对应的布局（布局已在renderUserContent中）
+  if (systemType === 'bigb' || systemType === 'smallb') {
+    return renderUserContent();
+  }
+  
+  // 管理员系统已经在上面处理了，这里只处理普通用户（注册中或未审核通过）
+  // Render user view with layout (仅用于注册流程和未审核通过的用户)
   return (
     <UserLayout
       currentUser={currentUser}

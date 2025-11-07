@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -39,15 +39,18 @@ import {
   PaginationPrevious,
 } from './ui/pagination';
 import { getMockOrders, type Order, type OrderStatus, type SettlementStatus } from '../data/mockOrders';
+import { filterOrdersByUserType } from '../utils/orderUtils';
 
 // 导出类型以便其他组件使用
 export type { Order, OrderStatus, SettlementStatus };
 
 interface OrderManagementProps {
   onViewOrderDetail?: (order: Order) => void;
+  currentPartner?: import('../data/mockPartners').Partner | null; // 当前用户的Partner信息
+  userType?: 'admin' | 'bigb' | 'smallb'; // 用户类型
 }
 
-export function OrderManagement({ onViewOrderDetail }: OrderManagementProps) {
+export function OrderManagement({ onViewOrderDetail, currentPartner, userType }: OrderManagementProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOrderStatus, setFilterOrderStatus] = useState<'all' | OrderStatus>('all');
   const [filterSettlementStatus, setFilterSettlementStatus] = useState<'all' | SettlementStatus>('all');
@@ -65,7 +68,17 @@ export function OrderManagement({ onViewOrderDetail }: OrderManagementProps) {
   const [showFilters, setShowFilters] = useState(false);
 
   // 使用 mock 数据
-  const orders: Order[] = getMockOrders();
+  const allOrders: Order[] = getMockOrders();
+  
+  // 根据用户类型和Partner信息过滤订单
+  const orders = useMemo(() => {
+    if (!userType || userType === 'admin') {
+      // 管理员可以查看所有订单
+      return allOrders;
+    }
+    
+    return filterOrdersByUserType(allOrders, currentPartner || null, userType);
+  }, [allOrders, currentPartner, userType]);
 
   const getOrderStatusBadge = (status: OrderStatus) => {
     const config = {

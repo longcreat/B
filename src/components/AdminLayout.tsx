@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import { Bell, LogOut, FileCheck, Users, ChevronLeft, ChevronRight, Receipt, Settings, Package, Key, Wallet, Building2, FileText, CreditCard, Calculator, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bell, LogOut, FileCheck, Users, ChevronLeft, ChevronRight, Receipt, Settings, Package, Key, Wallet, Building2, FileText, CreditCard, Calculator, ArrowRight, ChevronDown, ChevronUp, Cog, Shield } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +15,7 @@ import { Badge } from './ui/badge';
 // 统一的菜单图标大小配置
 const MENU_ICON_SIZE = 'w-4 h-4';
 
-export type AdminMenuItem = 'review' | 'users' | 'orders' | 'finance' | 'apikeys' | 'pricing';
+export type AdminMenuItem = 'review' | 'users' | 'orders' | 'finance' | 'apikeys' | 'pricing' | 'business-model-config' | 'feature-permissions';
 export type FinanceSubMenu = 'platform-account' | 'partner-account' | 'business-documents' | 'settlement' | 'reconciliation' | 'withdrawal' | 'invoice';
 export type PartnerAccountSubMenu = 'partner-balance';
 export type ReconciliationSubMenu = 'reconciliation-management' | 'reconciliation-summary';
@@ -89,6 +89,8 @@ export function AdminLayout({
     { id: 'finance' as AdminMenuItem, icon: Receipt, label: '财务中心', count: 0 },
     { id: 'apikeys' as AdminMenuItem, icon: Key, label: '密钥管理', count: 0 },
     { id: 'pricing' as AdminMenuItem, icon: Settings, label: '价格配置', count: 0 },
+    { id: 'business-model-config' as AdminMenuItem, icon: Cog, label: '业务模式配置', count: 0 },
+    { id: 'feature-permissions' as AdminMenuItem, icon: Shield, label: '功能权限管理', count: 0 },
   ];
 
   const financeSubMenus = [
@@ -357,10 +359,10 @@ export function AdminLayout({
           <div className="flex items-center gap-8">
             {/* Logo */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm">AI</span>
+              <div className="w-8 h-8 bg-white border-2 border-blue-200 rounded-lg flex items-center justify-center shadow-sm">
+                <span className="text-red-600 text-sm font-bold">AI</span>
               </div>
-              <span className="text-xl">AIGOHOTEL</span>
+              <span className="text-xl font-semibold text-gray-900">AIGOHOTEL</span>
               <Badge variant="outline" className="ml-2 bg-purple-50 text-purple-700 border-purple-300">
                 管理后台
               </Badge>

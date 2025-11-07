@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { Link2, Copy, Edit2, Check, Edit, Lightbulb, Plus, Trash2, QrCode } from 'lucide-react';
+import { Link2, Copy, Edit2, Check, Edit, Lightbulb, Plus, Trash2, QrCode, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -32,6 +33,7 @@ export function AffiliateLink() {
   const [isEditingCode, setIsEditingCode] = useState(false);
   const [isCheckingCode, setIsCheckingCode] = useState(false);
   const [codeAvailable, setCodeAvailable] = useState<boolean | null>(null);
+  const [isTipsOpen, setIsTipsOpen] = useState(false);
   
   // 生成链接
   const defaultLink = `https://aigohotel.com/ref?id=${affiliateId}`;
@@ -46,6 +48,7 @@ export function AffiliateLink() {
   const [newCampaignName, setNewCampaignName] = useState('');
   const [newCampaignParam, setNewCampaignParam] = useState('');
   const [showQRCode, setShowQRCode] = useState<string | null>(null);
+  const [showMainQRCode, setShowMainQRCode] = useState(false);
 
   const copyLink = () => {
     navigator.clipboard.writeText(mainLink);
@@ -127,18 +130,23 @@ export function AffiliateLink() {
     toast.success('活动链接已复制');
   };
 
+  const generateMainQRCode = () => {
+    setShowMainQRCode(true);
+    toast.success('主推广链接二维码已生成');
+  };
+
   const generateQRCode = (campaignId: string) => {
     setShowQRCode(campaignId);
-    toast.success('二维码已生成');
+    toast.success('活动二维码已生成');
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* 面包屑导航 */}
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbPage>推广物料</BreadcrumbPage>
+            <BreadcrumbPage>推广链接</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -234,15 +242,60 @@ export function AffiliateLink() {
 
           {/* 快捷操作 */}
           <div className="flex items-center gap-2">
-            <Button onClick={copyLink} className="bg-purple-600 hover:bg-purple-700">
+            <Button onClick={copyLink} style={{ backgroundColor: '#9333ea', color: 'white' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#7e22ce'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#9333ea'}>
               <Copy className="w-4 h-4 mr-2" />
               复制个性化链接
             </Button>
-            <Button onClick={generateQRCode} variant="outline">
+            <Button onClick={generateMainQRCode} style={{ backgroundColor: '#9333ea', color: 'white' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#7e22ce'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#9333ea'}>
               <QrCode className="w-4 h-4 mr-2" />
               生成二维码
             </Button>
           </div>
+
+          {/* 主推广链接二维码显示 */}
+          {showMainQRCode && (
+            <div className="mt-4 p-4 bg-purple-50 rounded-lg border-2 border-purple-200">
+              <div className="flex items-center gap-4">
+                {/* 左侧：二维码 */}
+                <div className="flex-shrink-0">
+                  <div className="w-36 h-36 bg-white rounded-lg flex items-center justify-center border border-purple-300">
+                    <QrCode className="w-24 h-24 text-purple-400" />
+                  </div>
+                </div>
+                
+                {/* 右侧：信息区域 */}
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-purple-900 mb-1">
+                      主推广链接二维码
+                    </p>
+                    <p className="text-xs text-purple-700 break-all font-mono">
+                      {mainLink}
+                    </p>
+                  </div>
+                  
+                  {/* 按钮区域 */}
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowMainQRCode(false)}
+                    >
+                      关闭
+                    </Button>
+                    <Button 
+                      size="sm"
+                      style={{ backgroundColor: '#9333ea', color: 'white' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#7e22ce'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#9333ea'}
+                    >
+                      下载二维码
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -346,15 +399,26 @@ export function AffiliateLink() {
         </CardContent>
       </Card>
 
-      {/* 推广建议 */}
-      <Card className="border-blue-200 bg-blue-50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-blue-900">
-            <Lightbulb className="w-5 h-5" />
-            推广建议
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* 推广建议 - 可折叠 */}
+      <Collapsible open={isTipsOpen} onOpenChange={setIsTipsOpen}>
+        <Card className="border-blue-200 bg-blue-50">
+          <CollapsibleTrigger asChild>
+            <CardContent className="py-4 cursor-pointer hover:bg-blue-100/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Lightbulb className="w-5 h-5 text-blue-600" />
+                  <span className="text-blue-900 font-medium">推广建议</span>
+                </div>
+                {isTipsOpen ? (
+                  <ChevronUp className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-blue-600" />
+                )}
+              </div>
+            </CardContent>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 pb-6">
           <ul className="space-y-3 text-sm text-blue-800">
             <li className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium mt-0.5">
@@ -393,8 +457,10 @@ export function AffiliateLink() {
               </div>
             </li>
           </ul>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* 使用说明 */}
       <Card>

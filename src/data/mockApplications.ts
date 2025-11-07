@@ -9,7 +9,9 @@ export interface ApplicationData {
   id: string;
   applicantName: string;
   businessModel: 'mcp' | 'saas' | 'affiliate';
-  identityType: IdentityType | LegacyIdentityType; // 支持新旧两种类型
+  userType?: 'travel_agent' | 'influencer' | 'travel_app'; // 新的用户信息类型
+  certificationType?: 'individual' | 'enterprise'; // 认证方式
+  identityType?: IdentityType | LegacyIdentityType; // 兼容旧类型
   status: 'pending' | 'approved' | 'rejected';
   submittedAt: string;
   reviewedAt?: string;

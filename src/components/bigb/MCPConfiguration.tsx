@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -44,7 +44,7 @@ export function MCPConfiguration() {
   const configJson = JSON.stringify(mcpConfig, null, 2);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* 面包屑导航 */}
       <Breadcrumb>
         <BreadcrumbList>

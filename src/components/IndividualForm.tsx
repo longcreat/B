@@ -24,8 +24,6 @@ interface IndividualFormData {
   idValidityEnd: string;
   idPhotoFront: File | null;
   idPhotoBack: File | null;
-  promotionChannels: string[];
-  promotionChannelsOther?: string;
   phone: string;
   email?: string;
   accountType: 'bank' | 'alipay';
@@ -35,11 +33,16 @@ interface IndividualFormData {
   bankCardNumber?: string;
   alipayAccount?: string;
   alipayRealName?: string;
+  // 旅行代理业务证明（必填）
+  businessProofScreenshots?: File[];
   // 独立开发者MCP业务额外字段
   githubAccount?: string;
   portfolioLink?: string;
   appScreenshots?: File[];
-  // 个人代理额外字段
+  // 独立开发者SaaS业务额外字段
+  existingBusinessLink?: string;
+  existingBusinessScreenshots?: File[];
+  // 个人代理/推广联盟业务额外字段
   businessScenario?: string;
 }
 
@@ -47,8 +50,10 @@ interface IndividualFormProps {
   onBack: () => void;
   onSubmit?: (data: any) => void;
   initialData?: any;
-  identityType?: 'developer' | 'agent'; // 身份类型
+  userType?: 'travel_agent' | 'influencer' | 'travel_app'; // 用户信息类型
+  certificationType?: 'individual' | 'enterprise'; // 认证方式
   businessModel?: 'mcp' | 'saas' | 'affiliate'; // 业务模式
+  identityType?: 'developer' | 'agent'; // 兼容旧的身份类型
 }
 
 const STORAGE_KEY = 'individual_form_data';
@@ -74,24 +79,30 @@ const BANK_OPTIONS = [
   '北京银行',
 ];
 
-export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData, identityType, businessModel }: IndividualFormProps) {
+export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData, userType, certificationType, businessModel, identityType }: IndividualFormProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [idPhotoFront, setIdPhotoFront] = useState<File | null>(null);
   const [idPhotoBack, setIdPhotoBack] = useState<File | null>(null);
-  const [promotionChannels, setPromotionChannels] = useState<string[]>(initialData?.promotionChannels || []);
+  
+  // 兼容旧的身份类型，如果提供了新的userType，则根据userType推断
+  const effectiveIdentityType = identityType || (userType === 'travel_agent' ? 'agent' : userType === 'travel_app' ? 'developer' : undefined);
   const [appScreenshots, setAppScreenshots] = useState<File[]>(initialData?.appScreenshots || []);
+  const [businessProofScreenshots, setBusinessProofScreenshots] = useState<File[]>(initialData?.businessProofScreenshots || []);
+  const [existingBusinessScreenshots, setExistingBusinessScreenshots] = useState<File[]>(initialData?.existingBusinessScreenshots || []);
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [faceVerified, setFaceVerified] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
 
   // 判断是否为独立开发者
-  const isDeveloper = identityType === 'developer';
+  const isDeveloper = effectiveIdentityType === 'developer';
+  // 判断是否为旅行代理
+  const isTravelAgent = userType === 'travel_agent';
   // 判断是否为MCP业务
   const isMCPBusiness = businessModel === 'mcp';
+  // 判断是否为SaaS业务
+  const isSaaSBusiness = businessModel === 'saas';
   // 判断是否为Affiliate业务
   const isAffiliateBusiness = businessModel === 'affiliate';
-  // 推广渠道是否必填（个人代理必填，独立开发者可选）
-  const isPromotionChannelsRequired = identityType === 'agent';
 
   const {
     register,
@@ -103,14 +114,12 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData, id
     defaultValues: initialData || {
       phone: '138****8888', // 模拟预填充的注册手机号
       accountType: 'bank',
-      promotionChannels: [],
     },
   });
 
   const realName = watch('realName');
   const accountType = watch('accountType');
   const bankName = watch('bankName');
-  const promotionChannelsOther = watch('promotionChannelsOther');
 
   // 自动填充开户人姓名
   useEffect(() => {
@@ -128,10 +137,6 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData, id
           setValue(key as keyof IndividualFormData, initialData[key]);
         }
       });
-      // 设置推广渠道
-      if (initialData.promotionChannels) {
-        setPromotionChannels(initialData.promotionChannels);
-      }
       return;
     }
     
@@ -181,20 +186,6 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData, id
     return true;
   };
 
-  const handleChannelChange = (channel: string, checked: boolean) => {
-    let newChannels: string[];
-    if (checked) {
-      newChannels = [...promotionChannels, channel];
-    } else {
-      newChannels = promotionChannels.filter(c => c !== channel);
-      // Clear "other" text if unchecking "其他"
-      if (channel === '其他') {
-        setValue('promotionChannelsOther', '');
-      }
-    }
-    setPromotionChannels(newChannels);
-    setValue('promotionChannels', newChannels);
-  };
 
   const onSubmit = (data: IndividualFormData) => {
     if (!idPhotoFront || !idPhotoBack) {
@@ -202,16 +193,12 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData, id
       return;
     }
 
-    // 个人代理必填推广渠道，独立开发者可选
-    if (isPromotionChannelsRequired && promotionChannels.length === 0) {
-      toast.error('请至少选择一个主要推广渠道');
+    // 旅行代理必填业务证明截图
+    if (isTravelAgent && businessProofScreenshots.length === 0) {
+      toast.error('请上传业务证明截图');
       return;
     }
 
-    if (promotionChannels.includes('其他') && !data.promotionChannelsOther?.trim()) {
-      toast.error('请填写其他推广渠道的具体内容');
-      return;
-    }
 
     if (accountType === 'bank') {
       if (!data.bankName || !data.bankBranch || !data.bankCardNumber) {
@@ -236,17 +223,29 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData, id
     const formData = watch();
     const submissionData = {
       ...formData,
-      promotionChannels,
       idPhotoFront: idPhotoFront ? URL.createObjectURL(idPhotoFront) : null,
       idPhotoBack: idPhotoBack ? URL.createObjectURL(idPhotoBack) : null,
+      // 旅行代理业务证明截图
+      ...(isTravelAgent && businessProofScreenshots.length > 0 ? {
+        businessProofScreenshots: businessProofScreenshots.map(file => URL.createObjectURL(file)),
+      } : {}),
       // 独立开发者MCP业务额外字段
       ...(isDeveloper && isMCPBusiness ? {
         githubAccount: formData.githubAccount,
         portfolioLink: formData.portfolioLink,
-        appScreenshots: appScreenshots.map(file => URL.createObjectURL(file)),
+        ...(appScreenshots.length > 0 ? {
+          appScreenshots: appScreenshots.map(file => URL.createObjectURL(file)),
+        } : {}),
       } : {}),
-      // 独立开发者Affiliate业务或个人代理额外字段
-      ...((isDeveloper && isAffiliateBusiness) || identityType === 'agent' ? {
+      // 独立开发者SaaS业务额外字段
+      ...(isDeveloper && isSaaSBusiness ? {
+        existingBusinessLink: formData.existingBusinessLink,
+        ...(existingBusinessScreenshots.length > 0 ? {
+          existingBusinessScreenshots: existingBusinessScreenshots.map(file => URL.createObjectURL(file)),
+        } : {}),
+      } : {}),
+      // 独立开发者Affiliate业务或旅行代理推广联盟业务额外字段
+      ...((isDeveloper && isAffiliateBusiness) || (isTravelAgent && isAffiliateBusiness) ? {
         businessScenario: formData.businessScenario,
       } : {}),
       agreementAccepted: {
@@ -405,201 +404,214 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData, id
                 </div>
               </div>
 
-              {/* B. 业务信息 */}
-              <div>
-                <h3 className="mb-4 pb-2 border-b">B. 业务信息（用于渠道分析）</h3>
-                <div className="space-y-4">
-                  <div>
-                    <Label>
-                      主要推广渠道 {isPromotionChannelsRequired && <span className="text-red-500">*</span>}
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <HelpCircle className="w-4 h-4 inline ml-1 text-gray-400 cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>请选择您主要使用的推广渠道，可多选</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </Label>
-                    <div className="mt-3 space-y-3">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="channel-social"
-                          checked={promotionChannels.includes('社交媒体/内容平台')}
-                          onCheckedChange={(checked: boolean) =>
-                            handleChannelChange('社交媒体/内容平台', checked)
-                          }
+              {/* B. 业务证明（旅行代理必填） */}
+              {isTravelAgent && (
+                <div>
+                  <h3 className="mb-4 pb-2 border-b">B. 业务证明（必填）</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>
+                        业务证明截图 <span className="text-red-500">*</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="w-4 h-4 inline ml-1 text-gray-400 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>证明从事酒店代订业务的材料，最多5张，JPG/PNG，≤5MB</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </Label>
+                      <div className="mt-2">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/jpg"
+                          multiple
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []).slice(0, 5);
+                            setBusinessProofScreenshots(files);
+                          }}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                         />
-                        <Label htmlFor="channel-social" className="cursor-pointer">
-                          社交媒体/内容平台
-                        </Label>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="channel-private"
-                          checked={promotionChannels.includes('私域流量 (如微信群、朋友圈)')}
-                          onCheckedChange={(checked: boolean) =>
-                            handleChannelChange('私域流量 (如微信群、朋友圈)', checked)
-                          }
-                        />
-                        <Label htmlFor="channel-private" className="cursor-pointer">
-                          私域流量 (如微信群、朋友圈)
-                        </Label>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="channel-offline"
-                          checked={promotionChannels.includes('线下客户/门店推荐')}
-                          onCheckedChange={(checked: boolean) =>
-                            handleChannelChange('线下客户/门店推荐', checked)
-                          }
-                        />
-                        <Label htmlFor="channel-offline" className="cursor-pointer">
-                          线下客户/门店推荐
-                        </Label>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="channel-corporate"
-                          checked={promotionChannels.includes('企业客户/差旅代订')}
-                          onCheckedChange={(checked: boolean) =>
-                            handleChannelChange('企业客户/差旅代订', checked)
-                          }
-                        />
-                        <Label htmlFor="channel-corporate" className="cursor-pointer">
-                          企业客户/差旅代订
-                        </Label>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="channel-other"
-                            checked={promotionChannels.includes('其他')}
-                            onCheckedChange={(checked: boolean) =>
-                              handleChannelChange('其他', checked)
-                            }
-                          />
-                          <Label htmlFor="channel-other" className="cursor-pointer">
-                            其他
-                          </Label>
-                        </div>
-                        
-                        {promotionChannels.includes('其他') && (
-                          <div className="ml-6">
-                            <Input
-                              {...register('promotionChannelsOther')}
-                              placeholder="请填写其他推广渠道"
-                              className="mt-2"
-                            />
-                            {promotionChannels.includes('其他') && !promotionChannelsOther?.trim() && (
-                              <p className="text-red-500 mt-1">请填写其他推广渠道的具体内容</p>
-                            )}
+                        {businessProofScreenshots.length > 0 && (
+                          <div className="mt-2 flex gap-2 flex-wrap">
+                            {businessProofScreenshots.map((file, index) => (
+                              <div key={index} className="relative">
+                                <img
+                                  src={URL.createObjectURL(file)}
+                                  alt={`业务证明${index + 1}`}
+                                  className="w-20 h-20 object-cover rounded border"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newScreenshots = businessProofScreenshots.filter((_, i) => i !== index);
+                                    setBusinessProofScreenshots(newScreenshots);
+                                  }}
+                                  className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
                           </div>
                         )}
+                        <p className="text-sm text-gray-500 mt-1">例如：微信群截图、企业内部代订记录等</p>
                       </div>
+                      {businessProofScreenshots.length === 0 && (
+                        <p className="text-red-500 mt-1">请上传业务证明截图</p>
+                      )}
                     </div>
-                    {isPromotionChannelsRequired && promotionChannels.length === 0 && (
-                      <p className="text-red-500 mt-2">请至少选择一个主要推广渠道</p>
-                    )}
+                  </div>
+                </div>
+              )}
+
+
+              {/* 独立开发者MCP业务额外字段 */}
+              {isDeveloper && isMCPBusiness && (
+                <div className="mt-6 space-y-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">技术能力证明（选填）</h4>
+                  
+                  <div>
+                    <Label>GitHub账号</Label>
+                    <Input
+                      {...register('githubAccount')}
+                      placeholder="例如：username"
+                      className="mt-2"
+                    />
                   </div>
 
-                  {/* 独立开发者MCP业务额外字段 */}
-                  {isDeveloper && isMCPBusiness && (
-                    <div className="mt-6 space-y-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">技术能力证明（选填）</h4>
-                      
-                      <div>
-                        <Label>GitHub账号</Label>
-                        <Input
-                          {...register('githubAccount')}
-                          placeholder="例如：username"
-                          className="mt-2"
-                        />
-                      </div>
+                  <div>
+                    <Label>作品集链接</Label>
+                    <Input
+                      {...register('portfolioLink')}
+                      placeholder="应用/网站/小程序链接"
+                      className="mt-2"
+                    />
+                  </div>
 
-                      <div>
-                        <Label>作品集链接</Label>
-                        <Input
-                          {...register('portfolioLink')}
-                          placeholder="应用/网站/小程序链接"
-                          className="mt-2"
-                        />
-                      </div>
-
-                      <div>
-                        <Label>应用截图（最多3张）</Label>
-                        <div className="mt-2">
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/jpg"
-                            multiple
-                            onChange={(e) => {
-                              const files = Array.from(e.target.files || []).slice(0, 3);
-                              setAppScreenshots(files);
-                            }}
-                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                          />
-                          {appScreenshots.length > 0 && (
-                            <div className="mt-2 flex gap-2 flex-wrap">
-                              {appScreenshots.map((file, index) => (
-                                <div key={index} className="relative">
-                                  <img
-                                    src={URL.createObjectURL(file)}
-                                    alt={`截图${index + 1}`}
-                                    className="w-20 h-20 object-cover rounded border"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const newScreenshots = appScreenshots.filter((_, i) => i !== index);
-                                      setAppScreenshots(newScreenshots);
-                                    }}
-                                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                              ))}
+                  <div>
+                    <Label>应用截图（最多3张）</Label>
+                    <div className="mt-2">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/jpg"
+                        multiple
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []).slice(0, 3);
+                          setAppScreenshots(files);
+                        }}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      {appScreenshots.length > 0 && (
+                        <div className="mt-2 flex gap-2 flex-wrap">
+                          {appScreenshots.map((file, index) => (
+                            <div key={index} className="relative">
+                              <img
+                                src={URL.createObjectURL(file)}
+                                alt={`截图${index + 1}`}
+                                className="w-20 h-20 object-cover rounded border"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newScreenshots = appScreenshots.filter((_, i) => i !== index);
+                                  setAppScreenshots(newScreenshots);
+                                }}
+                                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                              >
+                                ×
+                              </button>
                             </div>
-                          )}
+                          ))}
                         </div>
-                      </div>
+                      )}
                     </div>
-                  )}
-
-                  {/* 独立开发者Affiliate业务额外字段 */}
-                  {isDeveloper && isAffiliateBusiness && (
-                    <div className="mt-6">
-                      <Label>业务场景说明（选填）</Label>
-                      <Textarea
-                        {...register('businessScenario')}
-                        placeholder="请简要描述您的业务场景和需求"
-                        className="mt-2"
-                        rows={3}
-                      />
-                    </div>
-                  )}
-
-                  {/* 个人代理额外字段 */}
-                  {identityType === 'agent' && (
-                    <div className="mt-6">
-                      <Label>业务场景说明（选填）</Label>
-                      <Textarea
-                        {...register('businessScenario')}
-                        placeholder="请简要描述您的业务场景和需求"
-                        className="mt-2"
-                        rows={3}
-                      />
-                    </div>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* 独立开发者SaaS业务额外字段 */}
+              {isDeveloper && isSaaSBusiness && (
+                <div className="mt-6 space-y-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">现有业务证明（选填）</h4>
+                  
+                  <div>
+                    <Label>现有业务链接</Label>
+                    <Input
+                      {...register('existingBusinessLink')}
+                      placeholder="网站、APP链接或相关业务链接"
+                      className="mt-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>现有业务截图（最多3张）</Label>
+                    <div className="mt-2">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/jpg"
+                        multiple
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []).slice(0, 3);
+                          setExistingBusinessScreenshots(files);
+                        }}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      {existingBusinessScreenshots.length > 0 && (
+                        <div className="mt-2 flex gap-2 flex-wrap">
+                          {existingBusinessScreenshots.map((file, index) => (
+                            <div key={index} className="relative">
+                              <img
+                                src={URL.createObjectURL(file)}
+                                alt={`业务截图${index + 1}`}
+                                className="w-20 h-20 object-cover rounded border"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newScreenshots = existingBusinessScreenshots.filter((_, i) => i !== index);
+                                  setExistingBusinessScreenshots(newScreenshots);
+                                }}
+                                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 独立开发者Affiliate业务额外字段 */}
+              {isDeveloper && isAffiliateBusiness && (
+                <div className="mt-6">
+                  <Label>业务场景说明（选填）</Label>
+                  <Textarea
+                    {...register('businessScenario')}
+                    placeholder="请简要描述您的业务场景和需求"
+                    className="mt-2"
+                    rows={3}
+                  />
+                </div>
+              )}
+
+              {/* 旅行代理推广联盟业务额外字段 */}
+              {isTravelAgent && isAffiliateBusiness && (
+                <div className="mt-6">
+                  <Label>业务场景说明（选填）</Label>
+                  <Textarea
+                    {...register('businessScenario')}
+                    placeholder="请简要描述您的业务场景和需求"
+                    className="mt-2"
+                    rows={3}
+                  />
+                </div>
+              )}
 
               {/* C. 联系信息 */}
               <div>
@@ -634,7 +646,7 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData, id
 
                   <div>
                     <Label>
-                      电子邮箱
+                      电子邮箱 {isTravelAgent && <span className="text-red-500">*</span>}
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -647,9 +659,12 @@ export function IndividualForm({ onBack, onSubmit: onSubmitProp, initialData, id
                       </TooltipProvider>
                     </Label>
                     <Input
-                      {...register('email', { validate: validateEmail })}
+                      {...register('email', { 
+                        required: isTravelAgent ? '电子邮箱为必填项' : false,
+                        validate: validateEmail 
+                      })}
                       type="email"
-                      placeholder="选填"
+                      placeholder={isTravelAgent ? "请输入邮箱地址" : "选填"}
                       className="mt-2"
                     />
                     {errors.email && (
