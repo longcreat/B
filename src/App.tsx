@@ -5,16 +5,19 @@ import { AdminReviewList } from './components/AdminReviewList';
 import type { ApplicationData } from './data/mockApplications';
 import { getMockApplications } from './data/mockApplications';
 import { AdminReviewDetail } from './components/AdminReviewDetail';
-import { AdminLayout, type AdminMenuItem, type FinanceSubMenu, type PartnerAccountSubMenu, type ReconciliationSubMenu, type SettlementSubMenu, type BusinessDocumentsSubMenu } from './components/AdminLayout';
+import { AdminLayout, type AdminMenuItem, type UserSubMenu, type FinanceSubMenu, type ReconciliationSubMenu, type SettlementSubMenu, type BusinessDocumentsSubMenu } from './components/AdminLayout';
 import { UserManagement } from './components/UserManagement';
+import { UserDetail } from './components/UserDetail';
+import { PromotionLinkManagement, type PromotionLink } from './components/PromotionLinkManagement';
+import { PromotionLinkDetail } from './components/PromotionLinkDetail';
 import { OrderManagement, type Order } from './components/OrderManagement';
 import { OrderDetail } from './components/OrderDetail';
 import { SettlementCenter } from './components/SettlementCenter';
 import { PlatformAccount } from './components/PlatformAccount';
-import { PartnerAccount } from './components/PartnerAccount';
+import { MerchantAccounts } from './components/finance/merchant-accounts';
 import { InvoiceManagement, type Invoice } from './components/InvoiceManagement';
 import { InvoiceDetail } from './components/InvoiceDetail';
-import { WithdrawalManagement, type Withdrawal } from './components/WithdrawalManagement';
+import { WithdrawalManagement, type Withdrawal as WithdrawalRecord } from './components/WithdrawalManagement';
 import { WithdrawalDetail } from './components/WithdrawalDetail';
 import { ReconciliationManagement, type Reconciliation } from './components/ReconciliationManagement';
 import { ReconciliationDetail } from './components/ReconciliationDetail';
@@ -105,9 +108,11 @@ export default function App() {
   const [selectedCertificationType, setSelectedCertificationType] = useState<CertificationType | null>(null);
   const [currentApplicationId, setCurrentApplicationId] = useState<string | null>(null);
   const [selectedAdminApplication, setSelectedAdminApplication] = useState<ApplicationData | null>(null);
+  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  const [selectedPromotionLink, setSelectedPromotionLink] = useState<PromotionLink | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [selectedWithdrawal, setSelectedWithdrawal] = useState<Withdrawal | null>(null);
+  const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRecord | null>(null);
   const [selectedReconciliation, setSelectedReconciliation] = useState<Reconciliation | null>(null);
   const [selectedApiKey, setSelectedApiKey] = useState<ApiKeyInfo | null>(() => {
     const stored = localStorage.getItem('selectedApiKeyId');
@@ -175,9 +180,9 @@ export default function App() {
     const stored = localStorage.getItem('adminCurrentFinanceSubMenu');
     return stored ? (stored as FinanceSubMenu) : undefined;
   });
-  const [adminCurrentPartnerAccountSubMenu, setAdminCurrentPartnerAccountSubMenu] = useState<PartnerAccountSubMenu | undefined>(() => {
-    const stored = localStorage.getItem('adminCurrentPartnerAccountSubMenu');
-    return stored ? (stored as PartnerAccountSubMenu) : undefined;
+  const [adminCurrentUserSubMenu, setAdminCurrentUserSubMenu] = useState<UserSubMenu | undefined>(() => {
+    const stored = localStorage.getItem('adminCurrentUserSubMenu');
+    return stored ? (stored as UserSubMenu) : undefined;
   });
   const [adminCurrentReconciliationSubMenu, setAdminCurrentReconciliationSubMenu] = useState<ReconciliationSubMenu | undefined>(() => {
     const stored = localStorage.getItem('adminCurrentReconciliationSubMenu');
@@ -194,13 +199,39 @@ export default function App() {
 
   // Load applications from localStorage
   const [applications, setApplications] = useState<ApplicationData[]>(() => {
+    const isDevelopment = !('document' in globalThis) || globalThis.location?.hostname === 'localhost';
+    // 开发环境下强制使用新的mock数据，确保能看到最新的待审核数据
+    if (isDevelopment) {
+      console.log('开发环境：使用最新的mock数据');
+      return getMockApplications();
+    }
+    
     const stored = localStorage.getItem('applications');
     if (stored) {
-      return JSON.parse(stored);
+      try {
+        const parsed = JSON.parse(stored);
+        // 检查数据是否包含新字段，如果不包含则使用新数据
+        if (parsed.length > 0 && !parsed[0].phoneNumber) {
+          console.log('检测到旧数据格式，使用新的mock数据');
+          return getMockApplications();
+        }
+        return parsed;
+      } catch (e) {
+        console.error('解析localStorage数据失败，使用mock数据');
+        return getMockApplications();
+      }
     }
     // 使用 mock 数据
     return getMockApplications();
   });
+
+  // 刷新数据的函数
+  const handleRefreshData = () => {
+    const freshData = getMockApplications();
+    setApplications(freshData);
+    console.log('数据已刷新，最新数据条数：', freshData.length);
+    console.log('待审核数据条数：', freshData.filter(app => app.status === 'pending').length);
+  };
 
   // Restore user session from localStorage on mount
   useEffect(() => {
@@ -351,6 +382,7 @@ export default function App() {
               submittedAt: formatDateTime(new Date()),
               reviewedAt: undefined,
               rejectionReason: undefined,
+              phoneNumber: formData.phone || formData.contactPhone || formData.contact?.phone || '',
               data: formData,
               businessModel: selectedBusinessModel,
               userType: selectedUserType,
@@ -370,6 +402,7 @@ export default function App() {
         certificationType: selectedCertificationType,
         status: 'pending',
         submittedAt: formatDateTime(new Date()),
+        phoneNumber: formData.phone || formData.contactPhone || formData.contact?.phone || '',
         data: formData,
         userEmail: currentUser?.email,
       };
@@ -598,21 +631,6 @@ export default function App() {
         );
       }
 
-      // 如果正在查看订单详情，且当前菜单是订单管理
-      if (selectedOrder && adminCurrentMenu === 'orders') {
-        // 保存订单ID到localStorage
-        localStorage.setItem('selectedOrderId', selectedOrder.orderId);
-        return (
-          <OrderDetail
-            order={selectedOrder}
-            onBack={() => {
-              setSelectedOrder(null);
-              localStorage.removeItem('selectedOrderId');
-            }}
-          />
-        );
-      }
-
       // 如果正在查看申请详情，且当前菜单是资格审核
       if (selectedAdminApplication && adminCurrentMenu === 'review') {
         // 保存申请ID到localStorage
@@ -626,6 +644,25 @@ export default function App() {
             }}
             onApprove={handleAdminApprove}
             onReject={handleAdminReject}
+          />
+        );
+      }
+
+      // 如果正在查看推广链接详情，且当前菜单是推广链接管理
+      if (
+        selectedPromotionLink &&
+        adminCurrentMenu === 'users' &&
+        adminCurrentUserSubMenu === 'promotion-links'
+      ) {
+        // 保存推广链接ID到localStorage
+        localStorage.setItem('selectedPromotionLinkId', selectedPromotionLink.id);
+        return (
+          <PromotionLinkDetail
+            link={selectedPromotionLink}
+            onBack={() => {
+              setSelectedPromotionLink(null);
+              localStorage.removeItem('selectedPromotionLinkId');
+            }}
           />
         );
       }
@@ -854,6 +891,21 @@ export default function App() {
         );
       }
 
+      // 如果正在查看订单详情，且当前菜单是订单管理
+      if (selectedOrder && adminCurrentMenu === 'orders') {
+        // 保存订单ID到localStorage
+        localStorage.setItem('selectedOrderId', selectedOrder.orderId);
+        return (
+          <OrderDetail
+            order={selectedOrder}
+            onBack={() => {
+              setSelectedOrder(null);
+              localStorage.removeItem('selectedOrderId');
+            }}
+          />
+        );
+      }
+
       // 如果正在查看结算明细详情
       if (selectedSettlementDetail && adminCurrentMenu === 'finance' && adminCurrentFinanceSubMenu === 'business-documents' && 
           adminCurrentBusinessDocumentsSubMenu === 'settlement-detail') {
@@ -952,10 +1004,32 @@ export default function App() {
             <AdminReviewList
               applications={applications}
               onViewDetail={setSelectedAdminApplication}
+              onRefreshData={handleRefreshData}
             />
           );
         case 'users':
-          return <UserManagement />;
+          // 如果选中了用户详情，显示详情页
+          if (selectedPartner) {
+            return (
+              <UserDetail partner={selectedPartner} onBack={() => setSelectedPartner(null)} />
+            );
+          }
+          // 根据用户管理二级菜单显示不同内容
+          switch (adminCurrentUserSubMenu) {
+            case 'user-list':
+              return <UserManagement onViewDetail={setSelectedPartner} />;
+            case 'promotion-links':
+              return (
+                <PromotionLinkManagement
+                  onViewDetail={(link) => {
+                    setSelectedPromotionLink(link);
+                    localStorage.setItem('selectedPromotionLinkId', link.id);
+                  }}
+                />
+              );
+            default:
+              return <UserManagement onViewDetail={setSelectedPartner} />;
+          }
         case 'orders':
           return <OrderManagement onViewOrderDetail={setSelectedOrder} />;
         case 'finance':
@@ -963,13 +1037,8 @@ export default function App() {
           switch (adminCurrentFinanceSubMenu) {
             case 'platform-account':
               return <PlatformAccount />;
-            case 'partner-account':
-              // 小B账户下的三级菜单
-              if (adminCurrentPartnerAccountSubMenu === 'partner-balance') {
-                return <SettlementCenter />;
-              }
-              // 默认显示小B账户列表
-              return <PartnerAccount />;
+            case 'merchant-accounts':
+              return <MerchantAccounts />;
             case 'settlement':
               // 结算管理下的三级菜单
               if (adminCurrentSettlementSubMenu === 'partner-batches') {
@@ -1175,6 +1244,7 @@ export default function App() {
             <AdminReviewList
               applications={applications}
               onViewDetail={setSelectedAdminApplication}
+              onRefreshData={handleRefreshData}
             />
           );
       }
@@ -1194,14 +1264,56 @@ export default function App() {
       setSelectedPartnerBatch(null);
       setSelectedSupplierBatch(null);
       setSelectedApiKey(null);
+      setSelectedPromotionLink(null);
+      setSelectedPartner(null);
+      setSelectedViolationFeeRecord(null);
+      setSelectedOrderTransaction(null);
+      setSelectedOrderPriceChangeRecord(null);
+      setSelectedOrderRefundRecord(null);
+      setSelectedSettlementDetail(null);
       setAdminCurrentMenu(menu);
       // 保存到 localStorage
       localStorage.setItem('adminCurrentMenu', menu);
       localStorage.removeItem('adminCurrentFinanceSubMenu');
-      localStorage.removeItem('adminCurrentPartnerAccountSubMenu');
       localStorage.removeItem('adminCurrentReconciliationSubMenu');
       localStorage.removeItem('adminCurrentSettlementSubMenu');
       localStorage.removeItem('adminCurrentBusinessDocumentsSubMenu');
+      localStorage.removeItem('selectedApplicationId');
+      localStorage.removeItem('selectedInvoiceId');
+      localStorage.removeItem('selectedWithdrawalId');
+      localStorage.removeItem('selectedReconciliationId');
+      localStorage.removeItem('selectedPartnerBatchId');
+      localStorage.removeItem('selectedSupplierBatchId');
+      localStorage.removeItem('selectedApiKeyId');
+      localStorage.removeItem('selectedPromotionLinkId');
+      localStorage.removeItem('selectedPartnerId');
+      localStorage.removeItem('selectedViolationFeeRecordId');
+      localStorage.removeItem('selectedOrderTransactionId');
+      localStorage.removeItem('selectedOrderPriceChangeRecordId');
+      localStorage.removeItem('selectedOrderRefundRecordId');
+      localStorage.removeItem('selectedSettlementDetailId');
+      localStorage.removeItem('selectedOrderId');
+    };
+
+    // 统一的用户管理子菜单切换处理函数
+    const handleUserSubMenuChange = (subMenu: UserSubMenu | undefined) => {
+      // 切换用户管理子菜单时，清除详情页面状态
+      setSelectedOrder(null);
+      setSelectedAdminApplication(null);
+      setSelectedInvoice(null);
+      setSelectedWithdrawal(null);
+      setSelectedReconciliation(null);
+      setSelectedApiKey(null);
+      setSelectedPartnerBatch(null);
+      setSelectedSupplierBatch(null);
+      setSelectedPartner(null);
+      setAdminCurrentUserSubMenu(subMenu);
+      // 保存到localStorage
+      if (subMenu) {
+        localStorage.setItem('adminCurrentUserSubMenu', subMenu);
+      } else {
+        localStorage.removeItem('adminCurrentUserSubMenu');
+      }
     };
 
     // 统一的二级菜单切换处理函数
@@ -1236,23 +1348,6 @@ export default function App() {
         localStorage.setItem('adminCurrentFinanceSubMenu', subMenu);
       } else {
         localStorage.removeItem('adminCurrentFinanceSubMenu');
-      }
-      localStorage.removeItem('adminCurrentPartnerAccountSubMenu');
-    };
-
-    // 统一的三级菜单切换处理函数（小B账户）
-    const handlePartnerAccountSubMenuChange = (subMenu: PartnerAccountSubMenu | undefined) => {
-      // 切换三级菜单时，清除详情页面状态
-      setSelectedOrder(null);
-      setSelectedAdminApplication(null);
-      setSelectedInvoice(null);
-      setSelectedApiKey(null);
-      setAdminCurrentPartnerAccountSubMenu(subMenu);
-      // 保存到 localStorage
-      if (subMenu) {
-        localStorage.setItem('adminCurrentPartnerAccountSubMenu', subMenu);
-      } else {
-        localStorage.removeItem('adminCurrentPartnerAccountSubMenu');
       }
     };
 
@@ -1302,10 +1397,10 @@ export default function App() {
           onLogout={handleLogout}
           currentMenu={adminCurrentMenu}
           onMenuChange={handleMenuChange}
+          currentUserSubMenu={adminCurrentUserSubMenu}
+          onUserSubMenuChange={handleUserSubMenuChange}
           currentFinanceSubMenu={adminCurrentFinanceSubMenu}
           onFinanceSubMenuChange={handleFinanceSubMenuChange}
-          currentPartnerAccountSubMenu={adminCurrentPartnerAccountSubMenu}
-          onPartnerAccountSubMenuChange={handlePartnerAccountSubMenuChange}
           currentReconciliationSubMenu={adminCurrentReconciliationSubMenu}
           onReconciliationSubMenuChange={handleReconciliationSubMenuChange}
           currentSettlementSubMenu={adminCurrentSettlementSubMenu}

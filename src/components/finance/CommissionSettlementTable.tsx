@@ -24,10 +24,10 @@ import {
 } from '../ui/alert-dialog';
 import { toast } from 'sonner';
 
-// 佣金结算申请状态
+// 提现申请状态
 export type WithdrawalStatus = 'approved' | 'rejected' | 'paid' | 'failed';
 
-// 佣金结算明细
+// 提现明细
 export interface CommissionWithdrawal {
   id: string;
   applicant: string;
@@ -109,7 +109,7 @@ export function CommissionSettlementTable({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>佣金结算明细</CardTitle>
+            <CardTitle>提现明细</CardTitle>
             <div className="flex items-center gap-4">
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

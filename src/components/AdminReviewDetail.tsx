@@ -31,7 +31,7 @@ import { formatDateTime } from '../utils/dateFormat';
 interface AdminReviewDetailProps {
   application: ApplicationData;
   onBack: () => void;
-  onApprove: (id: string, permissionLevel: string, internalNote?: string) => void;
+  onApprove: (id: string, permissionLevel: string, internalNote?: string, parentPartnerId?: string) => void;
   onReject: (id: string, reason: string, internalNote?: string) => void;
 }
 
@@ -48,6 +48,7 @@ export function AdminReviewDetail({
   const [permissionLevel, setPermissionLevel] = useState<PermissionLevel>('L4');
   const [rejectionReason, setRejectionReason] = useState('');
   const [internalNote, setInternalNote] = useState('');
+  const [parentPartnerId, setParentPartnerId] = useState<string>('AIGO_BIGB');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const handleStartReview = () => {
@@ -65,7 +66,11 @@ export function AdminReviewDetail({
     }
 
     if (reviewDecision === 'approve') {
-      onApprove(application.id, permissionLevel, internalNote || undefined);
+      if (application.businessModel === 'affiliate') {
+        onApprove(application.id, permissionLevel, internalNote || undefined, parentPartnerId);
+      } else {
+        onApprove(application.id, permissionLevel, internalNote || undefined);
+      }
       toast.success(`审核已通过，权限等级：${permissionLevel}`);
     } else {
       if (!rejectionReason.trim()) {
@@ -88,13 +93,44 @@ export function AdminReviewDetail({
     return names[model as keyof typeof names] || model;
   };
 
-  const getIdentityTypeName = (type: string) => {
-    const names = {
+  const getUserTypeLabel = (type: string) => {
+    const labels = {
+      travel_agent: '旅行代理',
+      influencer: '网络博主',
+      travel_app: '旅游类相关应用',
+    };
+    return labels[type as keyof typeof labels] || type;
+  };
+
+  const getCertificationTypeLabel = (type: string) => {
+    const labels = {
       individual: '个人认证',
-      influencer: '博主认证',
       enterprise: '企业认证',
     };
-    return names[type as keyof typeof names] || type;
+    return labels[type as keyof typeof labels] || type;
+  };
+
+  const renderUserTypeBadge = (type?: string) => {
+    if (!type) return '-';
+    const config = {
+      travel_agent: { label: '旅行代理', className: 'bg-orange-50 text-orange-700 border-orange-300' },
+      influencer: { label: '网络博主', className: 'bg-pink-50 text-pink-700 border-pink-300' },
+      travel_app: { label: '旅游类相关应用', className: 'bg-indigo-50 text-indigo-700 border-indigo-300' },
+    } as const;
+    const item = config[type as keyof typeof config];
+    if (!item) return type;
+    return <Badge variant="outline" className={item.className}>{item.label}</Badge>;
+  };
+
+  const renderCertificationBadge = (type?: string) => {
+    if (!type) return '-';
+    const config = {
+      individual: { label: '个人认证', className: 'bg-slate-50 text-slate-700 border-slate-300' },
+      enterprise: { label: '企业认证', className: 'bg-amber-50 text-amber-700 border-amber-300' },
+    } as const;
+    const item = config[type as keyof typeof config];
+    if (!item) return type;
+    return <Badge variant="outline" className={item.className}>{item.label}</Badge>;
   };
 
   const getPermissionLevelName = (level: string) => {
@@ -120,26 +156,28 @@ export function AdminReviewDetail({
     return <Badge variant="outline" className={className}>{label}</Badge>;
   };
 
-  const renderFieldValue = (label: string, value: any, isImage?: boolean) => {
-    if (!value) return null;
-
-    if (isImage) {
-      return (
-        <div key={label} className="space-y-2">
-          <Label className="text-sm text-gray-600">{label}</Label>
-          <div className="relative group">
-            <img
-              src={value}
-              alt={label}
-              className="max-w-xs border rounded cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => setImagePreview(value)}
-            />
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-              <ZoomIn className="w-8 h-8 text-white drop-shadow-lg" />
-            </div>
-          </div>
+  const renderImageItem = (label: string, url: string) => (
+    <div key={`${label}-${url}`} className="space-y-2">
+      <Label className="text-sm text-gray-600">{label}</Label>
+      <div className="relative group">
+        <img
+          src={url}
+          alt={label}
+          className="max-w-xs border rounded cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => setImagePreview(url)}
+        />
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          <ZoomIn className="w-8 h-8 text-white drop-shadow-lg" />
         </div>
-      );
+      </div>
+    </div>
+  );
+
+  const renderFieldValue = (label: string, value: any, isImage?: boolean) => {
+    if (value === undefined || value === null || value === '') return null;
+
+    if (isImage && typeof value === 'string') {
+      return renderImageItem(label, value);
     }
 
     return (
@@ -150,241 +188,196 @@ export function AdminReviewDetail({
     );
   };
 
+  const renderImageList = (label: string, images?: string[]) => {
+    if (!images || images.length === 0) return null;
+    return (
+      <div className="space-y-2 col-span-2">
+        <Label className="text-sm text-gray-600">{label}</Label>
+        <div className="flex flex-wrap gap-4">
+          {images.map((img, idx) => (
+            <div key={`${label}-${idx}`} className="flex-shrink-0">
+              {renderImageItem(`${label} ${images.length > 1 ? idx + 1 : ''}`.trim(), img)}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const renderApplicationData = () => {
     const { data } = application;
-    
-    if (application.identityType === 'individual') {
+
+    if (!data) {
       return (
-        <>
-          <Card>
-            <CardHeader className="pb-4 border-b bg-gray-50/50">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
-                <User className="w-5 h-5 text-blue-600" />
-                身份信息
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-2 gap-6">
-                {renderFieldValue('真实姓名', data.realName)}
-                {renderFieldValue('身份证号', data.idNumber)}
-                {renderFieldValue('身份证有效期', `${data.idValidityStart} 至 ${data.idValidityEnd}`)}
-              </div>
-              <div className="grid grid-cols-2 gap-6 mt-6">
-                {renderFieldValue('身份证人像面', data.idPhotoFront, true)}
-                {renderFieldValue('身份证国徽面', data.idPhotoBack, true)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-4 border-b bg-gray-50/50">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
-                <FileText className="w-5 h-5 text-blue-600" />
-                业务信息
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-2 gap-6">
-                {data.promotionChannels && data.promotionChannels.length > 0 && (
-                  <div className="space-y-2 col-span-2">
-                    <Label className="text-sm text-gray-600">主要推广渠道</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {data.promotionChannels.map((channel: string, index: number) => (
-                        <Badge key={index} variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
-                          {channel}
-                        </Badge>
-                      ))}
-                    </div>
-                    {data.promotionChannels.includes('其他') && data.promotionChannelsOther && (
-                      <p className="text-sm text-gray-600 mt-2">其他渠道说明：{data.promotionChannelsOther}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-4 border-b bg-gray-50/50">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
-                <User className="w-5 h-5 text-blue-600" />
-                联系信息
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-2 gap-6">
-                {renderFieldValue('联系手机号', data.phone)}
-                {renderFieldValue('电子邮箱', data.email)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-4 border-b bg-gray-50/50">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
-                <CreditCard className="w-5 h-5 text-blue-600" />
-                结算账户信息
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-2 gap-6">
-                {renderFieldValue('账户类型', data.accountType === 'bank' ? '银行卡' : '支付宝')}
-                {data.accountType === 'bank' && (
-                  <>
-                    {renderFieldValue('开户人姓名', data.bankCardholderName)}
-                    {renderFieldValue('开户银行', data.bankName)}
-                    {renderFieldValue('开户支行', data.bankBranch)}
-                    {renderFieldValue('银行卡号', data.bankCardNumber)}
-                  </>
-                )}
-                {data.accountType === 'alipay' && (
-                  <>
-                    {renderFieldValue('支付宝账号', data.alipayAccount)}
-                    {renderFieldValue('实名认证姓名', data.alipayRealName)}
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </>
+        <Card>
+          <CardContent className="py-12 text-center text-gray-500">暂无详细资料</CardContent>
+        </Card>
       );
     }
 
-    if (application.identityType === 'influencer') {
+    const identityCard = (
+      <Card key="identity-card">
+        <CardHeader className="pb-4 border-b bg-gray-50/50">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+            <User className="w-5 h-5 text-blue-600" />
+            身份信息
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-2 gap-6">
+            {renderFieldValue('真实姓名', data.realName)}
+            {renderFieldValue('身份证号', data.idNumber)}
+            {renderFieldValue('身份证有效期', data.idValidityStart && data.idValidityEnd ? `${data.idValidityStart} 至 ${data.idValidityEnd}` : undefined)}
+          </div>
+          <div className="grid grid-cols-2 gap-6 mt-6">
+            {renderFieldValue('身份证人像面', data.idPhotoFront, true)}
+            {renderFieldValue('身份证国徽面', data.idPhotoBack, true)}
+          </div>
+        </CardContent>
+      </Card>
+    );
+
+    const contactCard = (
+      <Card key="contact-card">
+        <CardHeader className="pb-4 border-b bg-gray-50/50">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+            <User className="w-5 h-5 text-blue-600" />
+            联系信息
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-2 gap-6">
+            {renderFieldValue('联系手机号', data.phone || data.contactPhone)}
+            {renderFieldValue('电子邮箱', data.email || data.contactEmail)}
+          </div>
+        </CardContent>
+      </Card>
+    );
+
+    const settlementCard = (
+      <Card key="settlement-card">
+        <CardHeader className="pb-4 border-b bg-gray-50/50">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+            <CreditCard className="w-5 h-5 text-blue-600" />
+            结算账户信息
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-2 gap-6">
+            {renderFieldValue('账户类型', data.accountType ? (data.accountType === 'bank' ? '银行卡' : '支付宝') : undefined)}
+            {renderFieldValue('开户人姓名', data.bankCardholderName || data.accountHolderName)}
+            {renderFieldValue('开户银行', data.bankName)}
+            {renderFieldValue('开户支行', data.bankBranch)}
+            {renderFieldValue('银行卡号/对公账号', data.bankCardNumber || data.accountNumber)}
+            {renderFieldValue('支付宝账号', data.alipayAccount)}
+            {renderFieldValue('实名认证姓名', data.alipayRealName)}
+          </div>
+        </CardContent>
+      </Card>
+    );
+
+    const individualBusinessCard = (
+      <Card key="individual-business-card">
+        <CardHeader className="pb-4 border-b bg-gray-50/50">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+            <FileText className="w-5 h-5 text-blue-600" />
+            业务信息
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-6">
+          <div className="grid grid-cols-2 gap-6">
+            {renderFieldValue('主营社交平台', data.mainPlatform)}
+            {renderFieldValue('主页链接', data.mainProfileLink)}
+            {renderFieldValue('粉丝/订阅数', data.mainFollowersCount)}
+            {renderFieldValue('业务场景描述', data.businessScenario)}
+            {renderFieldValue('合作简介', data.cooperationIntro)}
+            {renderFieldValue('GitHub 账号', data.githubAccount)}
+            {renderFieldValue('作品集/应用链接', data.portfolioLink)}
+          </div>
+          {renderImageList('平台数据截图', data.platformDataScreenshots)}
+          {renderImageList('业务证明材料', data.businessProofFiles)}
+          {renderImageList('应用截图', data.appScreenshots)}
+        </CardContent>
+      </Card>
+    );
+
+    const enterpriseCompanyCard = (
+      <Card key="enterprise-company-card">
+        <CardHeader className="pb-4 border-b bg-gray-50/50">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+            <Building className="w-5 h-5 text-blue-600" />
+            企业主体信息
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-6">
+          <div className="grid grid-cols-2 gap-6">
+            {renderFieldValue('企业名称', data.companyName)}
+            {renderFieldValue('统一社会信用代码', data.creditCode)}
+            {renderFieldValue('法人代表姓名', data.legalRepName)}
+            {renderFieldValue('法人身份证号', data.legalRepIdNumber)}
+            {renderFieldValue('主营业务/产品', data.businessScope)}
+            {renderFieldValue('现有业务证明', data.existingBusinessProof)}
+          </div>
+          {renderFieldValue('营业执照', data.businessLicense, true)}
+          {renderImageList('业务资质附件', data.businessLicenseFiles)}
+        </CardContent>
+      </Card>
+    );
+
+    const enterpriseBusinessCard = (
+      <Card key="enterprise-business-card">
+        <CardHeader className="pb-4 border-b bg-gray-50/50">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+            <FileText className="w-5 h-5 text-blue-600" />
+            业务信息
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-6">
+          <div className="grid grid-cols-2 gap-6">
+            {renderFieldValue('主营社交平台', data.mainPlatform)}
+            {renderFieldValue('品牌/应用主页', data.mainProfileLink)}
+            {renderFieldValue('粉丝/订阅数', data.mainFollowersCount)}
+            {renderFieldValue('合作简介', data.cooperationIntro)}
+          </div>
+          {renderImageList('平台数据截图', data.platformDataScreenshots)}
+          {renderImageList('业务证明材料', data.businessProofFiles)}
+          {renderImageList('应用截图', data.appScreenshots)}
+        </CardContent>
+      </Card>
+    );
+
+    const sections: React.ReactNode[] = [];
+
+    const hasIdentity = !!(data.realName || data.idNumber || data.idPhotoFront || data.idPhotoBack);
+    const hasContact = !!(data.phone || data.contactPhone || data.email || data.contactEmail);
+    const hasBankInfo = !!(data.accountType || data.bankCardholderName || data.accountHolderName || data.bankName || data.bankBranch || data.bankCardNumber || data.accountNumber || data.alipayAccount);
+
+    if (application.certificationType === 'enterprise') {
+      const hasEnterpriseCompany = !!(data.companyName || data.creditCode || data.legalRepName || data.businessLicense || (data.businessLicenseFiles && data.businessLicenseFiles.length) || data.businessScope || data.existingBusinessProof);
+      const hasEnterpriseBusiness = !!(data.mainPlatform || data.mainProfileLink || data.mainFollowersCount || data.cooperationIntro || (data.platformDataScreenshots && data.platformDataScreenshots.length) || (data.businessProofFiles && data.businessProofFiles.length) || (data.appScreenshots && data.appScreenshots.length));
+
+      if (hasEnterpriseCompany) sections.push(enterpriseCompanyCard);
+      if (hasEnterpriseBusiness) sections.push(enterpriseBusinessCard);
+      if (hasContact) sections.push(contactCard);
+      if (hasBankInfo) sections.push(settlementCard);
+    } else {
+      const hasIndividualBusiness = !!(data.mainPlatform || data.mainProfileLink || data.mainFollowersCount || data.businessScenario || data.cooperationIntro || data.githubAccount || data.portfolioLink || (data.platformDataScreenshots && data.platformDataScreenshots.length) || (data.businessProofFiles && data.businessProofFiles.length) || (data.appScreenshots && data.appScreenshots.length));
+
+      if (hasIdentity) sections.push(identityCard);
+      if (hasIndividualBusiness) sections.push(individualBusinessCard);
+      if (hasContact) sections.push(contactCard);
+      if (hasBankInfo) sections.push(settlementCard);
+    }
+
+    if (sections.length === 0) {
       return (
-        <>
-          <Card>
-            <CardHeader className="pb-4 border-b bg-gray-50/50">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
-                <User className="w-5 h-5 text-blue-600" />
-                身份信息
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-2 gap-6">
-                {renderFieldValue('真实姓名', data.realName)}
-                {renderFieldValue('身份证号', data.idNumber)}
-                {renderFieldValue('身份证有效期', `${data.idValidityStart} 至 ${data.idValidityEnd}`)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-4 border-b bg-gray-50/50">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
-                <FileText className="w-5 h-5 text-blue-600" />
-                商业影响力信息
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-2 gap-6">
-                {renderFieldValue('主营社交平台', data.mainPlatform)}
-                {renderFieldValue('个人主页链接', data.mainProfileLink)}
-                {renderFieldValue('粉丝数/订阅数', data.mainFollowersCount)}
-                {data.cooperationIntro && renderFieldValue('合作简介', data.cooperationIntro)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-4 border-b bg-gray-50/50">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
-                <User className="w-5 h-5 text-blue-600" />
-                联系信息
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-2 gap-6">
-                {renderFieldValue('联系手机号', data.phone)}
-                {renderFieldValue('电子邮箱', data.email)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-4 border-b bg-gray-50/50">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
-                <CreditCard className="w-5 h-5 text-blue-600" />
-                结算账户信息
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-2 gap-6">
-                {renderFieldValue('账户类型', data.accountType === 'bank' ? '银行卡' : '支付宝')}
-                {data.accountType === 'bank' && (
-                  <>
-                    {renderFieldValue('开户银行', data.bankName)}
-                    {renderFieldValue('开户支行', data.bankBranch)}
-                    {renderFieldValue('银行卡号', data.bankCardNumber)}
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </>
+        <Card>
+          <CardContent className="py-12 text-center text-gray-500">暂无可展示的详细资料</CardContent>
+        </Card>
       );
     }
 
-    if (application.identityType === 'enterprise') {
-      return (
-        <>
-          <Card>
-            <CardHeader className="pb-4 border-b bg-gray-50/50">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
-                <Building className="w-5 h-5 text-blue-600" />
-                企业主体信息
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-2 gap-6">
-                {renderFieldValue('企业名称', data.companyName)}
-                {renderFieldValue('统一社会信用代码', data.creditCode)}
-                {renderFieldValue('法人代表姓名', data.legalRepName)}
-                {renderFieldValue('法人身份证号', data.legalRepIdNumber)}
-              </div>
-              {data.businessLicense && (
-                <div className="mt-6">
-                  {renderFieldValue('营业执照', data.businessLicense, true)}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-4 border-b bg-gray-50/50">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
-                <User className="w-5 h-5 text-blue-600" />
-                业务联系人信息
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-2 gap-6">
-                {renderFieldValue('联系人姓名', data.contactName)}
-                {renderFieldValue('联系人手机号', data.contactPhone)}
-                {renderFieldValue('联系人电子邮箱', data.contactEmail)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-4 border-b bg-gray-50/50">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
-                <CreditCard className="w-5 h-5 text-blue-600" />
-                对公结算账户信息
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-2 gap-6">
-                {renderFieldValue('开户主体名称', data.accountHolderName)}
-                {renderFieldValue('开户银行', data.bankName)}
-                {renderFieldValue('开户支行', data.bankBranch)}
-                {renderFieldValue('对公银行账号', data.accountNumber)}
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      );
-    }
+    return <>{sections}</>;
   };
 
   // 格式化时间显示
@@ -478,6 +471,9 @@ export function AdminReviewDetail({
             <TabsTrigger value="details" className="px-6 h-full font-medium text-sm transition-all duration-200 data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:font-semibold hover:text-gray-700 hover:bg-gray-50/50 rounded-t-md">
               详细资料
             </TabsTrigger>
+            <TabsTrigger value="history" className="px-6 h-full font-medium text-sm transition-all duration-200 data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:font-semibold hover:text-gray-700 hover:bg-gray-50/50 rounded-t-md">
+              审核记录
+            </TabsTrigger>
           </TabsList>
 
           {/* 基本信息 */}
@@ -500,8 +496,16 @@ export function AdminReviewDetail({
                     <p className="text-sm text-gray-900">{getBusinessModelName(application.businessModel)}</p>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm text-gray-600">身份类型</Label>
-                    <p className="text-sm text-gray-900">{getIdentityTypeName(application.identityType)}</p>
+                    <Label className="text-sm text-gray-600">用户信息类型</Label>
+                    <div className="text-sm text-gray-900">
+                      {renderUserTypeBadge(application.userType)}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm text-gray-600">认证方式</Label>
+                    <div className="text-sm text-gray-900">
+                      {renderCertificationBadge(application.certificationType)}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm text-gray-600">提交时间</Label>
@@ -568,6 +572,43 @@ export function AdminReviewDetail({
           <TabsContent value="details" className="space-y-4">
             {renderApplicationData()}
           </TabsContent>
+
+          {/* 审核记录 */}
+          <TabsContent value="history" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-4 border-b bg-gray-50/50">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  审核历史记录
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {application.reviewHistory && application.reviewHistory.length > 0 ? (
+                  <ul className="space-y-4">
+                    {application.reviewHistory.map((entry, index) => (
+                      <li key={index} className="flex gap-4">
+                        <div className="flex-shrink-0">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${entry.action === 'approved' ? 'bg-green-100' : entry.action === 'rejected' ? 'bg-red-100' : 'bg-gray-100'}`}>
+                            {entry.action === 'approved' && <CheckCircle className="w-5 h-5 text-green-600" />}
+                            {entry.action === 'rejected' && <XCircle className="w-5 h-5 text-red-600" />}
+                            {entry.action !== 'approved' && entry.action !== 'rejected' && <FileText className="w-5 h-5 text-gray-600" />}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800">{entry.details}</p>
+                          <p className="text-sm text-gray-500">
+                            由 {entry.reviewer} 在 {formatTimeDisplay(entry.timestamp)} 操作
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-center text-gray-500 py-8">暂无审核记录</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -595,8 +636,31 @@ export function AdminReviewDetail({
             </div>
 
             {/* 2. 风控等级（通过时） */}
+            {application.businessModel === 'affiliate' && (
+              <div className="space-y-3">
+                <Label>2. 挂载大B {reviewDecision === 'approve' && <span className="text-red-500">*</span>}</Label>
+                <Select 
+                  value={parentPartnerId} 
+                  onValueChange={(value: string) => setParentPartnerId(value)}
+                  disabled={reviewDecision !== 'approve'}
+                >
+                  <SelectTrigger className={reviewDecision !== 'approve' ? 'opacity-50' : ''}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AIGO_BIGB">AIGO 大B (平台默认)</SelectItem>
+                    <SelectItem value="BIGB_001">大B客户001</SelectItem>
+                    <SelectItem value="BIGB_002">大B客户002</SelectItem>
+                  </SelectContent>
+                </Select>
+                {reviewDecision !== 'approve' && (
+                  <p className="text-sm text-gray-500">请先选择"通过"才能设置挂载大B</p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-3">
-              <Label>2. 指定风控等级 {reviewDecision === 'approve' && <span className="text-red-500">*</span>}</Label>
+              <Label>3. 指定风控等级 {reviewDecision === 'approve' && <span className="text-red-500">*</span>}</Label>
               <Select 
                 value={permissionLevel} 
                 onValueChange={(value: PermissionLevel) => setPermissionLevel(value)}
@@ -624,7 +688,7 @@ export function AdminReviewDetail({
             {/* 3. 驳回原因（驳回时） */}
             <div className="space-y-3">
               <Label htmlFor="rejection-reason">
-                3. 驳回原因 {reviewDecision === 'reject' && <span className="text-red-500">*</span>}
+                4. 驳回原因 {reviewDecision === 'reject' && <span className="text-red-500">*</span>}
               </Label>
               <Textarea
                 id="rejection-reason"
@@ -642,7 +706,7 @@ export function AdminReviewDetail({
 
             {/* 4. 内部备注 */}
             <div className="space-y-3">
-              <Label htmlFor="internal-note">4. 内部备注 (选填)</Label>
+              <Label htmlFor="internal-note">5. 内部备注 (选填)</Label>
               <Textarea
                 id="internal-note"
                 value={internalNote}

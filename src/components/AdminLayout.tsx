@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import { Bell, LogOut, FileCheck, Users, ChevronLeft, ChevronRight, Receipt, Settings, Package, Key, Wallet, Building2, FileText, CreditCard, Calculator, ArrowRight, ChevronDown, ChevronUp, Cog, Shield } from 'lucide-react';
+import { Bell, LogOut, FileCheck, Users, ChevronLeft, ChevronRight, Receipt, Settings, Package, Key, Wallet, Building2, FileText, CreditCard, Calculator, ArrowRight, ChevronDown, ChevronUp, Cog, Shield, Link2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,8 +16,8 @@ import { Badge } from './ui/badge';
 const MENU_ICON_SIZE = 'w-4 h-4';
 
 export type AdminMenuItem = 'review' | 'users' | 'orders' | 'finance' | 'apikeys' | 'pricing' | 'business-model-config' | 'feature-permissions';
-export type FinanceSubMenu = 'platform-account' | 'partner-account' | 'business-documents' | 'settlement' | 'reconciliation' | 'withdrawal' | 'invoice';
-export type PartnerAccountSubMenu = 'partner-balance';
+export type UserSubMenu = 'user-list' | 'promotion-links';
+export type FinanceSubMenu = 'platform-account' | 'merchant-accounts' | 'business-documents' | 'settlement' | 'reconciliation' | 'withdrawal' | 'invoice';
 export type ReconciliationSubMenu = 'reconciliation-management' | 'reconciliation-summary';
 export type SettlementSubMenu = 'partner-batches' | 'supplier-batches' | 'settlement-config';
 export type BusinessDocumentsSubMenu = 'violation-fee' | 'order-transaction' | 'order-price-change' | 'order-refund' | 'settlement-detail';
@@ -32,10 +32,10 @@ interface AdminLayoutProps {
   onLogout: () => void;
   currentMenu?: AdminMenuItem;
   onMenuChange?: (menu: AdminMenuItem) => void;
+  currentUserSubMenu?: UserSubMenu;
+  onUserSubMenuChange?: (subMenu: UserSubMenu) => void;
   currentFinanceSubMenu?: FinanceSubMenu;
   onFinanceSubMenuChange?: (subMenu: FinanceSubMenu) => void;
-  currentPartnerAccountSubMenu?: PartnerAccountSubMenu;
-  onPartnerAccountSubMenuChange?: (subMenu: PartnerAccountSubMenu) => void;
   currentReconciliationSubMenu?: ReconciliationSubMenu;
   onReconciliationSubMenuChange?: (subMenu: ReconciliationSubMenu) => void;
   currentSettlementSubMenu?: SettlementSubMenu;
@@ -51,10 +51,10 @@ export function AdminLayout({
   onLogout,
   currentMenu = 'review',
   onMenuChange,
+  currentUserSubMenu,
+  onUserSubMenuChange,
   currentFinanceSubMenu,
   onFinanceSubMenuChange,
-  currentPartnerAccountSubMenu,
-  onPartnerAccountSubMenuChange,
   currentReconciliationSubMenu,
   onReconciliationSubMenuChange,
   currentSettlementSubMenu,
@@ -76,15 +76,15 @@ export function AdminLayout({
   } as const;
   
   // 菜单展开状态管理
+  const [userMenuExpanded, setUserMenuExpanded] = useState(false);
   const [financeMenuExpanded, setFinanceMenuExpanded] = useState(false);
-  const [partnerAccountMenuExpanded, setPartnerAccountMenuExpanded] = useState(false);
   const [reconciliationMenuExpanded, setReconciliationMenuExpanded] = useState(false);
   const [settlementMenuExpanded, setSettlementMenuExpanded] = useState(false);
   const [businessDocumentsMenuExpanded, setBusinessDocumentsMenuExpanded] = useState(false);
 
   const menuItems = [
     { id: 'review' as AdminMenuItem, icon: FileCheck, label: '资格审核', count: pendingReviewCount },
-    { id: 'users' as AdminMenuItem, icon: Users, label: '用户管理', count: 0 },
+    { id: 'users' as AdminMenuItem, icon: Users, label: '用户管理', count: 0, hasSubMenu: true },
     { id: 'orders' as AdminMenuItem, icon: Package, label: '订单管理', count: 0 },
     { id: 'finance' as AdminMenuItem, icon: Receipt, label: '财务中心', count: 0 },
     { id: 'apikeys' as AdminMenuItem, icon: Key, label: '密钥管理', count: 0 },
@@ -93,18 +93,19 @@ export function AdminLayout({
     { id: 'feature-permissions' as AdminMenuItem, icon: Shield, label: '功能权限管理', count: 0 },
   ];
 
+  const userSubMenus = [
+    { id: 'user-list' as UserSubMenu, icon: Users, label: '用户列表', hasSubMenu: false },
+    { id: 'promotion-links' as UserSubMenu, icon: Link2, label: '推广链接管理', hasSubMenu: false },
+  ];
+
   const financeSubMenus = [
     { id: 'platform-account' as FinanceSubMenu, icon: Building2, label: '平台账户', hasSubMenu: false },
-    { id: 'partner-account' as FinanceSubMenu, icon: Users, label: '小B账户', hasSubMenu: true },
+    { id: 'merchant-accounts' as FinanceSubMenu, icon: Users, label: '商户账户', hasSubMenu: false },
     { id: 'business-documents' as FinanceSubMenu, icon: FileText, label: '业务单据管理', hasSubMenu: true },
     { id: 'settlement' as FinanceSubMenu, icon: CreditCard, label: '结算管理', hasSubMenu: true },
     { id: 'reconciliation' as FinanceSubMenu, icon: Calculator, label: '对账', hasSubMenu: true },
     { id: 'withdrawal' as FinanceSubMenu, icon: ArrowRight, label: '提现管理', hasSubMenu: false },
     { id: 'invoice' as FinanceSubMenu, icon: Receipt, label: '发票管理', hasSubMenu: false },
-  ];
-
-  const partnerAccountSubMenus = [
-    { id: 'partner-balance' as PartnerAccountSubMenu, icon: Wallet, label: '小B余额' },
   ];
 
   const reconciliationSubMenus = [
@@ -135,6 +136,24 @@ export function AdminLayout({
 
   // ========== 菜单事件处理 ==========
   
+  // 处理一级菜单（用户管理）点击
+  const handleUserMenuClick = () => {
+    if (currentMenu !== 'users') {
+      // 切换到用户管理
+      onMenuChange?.('users');
+      if (!sidebarCollapsed) {
+        setUserMenuExpanded(true);
+        // 自动选中用户列表子菜单
+        onUserSubMenuChange?.('user-list');
+      }
+    } else {
+      // 如果已经在用户管理，切换展开/收起
+      if (!sidebarCollapsed) {
+        setUserMenuExpanded(!userMenuExpanded);
+      }
+    }
+  };
+
   // 处理一级菜单（财务中心）点击
   const handleFinanceMenuClick = () => {
     if (currentMenu !== 'finance') {
@@ -150,40 +169,6 @@ export function AdminLayout({
         setFinanceMenuExpanded(!financeMenuExpanded);
       }
     }
-  };
-
-  // 处理二级菜单（小B账户）点击
-  const handlePartnerAccountMenuClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    // 如果当前不是小B账户，切换到小B账户
-    if (currentFinanceSubMenu !== 'partner-account') {
-      onFinanceSubMenuChange?.('partner-account');
-      // 不自动选中三级菜单，只选中二级菜单
-      // 通过不调用 onPartnerAccountSubMenuChange 来保持三级菜单未选中
-      if (!sidebarCollapsed) {
-        setPartnerAccountMenuExpanded(true);
-      }
-    } else {
-      // 如果已经是小B账户，切换展开/收起
-      if (!sidebarCollapsed) {
-        // 如果三级菜单已选中，不允许收起
-        if (currentPartnerAccountSubMenu) {
-          setPartnerAccountMenuExpanded(true);
-        } else {
-          setPartnerAccountMenuExpanded(!partnerAccountMenuExpanded);
-        }
-      }
-    }
-  };
-
-  // 处理三级菜单（小B余额）点击
-  const handleThirdMenuClick = (menuId: PartnerAccountSubMenu) => {
-    // 确保父菜单展开并选中
-    setPartnerAccountMenuExpanded(true);
-    onFinanceSubMenuChange?.('partner-account');
-    // 选中三级菜单
-    onPartnerAccountSubMenuChange?.(menuId);
   };
 
   // 处理二级菜单（对账）点击
@@ -288,11 +273,10 @@ export function AdminLayout({
   // 处理普通二级菜单点击
   const handleSecondMenuClick = (menuId: FinanceSubMenu) => {
     onFinanceSubMenuChange?.(menuId);
-    // 如果切换到非小B账户/对账/结算管理/业务单据管理菜单，清除三级菜单选中状态
-    if (menuId !== 'partner-account' && menuId !== 'reconciliation' && menuId !== 'settlement' && menuId !== 'business-documents') {
+    // 如果切换到非对账/结算管理/业务单据管理菜单，清除三级菜单选中状态
+    if (menuId !== 'reconciliation' && menuId !== 'settlement' && menuId !== 'business-documents') {
       // 清除三级菜单选中状态
       if (!sidebarCollapsed) {
-        setPartnerAccountMenuExpanded(false);
         setReconciliationMenuExpanded(false);
         setSettlementMenuExpanded(false);
         setBusinessDocumentsMenuExpanded(false);
@@ -313,13 +297,6 @@ export function AdminLayout({
       // 在财务中心时，确保财务中心菜单展开
       setFinanceMenuExpanded(true);
       
-      if (currentFinanceSubMenu === 'partner-account') {
-        // 如果选中小B账户，确保小B账户菜单展开
-        setPartnerAccountMenuExpanded(true);
-      } else {
-        // 如果切换到其他二级菜单，收起小B账户菜单
-        setPartnerAccountMenuExpanded(false);
-      }
       if (currentFinanceSubMenu === 'reconciliation') {
         // 如果选中对账，确保对账菜单展开
         setReconciliationMenuExpanded(true);
@@ -344,12 +321,11 @@ export function AdminLayout({
     } else {
       // 不在财务中心时，收起所有子菜单
       setFinanceMenuExpanded(false);
-      setPartnerAccountMenuExpanded(false);
       setReconciliationMenuExpanded(false);
       setSettlementMenuExpanded(false);
       setBusinessDocumentsMenuExpanded(false);
     }
-  }, [currentMenu, currentFinanceSubMenu, currentPartnerAccountSubMenu, currentReconciliationSubMenu, currentSettlementSubMenu, currentBusinessDocumentsSubMenu, sidebarCollapsed]);
+  }, [currentMenu, currentFinanceSubMenu, currentReconciliationSubMenu, currentSettlementSubMenu, currentBusinessDocumentsSubMenu, sidebarCollapsed]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -427,6 +403,61 @@ export function AdminLayout({
                 const Icon = item.icon;
                 const isActive = currentMenu === item.id;
                 const isFinance = item.id === 'finance';
+                const isUsers = item.id === 'users';
+                
+                if (isUsers && !sidebarCollapsed) {
+                  // 用户管理菜单带二级菜单
+                  return (
+                    <div key={item.id} className="space-y-1">
+                      <button
+                        onClick={handleUserMenuClick}
+                        className={`flex items-center rounded-lg transition-colors w-full gap-3 px-3 py-2 text-sm ${
+                          isActive
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <Icon className={`${ICON_SIZES.level1} flex-shrink-0`} />
+                        <span className="flex-1 text-left">{item.label}</span>
+                        {item.count > 0 && (
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">
+                            {item.count}
+                          </Badge>
+                        )}
+                        {userMenuExpanded ? (
+                          <ChevronUp className={`${ICON_SIZES.level2} flex-shrink-0`} />
+                        ) : (
+                          <ChevronDown className={`${ICON_SIZES.level2} flex-shrink-0`} />
+                        )}
+                      </button>
+                      {userMenuExpanded && isActive && (
+                        <div className="ml-6 space-y-1">
+                          {userSubMenus.map((subMenu) => {
+                            const SubIcon = subMenu.icon;
+                            const isSubActive = currentUserSubMenu === subMenu.id;
+                            
+                            return (
+                              <button
+                                key={subMenu.id}
+                                onClick={() => onUserSubMenuChange?.(subMenu.id)}
+                                className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${
+                                  isSubActive
+                                    ? 'bg-blue-100 text-blue-700 font-medium'
+                                    : 'text-gray-600 hover:bg-gray-50'
+                                }`}
+                              >
+                                <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0 ${
+                                  isSubActive ? 'text-blue-700' : 'text-gray-600'
+                                }`} />
+                                <span className="flex-1 text-left">{subMenu.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
                 
                 if (isFinance && !sidebarCollapsed) {
                   // 财务中心菜单带二级菜单
@@ -458,90 +489,9 @@ export function AdminLayout({
                           {financeSubMenus.map((subMenu) => {
                             const SubIcon = subMenu.icon;
                             const isSubActive = currentFinanceSubMenu === subMenu.id;
-                            const isPartnerAccount = subMenu.id === 'partner-account';
                             const isReconciliation = subMenu.id === 'reconciliation';
                             const isSettlement = subMenu.id === 'settlement';
                             const isBusinessDocuments = subMenu.id === 'business-documents';
-                            
-                            if (isPartnerAccount && subMenu.hasSubMenu) {
-                              // 小B账户有三级菜单
-                              const hasThirdMenuActive = !!currentPartnerAccountSubMenu;
-                              const isSubMenuActive = isSubActive && !hasThirdMenuActive;
-                              
-                              return (
-                                <div key={subMenu.id} className="space-y-1">
-                                  {/* 二级菜单按钮 */}
-                                  <button
-                                    onClick={handlePartnerAccountMenuClick}
-                                    className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${
-                                      isSubMenuActive
-                                        ? 'bg-blue-100 text-blue-700 font-medium'
-                                        : isSubActive
-                                        ? 'text-blue-600 hover:bg-blue-50'
-                                        : 'text-gray-600 hover:bg-gray-50'
-                                    }`}
-                                  >
-                                    <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0 ${
-                                      isSubMenuActive
-                                        ? 'text-blue-700'
-                                        : isSubActive
-                                        ? 'text-blue-600'
-                                        : 'text-gray-600'
-                                    }`} />
-                                    <span className="flex-1 text-left">{subMenu.label}</span>
-                                    {partnerAccountMenuExpanded ? (
-                                      <ChevronUp className={`${ICON_SIZES.chevron} flex-shrink-0 ${
-                                        isSubMenuActive
-                                          ? 'text-blue-700'
-                                          : isSubActive
-                                          ? 'text-blue-600'
-                                          : 'text-gray-600'
-                                      }`} />
-                                    ) : (
-                                      <ChevronDown className={`${ICON_SIZES.chevron} flex-shrink-0 ${
-                                        isSubMenuActive
-                                          ? 'text-blue-700'
-                                          : isSubActive
-                                          ? 'text-blue-600'
-                                          : 'text-gray-600'
-                                      }`} />
-                                    )}
-                                  </button>
-                                  
-                                  {/* 三级菜单 */}
-                                  {partnerAccountMenuExpanded && (
-                                    <div className="ml-6 space-y-1">
-                                      {partnerAccountSubMenus.map((thirdMenu) => {
-                                        const ThirdIcon = thirdMenu.icon;
-                                        const isThirdActive = currentPartnerAccountSubMenu === thirdMenu.id;
-                                        return (
-                                          <button
-                                            key={thirdMenu.id}
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleThirdMenuClick(thirdMenu.id);
-                                            }}
-                                            className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${
-                                              isThirdActive
-                                                ? 'bg-blue-200 text-blue-800 font-medium'
-                                                : 'text-gray-600 hover:bg-gray-50'
-                                            }`}
-                                          >
-                                            <ThirdIcon className={`${ICON_SIZES.level3} flex-shrink-0 ${
-                                              isThirdActive
-                                                ? 'text-blue-800'
-                                                : 'text-gray-600'
-                                            }`} />
-                                            <span className="flex-1 text-left">{thirdMenu.label}</span>
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            }
                             
                             if (isReconciliation && subMenu.hasSubMenu) {
                               // 对账有三级菜单

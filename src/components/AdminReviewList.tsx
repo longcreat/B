@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { Search, Eye, Download, FileText, Filter } from 'lucide-react';
+import { Search, Download, FileText, Filter, RefreshCw } from 'lucide-react';
 import {
   Pagination,
   PaginationContent,
@@ -35,48 +35,41 @@ export { type ApplicationData };
 interface AdminReviewListProps {
   applications: ApplicationData[];
   onViewDetail: (application: ApplicationData) => void;
+  onRefreshData?: () => void;
 }
 
-export function AdminReviewList({ applications, onViewDetail }: AdminReviewListProps) {
+export function AdminReviewList({ applications, onViewDetail, onRefreshData }: AdminReviewListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [filterBusinessModel, setFilterBusinessModel] = useState<'all' | 'mcp' | 'saas' | 'affiliate'>('all');
-  const [filterIdentityType, setFilterIdentityType] = useState<'all' | 'individual' | 'influencer' | 'enterprise'>('all');
+  const [filterUserType, setFilterUserType] = useState<'all' | 'travel_agent' | 'influencer' | 'travel_app'>('all');
+  const [filterCertificationType, setFilterCertificationType] = useState<'all' | 'individual' | 'enterprise'>('all');
   const [showFilters, setShowFilters] = useState(false);
-
-  const getBusinessModelName = (model: string) => {
-    const names = {
-      mcp: 'MCP',
-      saas: '品牌预订站',
-      affiliate: '联盟推广',
-    };
-    return names[model as keyof typeof names] || model;
-  };
 
   const getBusinessModelBadge = (model: string) => {
     const config = {
       mcp: { label: 'MCP', className: 'bg-blue-50 text-blue-700 border-blue-300' },
-      saas: { label: '品牌预订站', className: 'bg-purple-50 text-purple-700 border-purple-300' },
-      affiliate: { label: '联盟推广', className: 'bg-green-50 text-green-700 border-green-300' },
+      saas: { label: 'SaaS', className: 'bg-purple-50 text-purple-700 border-purple-300' },
+      affiliate: { label: '推广联盟', className: 'bg-green-50 text-green-700 border-green-300' },
     };
     const { label, className } = config[model as keyof typeof config] || { label: model, className: 'bg-gray-50 text-gray-700 border-gray-300' };
     return <Badge variant="outline" className={className}>{label}</Badge>;
   };
 
-  const getIdentityTypeName = (type: string) => {
-    const names = {
-      individual: '个人',
-      influencer: '博主',
-      enterprise: '企业',
+  const getUserTypeBadge = (type: string) => {
+    const config = {
+      travel_agent: { label: '旅行代理', className: 'bg-orange-50 text-orange-700 border-orange-300' },
+      influencer: { label: '网络博主', className: 'bg-pink-50 text-pink-700 border-pink-300' },
+      travel_app: { label: '旅游类相关应用', className: 'bg-indigo-50 text-indigo-700 border-indigo-300' },
     };
-    return names[type as keyof typeof names] || type;
+    const { label, className } = config[type as keyof typeof config] || { label: type, className: 'bg-gray-50 text-gray-700 border-gray-300' };
+    return <Badge variant="outline" className={className}>{label}</Badge>;
   };
 
-  const getIdentityTypeBadge = (type: string) => {
+  const getCertificationTypeBadge = (type: string) => {
     const config = {
-      individual: { label: '个人', className: 'bg-blue-50 text-blue-700 border-blue-300' },
-      influencer: { label: '博主', className: 'bg-purple-50 text-purple-700 border-purple-300' },
-      enterprise: { label: '企业', className: 'bg-orange-50 text-orange-700 border-orange-300' },
+      individual: { label: '个人认证', className: 'bg-slate-50 text-slate-700 border-slate-300' },
+      enterprise: { label: '企业认证', className: 'bg-amber-50 text-amber-700 border-amber-300' },
     };
     const { label, className } = config[type as keyof typeof config] || { label: type, className: 'bg-gray-50 text-gray-700 border-gray-300' };
     return <Badge variant="outline" className={className}>{label}</Badge>;
@@ -122,11 +115,12 @@ export function AdminReviewList({ applications, onViewDetail }: AdminReviewListP
 
       const matchesStatus = filterStatus === 'all' || app.status === filterStatus;
       const matchesBusinessModel = filterBusinessModel === 'all' || app.businessModel === filterBusinessModel;
-      const matchesIdentityType = filterIdentityType === 'all' || app.identityType === filterIdentityType;
+      const matchesUserType = filterUserType === 'all' || app.userType === filterUserType;
+      const matchesCertificationType = filterCertificationType === 'all' || app.certificationType === filterCertificationType;
 
-      return matchesSearch && matchesStatus && matchesBusinessModel && matchesIdentityType;
+      return matchesSearch && matchesStatus && matchesBusinessModel && matchesUserType && matchesCertificationType;
     });
-  }, [applications, searchQuery, filterStatus, filterBusinessModel, filterIdentityType]);
+  }, [applications, searchQuery, filterStatus, filterBusinessModel, filterUserType, filterCertificationType]);
 
   // 计算分页数据
   const [currentPage, setCurrentPage] = useState(1);
@@ -140,7 +134,7 @@ export function AdminReviewList({ applications, onViewDetail }: AdminReviewListP
   // 当筛选条件改变时，重置到第一页
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterStatus, filterBusinessModel, filterIdentityType]);
+  }, [searchQuery, filterStatus, filterBusinessModel, filterUserType, filterCertificationType]);
 
   const statusBadge = (status: string) => {
     const config = {
@@ -195,13 +189,20 @@ export function AdminReviewList({ applications, onViewDetail }: AdminReviewListP
                 <Download className="w-4 h-4 mr-2" />
                 导出
               </Button>
+
+              {onRefreshData && (
+                <Button variant="outline" size="sm" onClick={onRefreshData}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  刷新数据
+                </Button>
+              )}
             </div>
           </div>
 
           {/* 筛选器 */}
           {showFilters && (
             <div className="pt-4 border-t mt-4 space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div className="flex items-center gap-2">
                   <Label className="text-sm text-gray-700 w-20 flex-shrink-0">审核状态</Label>
                   <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
@@ -226,30 +227,44 @@ export function AdminReviewList({ applications, onViewDetail }: AdminReviewListP
                     <SelectContent>
                       <SelectItem value="all">全部模式</SelectItem>
                       <SelectItem value="mcp">MCP</SelectItem>
-                      <SelectItem value="saas">品牌预订站</SelectItem>
-                      <SelectItem value="affiliate">联盟推广</SelectItem>
+                      <SelectItem value="saas">SaaS</SelectItem>
+                      <SelectItem value="affiliate">推广联盟</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">身份类型</Label>
-                  <Select value={filterIdentityType} onValueChange={(value: any) => setFilterIdentityType(value)}>
+                  <Label className="text-sm text-gray-700 w-24 flex-shrink-0">用户信息类型</Label>
+                  <Select value={filterUserType} onValueChange={(value: any) => setFilterUserType(value)}>
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="全部类型" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">全部类型</SelectItem>
-                      <SelectItem value="individual">个人</SelectItem>
-                      <SelectItem value="influencer">博主</SelectItem>
-                      <SelectItem value="enterprise">企业</SelectItem>
+                      <SelectItem value="travel_agent">旅行代理</SelectItem>
+                      <SelectItem value="influencer">网络博主</SelectItem>
+                      <SelectItem value="travel_app">旅游类相关应用</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">认证方式</Label>
+                  <Select value={filterCertificationType} onValueChange={(value: any) => setFilterCertificationType(value)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="全部方式" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部方式</SelectItem>
+                      <SelectItem value="individual">个人认证</SelectItem>
+                      <SelectItem value="enterprise">企业认证</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
               {/* 清除筛选按钮 */}
-              {(filterStatus !== 'all' || filterBusinessModel !== 'all' || filterIdentityType !== 'all') && (
+              {(filterStatus !== 'all' || filterBusinessModel !== 'all' || filterUserType !== 'all' || filterCertificationType !== 'all') && (
                 <div className="flex items-center justify-end pt-2">
                   <Button
                     variant="ghost"
@@ -257,7 +272,8 @@ export function AdminReviewList({ applications, onViewDetail }: AdminReviewListP
                     onClick={() => {
                       setFilterStatus('all');
                       setFilterBusinessModel('all');
-                      setFilterIdentityType('all');
+                      setFilterUserType('all');
+                      setFilterCertificationType('all');
                     }}
                   >
                     清除所有筛选
@@ -294,9 +310,11 @@ export function AdminReviewList({ applications, onViewDetail }: AdminReviewListP
                 <tr className="border-b bg-gray-50">
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">申请编号</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">申请人</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">电话号码</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">邮箱</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">用户信息类型</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">认证方式</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">业务模式</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">身份类型</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">提交时间</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">审核时间</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">状态</th>
@@ -306,7 +324,7 @@ export function AdminReviewList({ applications, onViewDetail }: AdminReviewListP
               <tbody>
                 {paginatedApplications.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
                       暂无符合条件的申请
                     </td>
                   </tr>
@@ -315,9 +333,11 @@ export function AdminReviewList({ applications, onViewDetail }: AdminReviewListP
                     <tr key={app.id} className="border-b hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm font-mono text-gray-900">{normalizeAppId(app.id)}</td>
                       <td className="px-4 py-3 text-sm text-gray-900">{app.applicantName}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{app.phoneNumber || '-'}</td>
                       <td className="px-4 py-3 text-sm text-gray-900">{app.userEmail || '-'}</td>
+                      <td className="px-4 py-3 text-sm">{getUserTypeBadge(app.userType)}</td>
+                      <td className="px-4 py-3 text-sm">{getCertificationTypeBadge(app.certificationType)}</td>
                       <td className="px-4 py-3 text-sm">{getBusinessModelBadge(app.businessModel)}</td>
-                      <td className="px-4 py-3 text-sm">{getIdentityTypeBadge(app.identityType)}</td>
                       <td className="px-4 py-3 text-sm font-mono text-gray-600">{formatTimeDisplay(app.submittedAt)}</td>
                       <td className="px-4 py-3 text-sm font-mono text-gray-600">{formatTimeDisplay(app.reviewedAt)}</td>
                       <td className="px-4 py-3 text-sm">{statusBadge(app.status)}</td>

@@ -27,6 +27,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { type Order, type OrderStatus, type SettlementStatus } from '../data/mockOrders';
+import { PricingTab } from './OrderDetail_PricingTab';
 
 export { type Order };
 
@@ -42,8 +43,9 @@ function OrderStatusTimeline({ order }: { order: Order }) {
     'pending_payment',
     'pending_confirm',
     'confirmed',
+    'pending_checkin',
     'completed',
-    'completed_settleable',
+    'settleable',
   ];
 
   // 状态配置
@@ -76,12 +78,19 @@ function OrderStatusTimeline({ order }: { order: Order }) {
       bgColor: 'bg-green-50',
       borderColor: 'border-green-300',
     },
-    completed_settleable: {
-      label: '已完成(可结算)',
+    pending_checkin: {
+      label: '待入住',
+      icon: Clock,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-50',
+      borderColor: 'border-indigo-300',
+    },
+    settleable: {
+      label: '可结算',
       icon: DollarSign,
-      color: 'text-green-700',
-      bgColor: 'bg-green-100',
-      borderColor: 'border-green-400',
+      color: 'text-teal-600',
+      bgColor: 'bg-teal-50',
+      borderColor: 'border-teal-300',
     },
     cancelled_free: {
       label: '已取消(免费)',
@@ -104,12 +113,12 @@ function OrderStatusTimeline({ order }: { order: Order }) {
       bgColor: 'bg-red-100',
       borderColor: 'border-red-400',
     },
-    disputed: {
-      label: '争议中',
+    after_sale: {
+      label: '售后中',
       icon: AlertTriangle,
-      color: 'text-red-800',
-      bgColor: 'bg-red-200',
-      borderColor: 'border-red-500',
+      color: 'text-rose-600',
+      bgColor: 'bg-rose-50',
+      borderColor: 'border-rose-300',
     },
   };
 
@@ -159,10 +168,10 @@ function OrderStatusTimeline({ order }: { order: Order }) {
         description: 'C端离店（Check-out）',
       });
     }
-    if (currentIndex > 3 || order.orderStatus === 'completed_settleable') {
+    if (currentIndex > 4 || order.orderStatus === 'settleable') {
       // 可结算
       history.push({
-        status: 'completed_settleable',
+        status: 'settleable',
         timestamp: order.checkOutDate || order.createdAt,
         description: '已完成 + 售后期（T+N天）',
       });
@@ -187,11 +196,11 @@ function OrderStatusTimeline({ order }: { order: Order }) {
         timestamp: order.checkInDate || order.createdAt,
         description: 'C端未入住',
       });
-    } else if (order.orderStatus === 'disputed') {
+    } else if (order.orderStatus === 'after_sale') {
       history.push({
-        status: 'disputed',
+        status: 'after_sale',
         timestamp: order.createdAt,
-        description: 'C端发起客诉',
+        description: 'C端发起售后',
       });
     }
 
@@ -273,13 +282,14 @@ export function OrderDetail({ order, onBack }: OrderDetailProps) {
     const config = {
       pending_payment: { label: '待支付', className: 'bg-yellow-50 text-yellow-700 border-yellow-300' },
       pending_confirm: { label: '待确认', className: 'bg-orange-50 text-orange-700 border-orange-300' },
-      confirmed: { label: '已确认/待入住', className: 'bg-blue-50 text-blue-700 border-blue-300' },
+      confirmed: { label: '已确认', className: 'bg-blue-50 text-blue-700 border-blue-300' },
+      pending_checkin: { label: '待入住', className: 'bg-indigo-50 text-indigo-700 border-indigo-300' },
       completed: { label: '已完成', className: 'bg-green-50 text-green-700 border-green-300' },
-      completed_settleable: { label: '已完成(可结算)', className: 'bg-green-100 text-green-800 border-green-400' },
+      settleable: { label: '可结算', className: 'bg-teal-50 text-teal-700 border-teal-300' },
       cancelled_free: { label: '已取消(免费)', className: 'bg-gray-50 text-gray-700 border-gray-300' },
       cancelled_paid: { label: '已取消(付费)', className: 'bg-red-50 text-red-700 border-red-300' },
-      no_show: { label: 'No-Show', className: 'bg-red-100 text-red-800 border-red-400' },
-      disputed: { label: '争议中', className: 'bg-red-200 text-red-900 border-red-500' },
+      no_show: { label: '未入住', className: 'bg-slate-50 text-slate-700 border-slate-300' },
+      after_sale: { label: '售后中', className: 'bg-rose-50 text-rose-700 border-rose-300' },
     };
     const { label, className } = config[status];
     return <Badge variant="outline" className={className}>{label}</Badge>;
@@ -377,16 +387,33 @@ export function OrderDetail({ order, onBack }: OrderDetailProps) {
                     <p className="font-mono text-sm text-gray-900">{order.orderId}</p>
                   </div>
                   <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">订单状态</Label>
+                    <div className="mt-1">{getOrderStatusBadge(order.orderStatus)}</div>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">结算状态</Label>
+                    <div className="mt-1">
+                      <Badge variant="outline" className={order.settlementStatus === 'settled' ? 'bg-green-50 text-green-700 border-green-300' : 'bg-gray-50 text-gray-700 border-gray-300'}>
+                        {order.settlementStatus === 'pending' ? '待结算' : order.settlementStatus === 'settleable' ? '可结算' : order.settlementStatus === 'processing' ? '处理中' : '已结算'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
                     <Label className="text-gray-500 text-xs font-medium mb-1.5 block">创建时间</Label>
                     <p className="text-sm text-gray-900">{order.createdAt}</p>
                   </div>
                   <div>
-                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">订单状态</Label>
-                    <div className="mt-1">{getOrderStatusBadge(order.orderStatus)}</div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">确认时间</Label>
+                    <p className="text-sm text-gray-900">{order.confirmedAt || '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">完成时间</Label>
+                    <p className="text-sm text-gray-900">{order.completedAt || '-'}</p>
                   </div>
                 </div>
               </div>
 
+              
               <div className="border-t border-gray-200 pt-6 pb-6">
                 {/* 酒店信息 */}
                 <h3 className="text-base font-semibold text-gray-900 mb-4">酒店信息</h3>
@@ -396,25 +423,54 @@ export function OrderDetail({ order, onBack }: OrderDetailProps) {
                     <p className="text-sm text-gray-900">{order.hotelName}</p>
                   </div>
                   <div>
-                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">房型</Label>
-                    <p className="text-sm text-gray-900">{order.roomType}</p>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">联系方式</Label>
+                    <p className="text-sm text-gray-900">{order.hotelPhone || '-'}</p>
                   </div>
                   <div className="col-span-2">
                     <Label className="text-gray-500 text-xs font-medium mb-1.5 block">酒店地址</Label>
                     <p className="text-sm text-gray-900">{order.hotelAddress}</p>
                   </div>
-                  <div className="col-span-2">
-                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">入住时间</Label>
-                    <p className="text-sm text-gray-900">
-                      {order.checkInDate} ~ {order.checkOutDate} <span className="text-gray-500">({order.nights}晚)</span>
-                    </p>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-6 pb-6">
+                {/* 入住信息 */}
+                <h3 className="text-base font-semibold text-gray-900 mb-4">入住信息</h3>
+                <div className="grid grid-cols-3 gap-6">
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">入住日期</Label>
+                    <p className="text-sm text-gray-900">{order.checkInDate}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">离店日期</Label>
+                    <p className="text-sm text-gray-900">{order.checkOutDate}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">入住晚数</Label>
+                    <p className="text-sm text-gray-900">{order.nights}晚</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">入住人姓名</Label>
+                    <p className="text-sm text-gray-900">{order.guestName || order.customerName}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">入住人数</Label>
+                    <p className="text-sm text-gray-900">{order.adultCount}成人 {(order.childCount || 0) > 0 ? `${order.childCount}小孩` : ''}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">房型</Label>
+                    <p className="text-sm text-gray-900">{order.roomType}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">房间数量</Label>
+                    <p className="text-sm text-gray-900">{order.roomCount || 1}间</p>
                   </div>
                 </div>
               </div>
 
               <div className="border-t border-gray-200 pt-6 pb-6">
                 {/* 客户信息 */}
-                <h3 className="text-base font-semibold text-gray-900 mb-4">客户信息</h3>
+                <h3 className="text-base font-semibold text-gray-900 mb-4">客户信息（下单人）</h3>
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <Label className="text-gray-500 text-xs font-medium mb-1.5 block">客户姓名</Label>
@@ -425,23 +481,103 @@ export function OrderDetail({ order, onBack }: OrderDetailProps) {
                     <p className="text-sm text-gray-900">{order.customerPhone}</p>
                   </div>
                 </div>
+                <p className="text-xs text-gray-500 mt-3">提醒：入住人与客户（下单人）可能不同</p>
               </div>
 
-              <div className="border-t border-gray-200 pt-6">
-                {/* 小B商户信息 */}
-                <h3 className="text-base font-semibold text-gray-900 mb-4">小B商户信息</h3>
+              <div className="border-t border-gray-200 pt-6 pb-6">
+                {/* 商户信息 */}
+                <h3 className="text-base font-semibold text-gray-900 mb-4">商户信息</h3>
                 <div className="grid grid-cols-3 gap-6">
                   <div>
                     <Label className="text-gray-500 text-xs font-medium mb-1.5 block">商户名称</Label>
                     <p className="text-sm text-gray-900">{order.partnerName}</p>
                   </div>
                   <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">商户ID</Label>
+                    <p className="text-sm text-gray-900 font-mono">{order.partnerId || '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">商户电话</Label>
+                    <p className="text-sm text-gray-900">{order.partnerPhone || '-'}</p>
+                  </div>
+                  <div>
                     <Label className="text-gray-500 text-xs font-medium mb-1.5 block">商户邮箱</Label>
                     <p className="text-sm text-gray-900">{order.partnerEmail}</p>
                   </div>
                   <div>
-                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">商户类型</Label>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">用户信息类型</Label>
                     <div className="mt-1">{getPartnerTypeBadge(order.partnerType)}</div>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">认证方式</Label>
+                    <p className="text-sm text-gray-900">{order.certificationType === 'personal' ? '个人认证' : '企业认证'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">业务模式</Label>
+                    <p className="text-sm text-gray-900">
+                      {order.partnerBusinessModel === 'saas' ? 'SaaS' : order.partnerBusinessModel === 'mcp' ? 'MCP' : '推广联盟'}
+                    </p>
+                  </div>
+                </div>
+                {order.parentPartnerName && (
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-4">管理大B信息</h4>
+                    <div className="grid grid-cols-3 gap-6">
+                      <div>
+                        <Label className="text-gray-500 text-xs font-medium mb-1.5 block">大B名称</Label>
+                        <p className="text-sm text-gray-900">{order.parentPartnerName}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-500 text-xs font-medium mb-1.5 block">用户信息类型</Label>
+                        <p className="text-sm text-gray-900">{order.parentPartnerType || '-'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-500 text-xs font-medium mb-1.5 block">业务模式</Label>
+                        <p className="text-sm text-gray-900">{order.parentPartnerBusinessMode || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-gray-200 pt-6 pb-6">
+                {/* 风控审核信息 */}
+                <h3 className="text-base font-semibold text-gray-900 mb-4">风控审核信息</h3>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">审核状态</Label>
+                    <div className="mt-1">
+                      <Badge variant="outline" className={order.riskReview?.status === 'approved' ? 'bg-green-50 text-green-700 border-green-300' : order.riskReview?.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-300' : 'bg-yellow-50 text-yellow-700 border-yellow-300'}>
+                        {order.riskReview?.status === 'approved' ? '已通过' : order.riskReview?.status === 'rejected' ? '已拒绝' : '待审核'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">审核时间</Label>
+                    <p className="text-sm text-gray-900">{order.riskReview?.reviewedAt || '-'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-6">
+                {/* 结算信息 */}
+                <h3 className="text-base font-semibold text-gray-900 mb-4">结算信息</h3>
+                <div className="grid grid-cols-3 gap-6">
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">结算状态</Label>
+                    <div className="mt-1">
+                      <Badge variant="outline" className={order.settlementStatus === 'settled' ? 'bg-green-50 text-green-700 border-green-300' : 'bg-gray-50 text-gray-700 border-gray-300'}>
+                        {order.settlementStatus === 'pending' ? '待结算' : order.settlementStatus === 'settleable' ? '可结算' : order.settlementStatus === 'processing' ? '处理中' : '已结算'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">结算时间</Label>
+                    <p className="text-sm text-gray-900">{order.settlementTime || '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 text-xs font-medium mb-1.5 block">结算金额</Label>
+                    <p className="text-sm text-gray-900 font-medium">{order.settlementAmount ? `¥${order.settlementAmount.toFixed(2)}` : '-'}</p>
                   </div>
                 </div>
               </div>
@@ -451,167 +587,7 @@ export function OrderDetail({ order, onBack }: OrderDetailProps) {
 
         {/* 价格与利润 */}
         <TabsContent value="pricing" className="mt-0">
-          <Card className="border border-t-0 border-gray-200 rounded-t-none rounded-b-sm">
-            <CardContent className="pt-6">
-              {/* 价格体系 */}
-              <div className="pb-6">
-                <h3 className="text-base font-semibold text-gray-900 mb-4">价格体系</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center p-4 bg-gray-50/50 rounded-lg border border-gray-200">
-                    <div>
-                      <Label className="text-gray-700 text-sm font-medium">P0 - 供应商底价</Label>
-                      <p className="text-xs text-gray-500 mt-1">从上游供应商获取的成本价</p>
-                    </div>
-                    <span className="text-xl font-bold text-gray-900">¥{order.p0_supplierCost.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div>
-                      <Label className="text-blue-700 text-sm font-medium">P1 - 平台供货价</Label>
-                      <p className="text-xs text-blue-600 mt-1">P0 × (1 + 平台利润率)</p>
-                    </div>
-                    <span className="text-xl font-bold text-blue-700">
-                      ¥{order.p1_platformPrice.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center p-4 bg-green-50 rounded-lg border border-green-200">
-                    <div>
-                      <Label className="text-green-700 text-sm font-medium">P2 - 小B销售价</Label>
-                      <p className="text-xs text-green-600 mt-1">P1 × (1 + 小B加价率)</p>
-                    </div>
-                    <span className="text-xl font-bold text-green-700">
-                      ¥{order.p2_salePrice.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 实付与退款 */}
-              <div className="border-t border-gray-200 pt-6 pb-6">
-                <h3 className="text-base font-semibold text-gray-900 mb-4">实付与退款</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                    <div>
-                      <Label className="text-indigo-700 text-sm font-medium">订单金额</Label>
-                      <p className="text-xs text-indigo-600 mt-1">P2 小B销售价</p>
-                    </div>
-                    <span className="text-xl font-bold text-indigo-700">
-                      ¥{order.p2_salePrice.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className={`flex justify-between items-center p-4 rounded-lg border ${
-                    order.refundAmount && order.refundAmount > 0
-                      ? 'bg-orange-50 border-orange-200'
-                      : 'bg-gray-50 border-gray-200'
-                  }`}>
-                    <div>
-                      <Label className={`text-sm font-medium ${
-                        order.refundAmount && order.refundAmount > 0
-                          ? 'text-orange-700'
-                          : 'text-gray-700'
-                      }`}>退款金额</Label>
-                      <p className={`text-xs mt-1 ${
-                        order.refundAmount && order.refundAmount > 0
-                          ? 'text-orange-600'
-                          : 'text-gray-500'
-                      }`}>已退款的金额</p>
-                    </div>
-                    <span className={`text-xl font-bold ${
-                      order.refundAmount && order.refundAmount > 0
-                        ? 'text-orange-700'
-                        : 'text-gray-500'
-                    }`}>
-                      {order.refundAmount && order.refundAmount > 0 ? '-' : ''}¥{(order.refundAmount || 0).toFixed(2)}
-                    </span>
-                  </div>
-                  <div className={`flex justify-between items-center p-4 rounded-lg border ${
-                    order.refundAmount && order.refundAmount > 0 
-                      ? 'bg-red-50 border-red-200' 
-                      : 'bg-indigo-50 border-indigo-200'
-                  }`}>
-                    <div>
-                      <Label className={`text-sm font-medium ${
-                        order.refundAmount && order.refundAmount > 0 
-                          ? 'text-red-700' 
-                          : 'text-indigo-700'
-                      }`}>实付金额</Label>
-                      <p className={`text-xs mt-1 ${
-                        order.refundAmount && order.refundAmount > 0 
-                          ? 'text-red-600' 
-                          : 'text-indigo-600'
-                      }`}>客户实际支付的金额 = 订单金额 - 退款金额</p>
-                    </div>
-                    <span className={`text-xl font-bold ${
-                      order.refundAmount && order.refundAmount > 0 
-                        ? 'text-red-700' 
-                        : 'text-indigo-700'
-                    }`}>
-                      ¥{order.actualAmount.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-200 pt-6">
-                {/* 利润分配 */}
-                <h3 className="text-base font-semibold text-gray-900 mb-4">利润分配</h3>
-                {(() => {
-                  const hasRefund = order.refundAmount !== undefined && order.refundAmount > 0;
-                  const refundRatio = hasRefund ? order.actualAmount / order.p2_salePrice : 1;
-                  const actualPlatformProfit = order.platformProfit * refundRatio;
-                  const actualPartnerProfit = order.partnerProfit * refundRatio;
-                  
-                  return (
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center p-4 bg-purple-50 rounded-lg border border-purple-200">
-                        <div>
-                          <Label className="text-purple-700 text-sm font-medium">平台利润</Label>
-                          <p className="text-xs text-purple-600 mt-1">
-                            {hasRefund ? `原利润: ¥${order.platformProfit.toFixed(2)} × ${(refundRatio * 100).toFixed(1)}%` : 'P1 - P0'}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          {hasRefund && (
-                            <div className="text-xs text-gray-500 line-through mb-1">
-                              ¥{order.platformProfit.toFixed(2)}
-                            </div>
-                          )}
-                          <span className="text-xl font-bold text-purple-700">
-                            ¥{actualPlatformProfit.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center p-4 bg-green-50 rounded-lg border border-green-200">
-                        <div>
-                          <Label className="text-green-700 text-sm font-medium">小B利润</Label>
-                          <p className="text-xs text-green-600 mt-1">
-                            {hasRefund ? `原利润: ¥${order.partnerProfit.toFixed(2)} × ${(refundRatio * 100).toFixed(1)}%` : 'P2 - P1'}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          {hasRefund && (
-                            <div className="text-xs text-gray-500 line-through mb-1">
-                              ¥{order.partnerProfit.toFixed(2)}
-                            </div>
-                          )}
-                          <span className="text-xl font-bold text-green-700">
-                            ¥{actualPartnerProfit.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                      {hasRefund && (
-                        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                          <p className="text-xs text-yellow-700">
-                            <span className="font-medium">说明：</span>
-                            由于存在退款，利润按实付金额比例计算：实际利润 = 原利润 × (实付金额 / 订单金额)
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-            </CardContent>
-          </Card>
+          <PricingTab order={order} />
         </TabsContent>
 
         {/* 门控状态 */}

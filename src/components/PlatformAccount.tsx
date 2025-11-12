@@ -1,251 +1,250 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
+  BreadcrumbSeparator,
 } from './ui/breadcrumb';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { PlatformAccountDashboard } from './finance/PlatformAccountDashboard';
-import { OrderDetailsTable, type OrderDetail, type OrderStatus } from './finance/OrderDetailsTable';
+import { OrderDetailsTable, type OrderDetail } from './finance/OrderDetailsTable';
 import { CommissionSettlementTable, type CommissionWithdrawal, type WithdrawalStatus } from './finance/CommissionSettlementTable';
 import { SupplierSettlementTable, type SupplierSettlement, type SupplierSettlementStatus } from './finance/SupplierSettlementTable';
 
+type DashboardAggregate = {
+  advancePayment: number;
+  actualRevenue: number;
+  platformProfit: number;
+  payableDistribution: number;
+  payableSupplier: number;
+  availableFunds: number;
+  platformDiscountContribution: number;
+  bigBDiscountContribution: number;
+};
+
+const computeStats = (
+  ordersData: OrderDetail[],
+  withdrawalsData: CommissionWithdrawal[],
+  supplierData: SupplierSettlement[],
+): DashboardAggregate => {
+  const advancePayment = ordersData
+    .filter(order => order.orderStatus === 'pending_checkin')
+    .reduce((sum, order) => sum + order.p2_orderAmount, 0);
+
+  const actualRevenue = ordersData
+    .filter(order => order.orderStatus === 'completed')
+    .reduce((sum, order) => sum + (order.actualAmount - order.totalRefund), 0);
+
+  const platformProfit = ordersData.reduce((sum, order) => {
+    const gross = order.p1_distributionPrice - order.p0_supplierCost;
+    const refundProfit = order.p2_orderAmount > 0
+      ? order.totalRefund * (order.p1_distributionPrice - order.p0_supplierCost) / order.p2_orderAmount
+      : 0;
+    const platformContribution = order.platformDiscountContribution || 0;
+    return sum + (gross - refundProfit - platformContribution);
+  }, 0);
+
+  const platformDiscountContribution = ordersData.reduce(
+    (sum, order) => sum + order.platformDiscountContribution,
+    0,
+  );
+
+  const bigBDiscountContribution = ordersData.reduce(
+    (sum, order) => sum + order.bigBDiscountContribution,
+    0,
+  );
+
+  // 应付账款（大B）：按PRD公式基于订单字段计算（不扣除佣金，由大B自行结算给小B）
+  const payableBigBTotal = ordersData
+    .filter(order => order.orderStatus === 'completed')
+    .reduce((sum, order) => {
+      const refundP1Part = order.p2_orderAmount > 0
+        ? order.totalRefund * order.p1_distributionPrice / order.p2_orderAmount
+        : 0;
+      const bigBContribution = order.bigBDiscountContribution || 0;
+      const amount = (order.p2_orderAmount - order.totalRefund)
+        - (order.p1_distributionPrice - refundP1Part)
+        - bigBContribution;
+      return sum + Math.max(0, amount);
+    }, 0);
+
+  const paidCommission = withdrawalsData
+    .filter(withdrawal => withdrawal.status === 'paid')
+    .reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
+
+  const payableDistribution = Math.max(0, payableBigBTotal - paidCommission);
+
+  // 应付账款（供应商）：按PRD公式基于订单字段计算
+  const payableSupplierTotal = ordersData
+    .filter(order => order.orderStatus === 'completed')
+    .reduce((sum, order) => {
+      const refundP0Part = order.p2_orderAmount > 0
+        ? order.totalRefund * order.p0_supplierCost / order.p2_orderAmount
+        : 0;
+      const amount = order.p0_supplierCost - refundP0Part;
+      return sum + Math.max(0, amount);
+    }, 0);
+
+  const paidSupplier = supplierData
+    .filter(settlement => settlement.status === 'paid')
+    .reduce((sum, settlement) => sum + settlement.amount, 0);
+
+  const payableSupplier = Math.max(0, payableSupplierTotal - paidSupplier);
+
+  const availableFunds = actualRevenue - payableDistribution - payableSupplier;
+
+  return {
+    advancePayment,
+    actualRevenue,
+    platformProfit,
+    payableDistribution,
+    payableSupplier,
+    availableFunds,
+    platformDiscountContribution,
+    bigBDiscountContribution,
+  };
+};
+
 export function PlatformAccount() {
-  // 模拟订单数据
-  // 业务逻辑：
-  // 普通模式（API/PAAS）：
-  // 1. 订单底价 = 供应商给的底价
-  // 2. 分销价 = 订单底价 × 1.02 (默认加价2%)
-  // 3. 订单金额 = 分销价 × (1 + 加价率)
-  // 4. 佣金 = 订单金额 - 分销价
-  // 5. 订单利润 = 分销价 - 订单底价
-  //
-  // 链接分销模式（link）：
-  // 1. 订单底价 = 供应商给的底价
-  // 2. 分销价 = 订单底价 × 1.02
-  // 3. 订单金额 = 分销价 × (1 + 加价率)（和普通模式一样）
-  // 4. 佣金 = 订单金额 × 链接分销佣金率（特殊计算方式）
-  // 5. 余额 = 订单金额 - 分销价 - 佣金
-  // 6. 订单利润 = (分销价 - 订单底价) + 余额
+  // 模拟订单数据，包含PRD定义的核心金额、优惠、结算字段
   const [orders] = useState<OrderDetail[]>([
     {
       orderId: 'ORD-2025001',
-      supplierCost: 1200, // 订单底价
-      distributionPrice: 1224, // 分销价 = 1200 × 1.02
-      markupRate: 10, // 加价率 10%
-      orderAmount: 1346.4, // 订单金额 = 1224 × 1.1
-      commission: 122.4, // 佣金 = 1346.4 - 1224
-      profit: 24, // 订单利润 = 1224 - 1200
-      channel: '张三',
-      accessType: 'API',
-      status: 'completed',
+      merchantName: '华东渠道A',
+      hotelName: '上海外滩酒店',
       checkInDate: '2025-10-15',
       checkOutDate: '2025-10-17',
-      hotelName: '上海外滩酒店',
+      settlementStatus: 'settleable',
+      orderStatus: 'completed',
+      orderType: 'smallB',
+      p0_supplierCost: 1200,
+      p1_distributionPrice: 1320,
+      p2_orderAmount: 1452,
+      totalDiscount: 0,
+      actualAmount: 1452,
+      totalRefund: 0,
+      platformDiscountContribution: 0,
+      bigBDiscountContribution: 0,
+      totalCommission: 69.99,
+      commissionRate: 4.82,
     },
     {
       orderId: 'ORD-2025002',
-      supplierCost: 1800,
-      distributionPrice: 1836, // 1800 × 1.02
-      markupRate: 10,
-      orderAmount: 2019.6, // 1836 × 1.1
-      commission: 183.6, // 2019.6 - 1836
-      profit: 36, // 1836 - 1800
-      channel: '李四',
-      accessType: 'PAAS',
-      status: 'pending_checkin',
+      merchantName: '华北渠道B',
+      hotelName: '北京王府井大酒店',
       checkInDate: '2025-11-05',
       checkOutDate: '2025-11-07',
-      hotelName: '北京王府井大酒店',
+      settlementStatus: 'processing',
+      orderStatus: 'completed',
+      orderType: 'smallB',
+      p0_supplierCost: 900,
+      p1_distributionPrice: 990,
+      p2_orderAmount: 1089,
+      totalDiscount: 0,
+      actualAmount: 1089,
+      totalRefund: 0,
+      platformDiscountContribution: 0,
+      bigBDiscountContribution: 0,
+      totalCommission: 80.04,
+      commissionRate: 7.35,
     },
     {
       orderId: 'ORD-2025003',
-      supplierCost: 750,
-      distributionPrice: 765, // 750 × 1.02
-      markupRate: 10, // 加价率 10%
-      orderAmount: 0, // 已免费取消，金额为0
-      commission: 0,
-      profit: 0,
-      channel: '王五',
-      accessType: 'link',
-      linkCommissionRate: 10, // 链接分销佣金率 10%
-      status: 'cancelled_free',
+      merchantName: '华南渠道C',
+      hotelName: '杭州西湖宾馆',
       checkInDate: '2025-10-20',
       checkOutDate: '2025-10-22',
-      hotelName: '杭州西湖宾馆',
+      settlementStatus: 'pending',
+      orderStatus: 'pending_checkin',
+      orderType: 'bigB',
+      p0_supplierCost: 800,
+      p1_distributionPrice: 880,
+      p2_orderAmount: 968,
+      totalDiscount: 0,
+      actualAmount: 968,
+      totalRefund: 0,
+      platformDiscountContribution: 0,
+      bigBDiscountContribution: 0,
+      totalCommission: 0,
+      markupRate: 10.0,
     },
     {
-      // 链接分销示例：部分取消
       orderId: 'ORD-2025004',
-      supplierCost: 750,
-      distributionPrice: 765, // 750 × 1.02
-      markupRate: 10, // 加价率 10%
-      orderAmount: 841.5, // 订单金额 = 765 × 1.1
-      commission: 84.15, // 佣金 = 841.5 × 10%
-      profit: -68.65, // 订单利润计算：
-      // 基础利润 = 765 - 750 = 15
-      // 余额 = 841.5 - 765 - 84.15 = -7.65
-      // 订单利润 = 15 + (-7.65) = 7.35（但部分取消后调整为负）
-      channel: '赵六',
-      accessType: 'link',
-      linkCommissionRate: 10, // 链接分销佣金率 10%
-      status: 'cancelled_partial',
+      merchantName: '西南渠道D',
+      hotelName: '深圳湾大酒店',
       checkInDate: '2025-10-25',
       checkOutDate: '2025-10-28',
-      hotelName: '深圳湾大酒店',
-    },
-    {
-      orderId: 'ORD-2025005',
-      supplierCost: 2500,
-      distributionPrice: 2550, // 2500 × 1.02
-      markupRate: 10,
-      orderAmount: 2805, // 2550 × 1.1
-      commission: 255, // 2805 - 2550
-      profit: 50, // 2550 - 2500
-      channel: '钱七',
-      accessType: 'API',
-      status: 'completed',
-      checkInDate: '2025-10-10',
-      checkOutDate: '2025-10-13',
-      hotelName: '广州珠江新城酒店',
-    },
-    {
-      // 链接分销示例：已完结订单
-      orderId: 'ORD-2025006',
-      supplierCost: 1500,
-      distributionPrice: 1530, // 1500 × 1.02
-      markupRate: 10, // 加价率 10%
-      orderAmount: 1683, // 订单金额 = 1530 × 1.1
-      commission: 168.3, // 佣金 = 1683 × 10%
-      profit: 14.7, // 订单利润计算：
-      // 基础利润 = 1530 - 1500 = 30
-      // 余额 = 1683 - 1530 - 168.3 = -15.3
-      // 订单利润 = 30 + (-15.3) = 14.7
-      channel: '孙八',
-      accessType: 'link',
-      linkCommissionRate: 10, // 链接分销佣金率 10%
-      status: 'completed',
-      checkInDate: '2025-10-28',
-      checkOutDate: '2025-10-30',
-      hotelName: '成都春熙路酒店',
+      settlementStatus: 'settled',
+      orderStatus: 'completed',
+      orderType: 'bigB',
+      p0_supplierCost: 1500,
+      p1_distributionPrice: 1650,
+      p2_orderAmount: 1815,
+      totalDiscount: 0,
+      actualAmount: 1815,
+      totalRefund: 200,
+      platformDiscountContribution: 0,
+      bigBDiscountContribution: 0,
+      totalCommission: 120,
+      markupRate: 10.0,
     },
   ]);
 
-  // 模拟佣金结算数据
+  // 模拟佣金结算数据（已打款金额较小，保留应付账款）
   const [commissionWithdrawals, setCommissionWithdrawals] = useState<CommissionWithdrawal[]>([
     {
       id: 'WD-2025001',
-      applicant: '张三',
-      amount: 5000,
-      status: 'approved',
+      applicant: '华东渠道A',
+      amount: 50,
+      status: 'paid',
       createdAt: '2025-10-28 10:30:00',
+      processedAt: '2025-10-29 09:15:00',
     },
     {
       id: 'WD-2025002',
-      applicant: '李四',
-      amount: 3500,
-      status: 'paid',
+      applicant: '华北渠道B',
+      amount: 30,
+      status: 'approved',
       createdAt: '2025-10-25 14:20:00',
-      processedAt: '2025-10-26 09:15:00',
-    },
-    {
-      id: 'WD-2025003',
-      applicant: '王五',
-      amount: 2000,
-      status: 'rejected',
-      createdAt: '2025-10-22 16:45:00',
-      processedAt: '2025-10-23 11:30:00',
-    },
-    {
-      id: 'WD-2025004',
-      applicant: '赵六',
-      amount: 4200,
-      status: 'failed',
-      createdAt: '2025-10-20 09:00:00',
-      processedAt: '2025-10-21 10:20:00',
     },
   ]);
 
-  // 模拟供应商结算数据
+  // 模拟供应商结算数据（已打款金额较小，保留应付账款）
   const [supplierSettlements, setSupplierSettlements] = useState<SupplierSettlement[]>([
     {
       id: 'SS-2025001',
-      period: '2025-09',
-      supplierName: '华住酒店集团',
-      amount: 125000,
+      period: '2025-10',
+      supplierName: '上海酒店集团',
+      amount: 800,
       status: 'paid',
       createdAt: '2025-10-20 00:00:00',
       paidAt: '2025-10-20 15:30:00',
     },
     {
       id: 'SS-2025002',
-      period: '2025-09',
-      supplierName: '锦江酒店集团',
-      amount: 98000,
-      status: 'paid',
-      createdAt: '2025-10-20 00:00:00',
-      paidAt: '2025-10-20 16:45:00',
-    },
-    {
-      id: 'SS-2025003',
-      period: '2025-08',
-      supplierName: '首旅如家集团',
-      amount: 87500,
+      period: '2025-10',
+      supplierName: '北京酒店集团',
+      amount: 500,
       status: 'failed',
-      createdAt: '2025-09-20 00:00:00',
-      paidAt: '2025-09-20 14:20:00',
+      createdAt: '2025-10-25 00:00:00',
+      paidAt: '2025-10-26 10:00:00',
     },
   ]);
 
-  // 计算看板统计数据
-  const [stats, setStats] = useState(() => {
-    // 订单预收款：未完结订单（待入住）的预付费用
-    const advancePayment = orders
-      .filter(o => o.status === 'pending_checkin')
-      .reduce((sum, o) => sum + o.orderAmount, 0);
+  const [manualRecharge, setManualRecharge] = useState(0);
 
-    // 订单实际收款：已完结订单的预付费用
-    const actualRevenue = orders
-      .filter(o => o.status === 'completed')
-      .reduce((sum, o) => sum + o.orderAmount, 0);
-
-    // 应付账款（分销）：已完结订单的佣金 - 已打款的佣金
-    const completedCommission = orders
-      .filter(o => o.status === 'completed')
-      .reduce((sum, o) => sum + o.commission, 0);
-    const paidCommission = commissionWithdrawals
-      .filter(w => w.status === 'paid')
-      .reduce((sum, w) => sum + w.amount, 0);
-    const payableDistribution = completedCommission - paidCommission;
-
-    // 应付账款（供应商）：已完结订单的供应商成本 - 已打款的供应商结算
-    const completedSupplierCost = orders
-      .filter(o => o.status === 'completed')
-      .reduce((sum, o) => sum + o.supplierCost, 0);
-    const paidSupplier = supplierSettlements
-      .filter(s => s.status === 'paid')
-      .reduce((sum, s) => sum + s.amount, 0);
-    const payableSupplier = completedSupplierCost - paidSupplier;
-
-    // 可用资金：实际收款 - 应付账款（分销） - 应付账款（供应商）
-    const availableFunds = actualRevenue - payableDistribution - payableSupplier;
-
+  const stats = useMemo(() => {
+    const baseStats = computeStats(orders, commissionWithdrawals, supplierSettlements);
     return {
-      advancePayment,
-      actualRevenue,
-      payableDistribution,
-      payableSupplier,
-      availableFunds,
+      ...baseStats,
+      availableFunds: baseStats.availableFunds + manualRecharge,
     };
-  });
+  }, [orders, commissionWithdrawals, supplierSettlements, manualRecharge]);
 
   // 处理充值
   const handleRecharge = (amount: number) => {
-    setStats(prev => ({
-      ...prev,
-      availableFunds: prev.availableFunds + amount,
-    }));
+    setManualRecharge(prev => prev + amount);
   };
 
   // 处理打款
@@ -260,20 +259,12 @@ export function PlatformAccount() {
           : w
       )
     );
-    
-    // 更新应付账款：打款后减少应付账款，确保不会变成负数
-    setStats(prev => ({
-      ...prev,
-      payableDistribution: Math.max(0, prev.payableDistribution - withdrawal.amount),
-    }));
   };
 
   // 处理标记失败（从已打款状态标记为失败）
   const handleMarkFailed = (id: string) => {
     const withdrawal = commissionWithdrawals.find(w => w.id === id);
     if (!withdrawal) return;
-
-    const wasPaid = withdrawal.status === 'paid';
 
     setCommissionWithdrawals(prev => 
       prev.map(w => 
@@ -282,22 +273,12 @@ export function PlatformAccount() {
           : w
       )
     );
-    
-    // 如果之前是已打款状态，需要将金额退回应付账款
-    if (wasPaid) {
-      setStats(prev => ({
-        ...prev,
-        payableDistribution: prev.payableDistribution + withdrawal.amount,
-      }));
-    }
   };
 
   // 处理供应商结算标记失败
   const handleSupplierMarkFailed = (id: string) => {
     const settlement = supplierSettlements.find(s => s.id === id);
     if (!settlement) return;
-
-    const wasPaid = settlement.status === 'paid';
 
     setSupplierSettlements(prev => 
       prev.map(s => 
@@ -306,14 +287,6 @@ export function PlatformAccount() {
           : s
       )
     );
-    
-    // 如果之前是已打款状态，需要将金额退回应付账款
-    if (wasPaid) {
-      setStats(prev => ({
-        ...prev,
-        payableSupplier: prev.payableSupplier + settlement.amount,
-      }));
-    }
   };
 
   // 处理供应商结算重新打款
@@ -328,12 +301,6 @@ export function PlatformAccount() {
           : s
       )
     );
-    
-    // 重新打款后，应付账款减少
-    setStats(prev => ({
-      ...prev,
-      payableSupplier: Math.max(0, prev.payableSupplier - settlement.amount),
-    }));
   };
 
   return (
@@ -344,6 +311,7 @@ export function PlatformAccount() {
           <BreadcrumbItem>
             <BreadcrumbPage>财务中心</BreadcrumbPage>
           </BreadcrumbItem>
+          <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbPage>平台账户</BreadcrumbPage>
           </BreadcrumbItem>
@@ -357,7 +325,7 @@ export function PlatformAccount() {
       <Tabs defaultValue="orders" className="space-y-4">
         <TabsList>
           <TabsTrigger value="orders">订单明细</TabsTrigger>
-          <TabsTrigger value="commission">佣金结算明细</TabsTrigger>
+          <TabsTrigger value="withdrawal">提现明细</TabsTrigger>
           <TabsTrigger value="supplier">供应商结算明细</TabsTrigger>
         </TabsList>
 
@@ -365,7 +333,7 @@ export function PlatformAccount() {
           <OrderDetailsTable orders={orders} />
         </TabsContent>
 
-        <TabsContent value="commission">
+        <TabsContent value="withdrawal">
           <CommissionSettlementTable 
             withdrawals={commissionWithdrawals}
             onPay={handlePay}

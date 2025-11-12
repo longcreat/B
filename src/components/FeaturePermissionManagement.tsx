@@ -5,6 +5,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
+import { Checkbox } from './ui/checkbox';
 import { 
   Shield, 
   Search, 
@@ -311,6 +312,162 @@ export function FeaturePermissionManagement() {
                     <SelectItem value="whitelist">白名单模式</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-sm text-gray-600">
+                  权限规则是基础访问控制，可配合业务模式和用户类型使用
+                </p>
+              </div>
+
+              {/* 业务模式限制 */}
+              <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div>
+                  <Label className="text-base font-medium">业务模式限制（可选）</Label>
+                  <p className="text-sm text-gray-600 mt-1">
+                    选择允许使用此功能的业务模式。不选择则不对业务模式进行限制。
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="business-saas"
+                      checked={editingPermission.requiredBusinessModels?.includes('saas') || false}
+                      onCheckedChange={(checked) => {
+                        const current = editingPermission.requiredBusinessModels || [];
+                        if (checked) {
+                          setEditingPermission({
+                            ...editingPermission,
+                            requiredBusinessModels: [...current, 'saas']
+                          });
+                        } else {
+                          setEditingPermission({
+                            ...editingPermission,
+                            requiredBusinessModels: current.filter(m => m !== 'saas')
+                          });
+                        }
+                      }}
+                    />
+                    <Label htmlFor="business-saas" className="font-normal cursor-pointer">
+                      SaaS业务模式
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="business-mcp"
+                      checked={editingPermission.requiredBusinessModels?.includes('mcp') || false}
+                      onCheckedChange={(checked) => {
+                        const current = editingPermission.requiredBusinessModels || [];
+                        if (checked) {
+                          setEditingPermission({
+                            ...editingPermission,
+                            requiredBusinessModels: [...current, 'mcp']
+                          });
+                        } else {
+                          setEditingPermission({
+                            ...editingPermission,
+                            requiredBusinessModels: current.filter(m => m !== 'mcp')
+                          });
+                        }
+                      }}
+                    />
+                    <Label htmlFor="business-mcp" className="font-normal cursor-pointer">
+                      MCP业务模式
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="business-affiliate"
+                      checked={editingPermission.requiredBusinessModels?.includes('affiliate') || false}
+                      onCheckedChange={(checked) => {
+                        const current = editingPermission.requiredBusinessModels || [];
+                        if (checked) {
+                          setEditingPermission({
+                            ...editingPermission,
+                            requiredBusinessModels: [...current, 'affiliate']
+                          });
+                        } else {
+                          setEditingPermission({
+                            ...editingPermission,
+                            requiredBusinessModels: current.filter(m => m !== 'affiliate')
+                          });
+                        }
+                      }}
+                    />
+                    <Label htmlFor="business-affiliate" className="font-normal cursor-pointer">
+                      推广联盟业务模式（Affiliate）
+                    </Label>
+                  </div>
+                </div>
+                {editingPermission.requiredBusinessModels && editingPermission.requiredBusinessModels.length > 0 && (
+                  <p className="text-sm text-blue-700 mt-2">
+                    已选择：{editingPermission.requiredBusinessModels.map(m => 
+                      m === 'saas' ? 'SaaS' : m === 'mcp' ? 'MCP' : '推广联盟'
+                    ).join('、')}
+                  </p>
+                )}
+              </div>
+
+              {/* 用户类型限制 */}
+              <div className="space-y-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                <div>
+                  <Label className="text-base font-medium">用户类型限制（可选）</Label>
+                  <p className="text-sm text-gray-600 mt-1">
+                    选择允许使用此功能的用户类型。不选择则不对用户类型进行限制。
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="user-bigb"
+                      checked={editingPermission.requiredUserTypes?.includes('bigb') || false}
+                      onCheckedChange={(checked) => {
+                        const current = editingPermission.requiredUserTypes || [];
+                        if (checked) {
+                          setEditingPermission({
+                            ...editingPermission,
+                            requiredUserTypes: [...current, 'bigb']
+                          });
+                        } else {
+                          setEditingPermission({
+                            ...editingPermission,
+                            requiredUserTypes: current.filter(t => t !== 'bigb')
+                          });
+                        }
+                      }}
+                    />
+                    <Label htmlFor="user-bigb" className="font-normal cursor-pointer">
+                      大B用户
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="user-smallb"
+                      checked={editingPermission.requiredUserTypes?.includes('smallb') || false}
+                      onCheckedChange={(checked) => {
+                        const current = editingPermission.requiredUserTypes || [];
+                        if (checked) {
+                          setEditingPermission({
+                            ...editingPermission,
+                            requiredUserTypes: [...current, 'smallb']
+                          });
+                        } else {
+                          setEditingPermission({
+                            ...editingPermission,
+                            requiredUserTypes: current.filter(t => t !== 'smallb')
+                          });
+                        }
+                      }}
+                    />
+                    <Label htmlFor="user-smallb" className="font-normal cursor-pointer">
+                      小B用户
+                    </Label>
+                  </div>
+                </div>
+                {editingPermission.requiredUserTypes && editingPermission.requiredUserTypes.length > 0 && (
+                  <p className="text-sm text-green-700 mt-2">
+                    已选择：{editingPermission.requiredUserTypes.map(t => 
+                      t === 'bigb' ? '大B' : '小B'
+                    ).join('、')}
+                  </p>
+                )}
               </div>
 
               {/* Beta测试标记 */}

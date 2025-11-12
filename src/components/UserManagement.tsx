@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 import {
   Breadcrumb,
@@ -32,19 +31,14 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import {
   Search,
-  User,
-  Building2,
-  Users,
   Eye,
   Ban,
   CheckCircle,
-  Wallet,
-  Settings,
-  TrendingUp,
-  Store,
-  Edit,
   Shield,
   Filter,
+  User,
+  TrendingUp,
+  Building2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -56,15 +50,21 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from './ui/pagination';
-import { getMockPartners, type Partner, type PartnerType, type AccountStatus, type SettlementStatus, type PermissionLevel } from '../data/mockPartners';
+import { getMockPartners, type Partner, type PartnerType, type AccountStatus, type SettlementStatus, type PermissionLevel, type BusinessModel } from '../data/mockPartners';
+import { cn } from './ui/utils';
 
 export { type Partner };
 
-export function UserManagement() {
+export interface UserManagementProps {
+  onViewDetail?: (partner: Partner) => void;
+}
+
+export function UserManagement({ onViewDetail }: UserManagementProps = {}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | PartnerType>('all');
   const [filterAccountStatus, setFilterAccountStatus] = useState<'all' | AccountStatus>('all');
-  const [filterSettlementStatus, setFilterSettlementStatus] = useState<'all' | SettlementStatus>('all');
+  const [filterBusinessModel, setFilterBusinessModel] = useState<'all' | BusinessModel>('all');
+  const [filterCertificationType, setFilterCertificationType] = useState<'all' | 'individual' | 'enterprise'>('all');
   const [filterPermissionLevel, setFilterPermissionLevel] = useState<'all' | PermissionLevel>('all');
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
@@ -81,72 +81,173 @@ export function UserManagement() {
   // 使用 mock 数据
   const partners: Partner[] = getMockPartners();
 
-  const getTypeIcon = (type: PartnerType) => {
-    switch (type) {
-      case 'individual':
-        return <User className="w-4 h-4" />;
-      case 'influencer':
-        return <TrendingUp className="w-4 h-4" />;
-      case 'enterprise':
-        return <Building2 className="w-4 h-4" />;
-    }
-  };
+  const DetailItem = ({
+    label,
+    value,
+    description,
+    copyable,
+  }: {
+    label: string;
+    value: React.ReactNode;
+    description?: React.ReactNode;
+    copyable?: boolean;
+  }) => {
+    const renderValue = () => {
+      if (copyable && typeof value === 'string' && value !== '-') {
+        return (
+          <div className="flex items-center gap-1">
+            <span className="truncate" title={value}>
+              {value}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => {
+                navigator.clipboard.writeText(value).then(() => toast.success('已复制到剪贴板'));
+              }}
+            >
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </Button>
+          </div>
+        );
+      }
 
-  const getTypeName = (type: PartnerType) => {
-    switch (type) {
-      case 'individual':
-        return '个人';
-      case 'influencer':
-        return '博主';
-      case 'enterprise':
-        return '企业';
-    }
-  };
-
-  const getTypeBadge = (type: PartnerType) => {
-    const config = {
-      individual: { label: '个人', className: 'bg-blue-50 text-blue-700 border-blue-300' },
-      influencer: { label: '博主', className: 'bg-purple-50 text-purple-700 border-purple-300' },
-      enterprise: { label: '企业', className: 'bg-green-50 text-green-700 border-green-300' },
+      return value ?? '-';
     };
-    const { label, className } = config[type];
+
     return (
-      <Badge variant="outline" className={className}>
-        <span className="mr-1">{getTypeIcon(type)}</span>
-        {label}
+      <div className="p-3 bg-gray-50 rounded">
+        <Label className="text-gray-600 text-xs uppercase tracking-wide">{label}</Label>
+        <div className="mt-1 text-sm text-gray-900 space-y-1">{renderValue()}</div>
+        {description && <p className="mt-1 text-xs text-gray-500">{description}</p>}
+      </div>
+    );
+  };
+
+  const KpiCard = ({
+    label,
+    value,
+    tone = 'slate',
+  }: {
+    label: string;
+    value: React.ReactNode;
+    tone?: 'slate' | 'emerald' | 'blue' | 'purple';
+  }) => {
+    const toneMap = {
+      slate: 'text-slate-700',
+      emerald: 'text-emerald-600',
+      blue: 'text-blue-600',
+      purple: 'text-purple-600',
+    } as const;
+
+    return (
+      <div className="p-4 bg-gray-50 rounded text-center">
+        <Label className="text-xs uppercase tracking-wide text-gray-500">{label}</Label>
+        <p className={cn('text-2xl mt-2 font-semibold', toneMap[tone])}>{value}</p>
+      </div>
+    );
+  };
+
+  const StatCard = ({
+    label,
+    value,
+    tone = 'slate',
+  }: {
+    label: string;
+    value: React.ReactNode;
+    tone?: 'slate' | 'emerald' | 'blue' | 'amber' | 'purple';
+  }) => {
+    const toneMap = {
+      slate: 'bg-slate-50 text-slate-700 border-slate-200',
+      emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      blue: 'bg-blue-50 text-blue-700 border-blue-200',
+      amber: 'bg-amber-50 text-amber-700 border-amber-200',
+      purple: 'bg-purple-50 text-purple-700 border-purple-200',
+    } as const;
+
+    return (
+      <div className={cn('p-4 rounded-lg border', toneMap[tone])}>
+        <Label className="text-xs uppercase tracking-wide text-gray-600">{label}</Label>
+        <p className="mt-2 text-xl font-semibold">{value}</p>
+      </div>
+    );
+  };
+
+  const getUserInfoTypeBadge = (type: PartnerType) => {
+    const config = {
+      individual: {
+        icon: <User className="w-3.5 h-3.5" />,
+        label: '旅行代理',
+        className: 'bg-orange-50 text-orange-700 border-orange-200',
+      },
+      influencer: {
+        icon: <TrendingUp className="w-3.5 h-3.5" />,
+        label: '网络博主',
+        className: 'bg-purple-50 text-purple-700 border-purple-200',
+      },
+      enterprise: {
+        icon: <Building2 className="w-3.5 h-3.5" />,
+        label: '旅游类相关应用',
+        className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      },
+    } as const;
+
+    const { icon, label, className } = config[type];
+    return (
+      <Badge variant="outline" className={cn('px-2 py-0.5 text-xs font-medium', className)}>
+        <span className="inline-flex items-center gap-1">
+          {icon}
+          {label}
+        </span>
       </Badge>
     );
   };
 
   const getAccountStatusBadge = (status: AccountStatus) => {
     const config = {
-      active: { label: '正常', className: 'bg-green-50 text-green-700 border-green-300' },
-      frozen: { label: '冻结', className: 'bg-yellow-50 text-yellow-700 border-yellow-300' },
-      closed: { label: '关闭', className: 'bg-red-50 text-red-700 border-red-300' },
-    };
+      active: { label: '正常', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+      frozen: { label: '冻结', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+      closed: { label: '关闭', className: 'bg-rose-50 text-rose-700 border-rose-200' },
+    } as const;
     const { label, className } = config[status];
-    return <Badge variant="outline" className={className}>{label}</Badge>;
+    return (
+      <Badge variant="outline" className={cn('px-2 py-0.5 text-xs font-medium', className)}>
+        {label}
+      </Badge>
+    );
   };
 
   const getSettlementStatusBadge = (status: SettlementStatus) => {
     const config = {
-      normal: { label: '正常结算', className: 'bg-green-50 text-green-700 border-green-300' },
-      'on-hold': { label: '暂停结算', className: 'bg-red-50 text-red-700 border-red-300' },
-    };
+      normal: { label: '正常结算', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+      'on-hold': { label: '暂停结算', className: 'bg-rose-50 text-rose-700 border-rose-200' },
+    } as const;
     const { label, className } = config[status];
-    return <Badge variant="outline" className={className}>{label}</Badge>;
+    return (
+      <Badge variant="outline" className={cn('px-2 py-0.5 text-xs font-medium', className)}>
+        {label}
+      </Badge>
+    );
   };
 
   const getPermissionLevelBadge = (level: PermissionLevel) => {
     const config = {
-      L0: { label: 'L0', className: 'bg-red-50 text-red-700 border-red-300' },
-      L1: { label: 'L1', className: 'bg-orange-50 text-orange-700 border-orange-300' },
-      L2: { label: 'L2', className: 'bg-purple-50 text-purple-700 border-purple-300' },
-      L3: { label: 'L3', className: 'bg-blue-50 text-blue-700 border-blue-300' },
-      L4: { label: 'L4', className: 'bg-gray-50 text-gray-700 border-gray-300' },
-    };
+      L0: { label: 'L0', className: 'bg-rose-50 text-rose-700 border-rose-200' },
+      L1: { label: 'L1', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+      L2: { label: 'L2', className: 'bg-purple-50 text-purple-700 border-purple-200' },
+      L3: { label: 'L3', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+      L4: { label: 'L4', className: 'bg-slate-50 text-slate-700 border-slate-200' },
+    } as const;
     const { label, className } = config[level];
-    return <Badge variant="outline" className={className}>{label}</Badge>;
+    return (
+      <Badge variant="outline" className={cn('px-2 py-0.5 text-xs font-medium', className)}>
+        {label}
+      </Badge>
+    );
   };
 
   const getPermissionLevelName = (level: PermissionLevel) => {
@@ -161,8 +262,12 @@ export function UserManagement() {
   };
 
   const handleViewDetail = (partner: Partner) => {
-    setSelectedPartner(partner);
-    setShowDetailDialog(true);
+    if (onViewDetail) {
+      onViewDetail(partner);
+    } else {
+      setSelectedPartner(partner);
+      setShowDetailDialog(true);
+    }
   };
 
   const handleStatusAction = (partner: Partner, action: 'freeze' | 'activate' | 'close') => {
@@ -217,18 +322,27 @@ export function UserManagement() {
   };
 
   const filteredPartners = partners.filter((partner) => {
-    const matchesSearch =
-      partner.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      partner.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      partner.phone.includes(searchQuery) ||
-      partner.id.toLowerCase().includes(searchQuery.toLowerCase());
+    const query = searchQuery.trim().toLowerCase();
+    const matchesSearch = query
+      ? [partner.displayName, partner.email, partner.phone, partner.id]
+          .filter(Boolean)
+          .some((field) => field.toLowerCase().includes(query))
+      : true;
 
     const matchesType = filterType === 'all' || partner.type === filterType;
+    const matchesBusinessModel = filterBusinessModel === 'all' || partner.businessModel === filterBusinessModel;
+    const matchesCertification = filterCertificationType === 'all' || partner.certificationType === filterCertificationType;
     const matchesAccountStatus = filterAccountStatus === 'all' || partner.accountStatus === filterAccountStatus;
-    const matchesSettlementStatus = filterSettlementStatus === 'all' || partner.settlementStatus === filterSettlementStatus;
     const matchesPermissionLevel = filterPermissionLevel === 'all' || partner.permissionLevel === filterPermissionLevel;
 
-    return matchesSearch && matchesType && matchesAccountStatus && matchesSettlementStatus && matchesPermissionLevel;
+    return (
+      matchesSearch &&
+      matchesType &&
+      matchesBusinessModel &&
+      matchesCertification &&
+      matchesAccountStatus &&
+      matchesPermissionLevel
+    );
   });
 
   // 计算分页数据
@@ -243,7 +357,7 @@ export function UserManagement() {
   // 当筛选条件改变时，重置到第一页
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterType, filterAccountStatus, filterSettlementStatus, filterPermissionLevel]);
+  }, [searchQuery, filterType, filterBusinessModel, filterCertificationType, filterAccountStatus, filterPermissionLevel]);
 
   return (
     <div className="p-6 space-y-6">
@@ -251,26 +365,34 @@ export function UserManagement() {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbPage>用户管理</BreadcrumbPage>
+            <BreadcrumbLink href="#" className="text-gray-500 hover:text-gray-700">
+              用户管理
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage className="text-gray-900">用户列表</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
+
       {/* 用户列表 */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>商户列表</CardTitle>
-            <div className="flex items-center gap-3">
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  placeholder="搜索名称、邮箱、手机号"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-
+        <CardHeader className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="搜索名称 / 邮箱 / 手机号 / 用户 ID"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="border-dashed">
+                导出当前列表
+              </Button>
               <Button
                 variant={showFilters ? 'default' : 'outline'}
                 size="sm"
@@ -283,171 +405,222 @@ export function UserManagement() {
           </div>
 
           {showFilters && (
-            <div className="flex flex-wrap items-center gap-3 pt-4 border-t mt-4">
-              <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="用户类型" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部类型</SelectItem>
-                  <SelectItem value="individual">个人</SelectItem>
-                  <SelectItem value="influencer">博主</SelectItem>
-                  <SelectItem value="enterprise">企业</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="pt-4 border-t mt-4 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-600 w-24 flex-shrink-0">用户类型</Label>
+                  <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="全部类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部类型</SelectItem>
+                      <SelectItem value="individual">个人</SelectItem>
+                      <SelectItem value="influencer">博主</SelectItem>
+                      <SelectItem value="enterprise">企业</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <Select value={filterAccountStatus} onValueChange={(value: any) => setFilterAccountStatus(value)}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="账户状态" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部状态</SelectItem>
-                  <SelectItem value="active">正常</SelectItem>
-                  <SelectItem value="frozen">冻结</SelectItem>
-                  <SelectItem value="closed">关闭</SelectItem>
-                </SelectContent>
-              </Select>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-600 w-24 flex-shrink-0">业务模式</Label>
+                  <Select value={filterBusinessModel} onValueChange={(value: any) => setFilterBusinessModel(value)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="全部模式" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部模式</SelectItem>
+                      <SelectItem value="saas">SaaS</SelectItem>
+                      <SelectItem value="mcp">MCP</SelectItem>
+                      <SelectItem value="affiliate">推广联盟</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <Select value={filterSettlementStatus} onValueChange={(value: any) => setFilterSettlementStatus(value)}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="结算状态" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部</SelectItem>
-                  <SelectItem value="normal">正常结算</SelectItem>
-                  <SelectItem value="on-hold">暂停结算</SelectItem>
-                </SelectContent>
-              </Select>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-600 w-24 flex-shrink-0">认证方式</Label>
+                  <Select value={filterCertificationType} onValueChange={(value: any) => setFilterCertificationType(value)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="全部认证" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部认证</SelectItem>
+                      <SelectItem value="individual">个人认证</SelectItem>
+                      <SelectItem value="enterprise">企业认证</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <Select value={filterPermissionLevel} onValueChange={(value: any) => setFilterPermissionLevel(value)}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="风控等级" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部等级</SelectItem>
-                  <SelectItem value="L0">L0 (战略级)</SelectItem>
-                  <SelectItem value="L1">L1 (核心级)</SelectItem>
-                  <SelectItem value="L2">L2 (优质级)</SelectItem>
-                  <SelectItem value="L3">L3 (标准级)</SelectItem>
-                  <SelectItem value="L4">L4 (入门级)</SelectItem>
-                </SelectContent>
-              </Select>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-600 w-24 flex-shrink-0">账户状态</Label>
+                  <Select value={filterAccountStatus} onValueChange={(value: any) => setFilterAccountStatus(value)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="全部状态" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部状态</SelectItem>
+                      <SelectItem value="active">正常</SelectItem>
+                      <SelectItem value="frozen">冻结</SelectItem>
+                      <SelectItem value="closed">关闭</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {(filterType !== 'all' || filterAccountStatus !== 'all' || filterSettlementStatus !== 'all' || filterPermissionLevel !== 'all') && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setFilterType('all');
-                    setFilterAccountStatus('all');
-                    setFilterSettlementStatus('all');
-                    setFilterPermissionLevel('all');
-                  }}
-                >
-                  清除筛选
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-600 w-24 flex-shrink-0">风控等级</Label>
+                  <Select value={filterPermissionLevel} onValueChange={(value: any) => setFilterPermissionLevel(value)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="全部等级" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部等级</SelectItem>
+                      <SelectItem value="L0">L0 (战略级)</SelectItem>
+                      <SelectItem value="L1">L1 (核心级)</SelectItem>
+                      <SelectItem value="L2">L2 (优质级)</SelectItem>
+                      <SelectItem value="L3">L3 (标准级)</SelectItem>
+                      <SelectItem value="L4">L4 (入门级)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {(filterType !== 'all' ||
+                filterBusinessModel !== 'all' ||
+                filterCertificationType !== 'all' ||
+                filterAccountStatus !== 'all' ||
+                filterPermissionLevel !== 'all') && (
+                <div className="flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setFilterType('all');
+                      setFilterBusinessModel('all');
+                      setFilterCertificationType('all');
+                      setFilterAccountStatus('all');
+                      setFilterPermissionLevel('all');
+                    }}
+                  >
+                    清除筛选
+                  </Button>
+                </div>
               )}
             </div>
           )}
         </CardHeader>
 
         <CardContent>
-          <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>用户信息</TableHead>
-                  <TableHead>类型</TableHead>
-                  <TableHead>风控等级</TableHead>
-                  <TableHead>联系方式</TableHead>
-                  <TableHead>财务数据</TableHead>
-                  <TableHead>业务数据</TableHead>
-                  <TableHead>账户状态</TableHead>
-                  <TableHead>结算状态</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          <style>{`
+            .user-table-container table {
+              table-layout: auto;
+              min-width: 100%;
+              width: max-content;
+            }
+            .user-table-container table td:last-child,
+            .user-table-container table th:last-child {
+              position: sticky;
+              right: 0;
+              background: white;
+              z-index: 10;
+              box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+            }
+            .user-table-container table td,
+            .user-table-container table th {
+              white-space: nowrap;
+            }
+          `}</style>
+          <div className="user-table-container overflow-x-auto">
+            <table className="border-collapse">
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">用户 ID</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">用户名称</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">用户信息类型</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">认证方式</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">业务模式</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">B 端类型</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">挂载大B</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">注册时间</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">风控等级</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">邮箱</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">手机号</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">订单数</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">平均加价率</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">账户状态</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">最后登录时间</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody>
                 {paginatedPartners.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center py-12 text-gray-500">
+                  <tr>
+                    <td colSpan={14} className="px-4 py-8 text-center text-gray-500">
                       暂无数据
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ) : (
-                  paginatedPartners.map((partner) => (
-                    <TableRow key={partner.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white">
-                            {partner.displayName[0]}
-                          </div>
-                          <div>
-                            <p>{partner.displayName}</p>
-                            <p className="text-sm text-gray-500">{partner.id}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{getTypeBadge(partner.type)}</TableCell>
-                      <TableCell>{getPermissionLevelBadge(partner.permissionLevel)}</TableCell>
-                      <TableCell>
-                        <div className="space-y-1 text-sm">
-                          <p className="text-gray-600">{partner.email}</p>
-                          <p className="text-gray-500">{partner.phone}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1 text-sm">
-                          <p>累计利润：<span className="text-green-600">¥{partner.financialData.totalProfit.toLocaleString()}</span></p>
-                          <p>可用余额：<span className="text-blue-600">¥{partner.financialData.availableBalance.toFixed(2)}</span></p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1 text-sm">
-                          <p>订单：{partner.businessData.completedOrders}/{partner.businessData.totalOrders}</p>
-                          <p>加价率：{partner.businessData.avgMarkupRate}%</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>{getAccountStatusBadge(partner.accountStatus)}</TableCell>
-                      <TableCell>{getSettlementStatusBadge(partner.settlementStatus)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewDetail(partner)}
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            详情
-                          </Button>
-                          {partner.accountStatus === 'active' ? (
+                  paginatedPartners.map((partner) => {
+                    const isSmallB = partner.businessModel === 'affiliate';
+                    return (
+                      <tr key={partner.id} className="border-b hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm font-mono text-gray-900">{partner.id}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{partner.displayName}</td>
+                        <td className="px-4 py-3 text-sm">{getUserInfoTypeBadge(partner.type)}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <Badge variant="outline" className="px-2 py-0.5 text-xs font-medium bg-slate-50 text-slate-700 border-slate-200">
+                            {partner.certificationType === 'enterprise' ? '企业认证' : '个人认证'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <Badge variant="outline" className="px-2 py-0.5 text-xs font-medium bg-slate-50 text-slate-700 border-slate-200">
+                            {partner.businessModel === 'saas' ? 'SaaS' : partner.businessModel === 'mcp' ? 'MCP' : '推广联盟'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{isSmallB ? '小B' : '大B'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{isSmallB ? partner.parentPartnerId ?? '-' : '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{partner.registeredAt}</td>
+                        <td className="px-4 py-3 text-sm">
+                          {getPermissionLevelBadge(partner.permissionLevel)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{partner.email}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{partner.phone}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{isSmallB ? '-' : partner.businessData.totalOrders}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{isSmallB ? '-' : `${partner.businessData.avgMarkupRate}%`}</td>
+                        <td className="px-4 py-3 text-sm">{getAccountStatusBadge(partner.accountStatus)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{partner.lastLoginAt ?? '-'}</td>
+                        <td className="px-4 py-3 text-sm text-right">
+                          <div className="flex flex-col items-end gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => handleViewDetail(partner)} className="h-8 px-2">
+                              <Eye className="w-4 h-4 mr-1" />
+                              查看详情
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleEditLevel(partner)} className="h-8 px-2">
+                              <Shield className="w-4 h-4 mr-1" />
+                              调整风控等级
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleStatusAction(partner, 'freeze')}
+                              className="h-8 px-2"
+                              onClick={() => handleStatusAction(partner, partner.accountStatus === 'active' ? 'freeze' : 'activate')}
                             >
-                              <Ban className="w-4 h-4 mr-1" />
-                              冻结
+                              {partner.accountStatus === 'active' ? (
+                                <Ban className="w-4 h-4 mr-1" />
+                              ) : (
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                              )}
+                              {partner.accountStatus === 'active' ? '冻结账户' : '激活账户'}
                             </Button>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleStatusAction(partner, 'activate')}
-                            >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              激活
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>
-          
+
           {/* 分页 */}
           {totalPages >= 1 && totalItems > 0 && (
             <div className="mt-6 flex items-center justify-between">
@@ -500,235 +673,6 @@ export function UserManagement() {
         </CardContent>
       </Card>
 
-      {/* 详情对话框 */}
-      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>小B商户详情</DialogTitle>
-            <DialogDescription>查看完整的商户信息和业务数据</DialogDescription>
-          </DialogHeader>
-
-          {selectedPartner && (
-            <div className="space-y-6">
-              {/* 基本信息 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b flex items-center gap-2">
-                  <User className="w-5 h-5" />
-                  基本信息
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">用户ID</Label>
-                    <p className="mt-1">{selectedPartner.id}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">用户类型</Label>
-                    <div className="mt-1">{getTypeBadge(selectedPartner.type)}</div>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">显示名称</Label>
-                    <p className="mt-1">{selectedPartner.displayName}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">邮箱</Label>
-                    <p className="mt-1">{selectedPartner.email}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">手机号</Label>
-                    <p className="mt-1">{selectedPartner.phone}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">注册时间</Label>
-                    <p className="mt-1">{selectedPartner.registeredAt}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 认证信息 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5" />
-                  认证信息
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  {selectedPartner.type === 'individual' && (
-                    <>
-                      <div className="p-3 bg-gray-50 rounded">
-                        <Label className="text-gray-600">真实姓名</Label>
-                        <p className="mt-1">{selectedPartner.specificInfo.realName}</p>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded">
-                        <Label className="text-gray-600">身份证号</Label>
-                        <p className="mt-1">{selectedPartner.specificInfo.idNumber}</p>
-                      </div>
-                    </>
-                  )}
-                  {selectedPartner.type === 'influencer' && (
-                    <>
-                      <div className="p-3 bg-gray-50 rounded">
-                        <Label className="text-gray-600">真实姓名</Label>
-                        <p className="mt-1">{selectedPartner.specificInfo.realName}</p>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded">
-                        <Label className="text-gray-600">平台</Label>
-                        <p className="mt-1">{selectedPartner.specificInfo.platformName}</p>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded">
-                        <Label className="text-gray-600">粉丝数</Label>
-                        <p className="mt-1">{selectedPartner.specificInfo.followersCount?.toLocaleString()}</p>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded">
-                        <Label className="text-gray-600">影响力评分</Label>
-                        <p className="mt-1">{selectedPartner.specificInfo.influenceScore}/100</p>
-                      </div>
-                    </>
-                  )}
-                  {selectedPartner.type === 'enterprise' && (
-                    <>
-                      <div className="p-3 bg-gray-50 rounded">
-                        <Label className="text-gray-600">公司名称</Label>
-                        <p className="mt-1">{selectedPartner.specificInfo.companyName}</p>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded">
-                        <Label className="text-gray-600">统一社会信用代码</Label>
-                        <p className="mt-1">{selectedPartner.specificInfo.socialCreditCode}</p>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded">
-                        <Label className="text-gray-600">法定代表人</Label>
-                        <p className="mt-1">{selectedPartner.specificInfo.legalRepresentative}</p>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded">
-                        <Label className="text-gray-600">注册资本</Label>
-                        <p className="mt-1">{selectedPartner.specificInfo.registeredCapital}</p>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* 财务数据 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b flex items-center gap-2">
-                  <Wallet className="w-5 h-5" />
-                  财务数据
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-blue-50 rounded">
-                    <Label className="text-gray-600">总交易额（P2）</Label>
-                    <p className="text-xl mt-1 text-blue-700">¥{selectedPartner.financialData.totalRevenue.toLocaleString()}</p>
-                  </div>
-                  <div className="p-3 bg-green-50 rounded">
-                    <Label className="text-gray-600">累计利润</Label>
-                    <p className="text-xl mt-1 text-green-700">¥{selectedPartner.financialData.totalProfit.toLocaleString()}</p>
-                  </div>
-                  <div className="p-3 bg-purple-50 rounded">
-                    <Label className="text-gray-600">可用余额</Label>
-                    <p className="text-xl mt-1 text-purple-700">¥{selectedPartner.financialData.availableBalance.toFixed(2)}</p>
-                  </div>
-                  <div className="p-3 bg-yellow-50 rounded">
-                    <Label className="text-gray-600">待结算</Label>
-                    <p className="text-xl mt-1 text-yellow-700">¥{selectedPartner.financialData.pendingSettlement.toFixed(2)}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">已提取</Label>
-                    <p className="text-xl mt-1">¥{selectedPartner.financialData.withdrawnAmount.toFixed(2)}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 业务数据 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  业务数据
-                </h3>
-                <div className="grid grid-cols-4 gap-4">
-                  <div className="p-3 bg-gray-50 rounded text-center">
-                    <Label className="text-gray-600">总订单</Label>
-                    <p className="text-2xl mt-1">{selectedPartner.businessData.totalOrders}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded text-center">
-                    <Label className="text-gray-600">已完成</Label>
-                    <p className="text-2xl mt-1 text-green-600">{selectedPartner.businessData.completedOrders}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded text-center">
-                    <Label className="text-gray-600">平均加价率</Label>
-                    <p className="text-2xl mt-1 text-purple-600">{selectedPartner.businessData.avgMarkupRate}%</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded text-center">
-                    <Label className="text-gray-600">活跃客户</Label>
-                    <p className="text-2xl mt-1 text-blue-600">{selectedPartner.businessData.activeCustomers}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 店铺信息 */}
-              {selectedPartner.storeConfig && (
-                <div>
-                  <h3 className="mb-3 pb-2 border-b flex items-center gap-2">
-                    <Store className="w-5 h-5" />
-                    店铺信息
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 bg-gray-50 rounded">
-                      <Label className="text-gray-600">店铺名称</Label>
-                      <p className="mt-1">{selectedPartner.storeConfig.storeName}</p>
-                    </div>
-                    {selectedPartner.storeConfig.customDomain && (
-                      <div className="p-3 bg-gray-50 rounded">
-                        <Label className="text-gray-600">自定义域名</Label>
-                        <p className="mt-1 text-blue-600">{selectedPartner.storeConfig.customDomain}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* 账户状态 */}
-              <div>
-                <h3 className="mb-3 pb-2 border-b flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
-                    账户状态
-                  </div>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => handleEditLevel(selectedPartner)}
-                    className="flex items-center gap-2"
-                  >
-                    <Shield className="w-4 h-4" />
-                    修改风控等级
-                  </Button>
-                </h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">风控等级</Label>
-                    <div className="mt-2">
-                      {getPermissionLevelBadge(selectedPartner.permissionLevel)}
-                      <p className="text-sm text-gray-500 mt-1">{getPermissionLevelName(selectedPartner.permissionLevel)}</p>
-                    </div>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">账户状态</Label>
-                    <div className="mt-2">{getAccountStatusBadge(selectedPartner.accountStatus)}</div>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded">
-                    <Label className="text-gray-600">结算状态</Label>
-                    <div className="mt-2">{getSettlementStatusBadge(selectedPartner.settlementStatus)}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDetailDialog(false)}>
-              关闭
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* 状态变更对话框 */}
       <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
@@ -748,10 +692,14 @@ export function UserManagement() {
 
           {selectedPartner && (
             <div className="space-y-4">
-              <div className="p-3 bg-gray-50 rounded">
-                <p className="text-sm text-gray-600">用户信息</p>
-                <p className="mt-1">{selectedPartner.displayName} ({selectedPartner.id})</p>
-              </div>
+              <Card className="bg-slate-50 border-slate-200">
+                <CardHeader className="py-2">
+                  <CardTitle className="text-sm text-slate-600">用户信息</CardTitle>
+                  <div className="text-xs text-slate-500">
+                    {selectedPartner.displayName}（ID：{selectedPartner.id}）
+                  </div>
+                </CardHeader>
+              </Card>
 
               <div>
                 <Label htmlFor="reason">操作原因 <span className="text-red-500">*</span></Label>

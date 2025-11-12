@@ -67,7 +67,8 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOrderStatus, setFilterOrderStatus] = useState<'all' | OrderStatus>('all');
   const [filterSettlementStatus, setFilterSettlementStatus] = useState<'all' | SettlementStatus>('all');
-  const [filterPartnerType, setFilterPartnerType] = useState<'all' | 'individual' | 'influencer' | 'enterprise'>('all');
+  const [filterUserInfoType, setFilterUserInfoType] = useState<'all' | 'travel_agent' | 'influencer' | 'app'>('all');
+  const [filterCertificationType, setFilterCertificationType] = useState<'all' | 'personal' | 'enterprise'>('all');
   const [filterHotelName, setFilterHotelName] = useState('');
   const [filterPartnerName, setFilterPartnerName] = useState('');
   const [filterCreateDateStart, setFilterCreateDateStart] = useState('');
@@ -84,12 +85,15 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState<'hotel_agree' | 'free_period' | 'platform_cover' | ''>('');
   const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<Order | null>(null);
+  const [selectedCancelDates, setSelectedCancelDates] = useState<string[]>([]);
 
-  // 部分退款对话框状态
+  // 部分退款对话框状态（每晚独立设置）
   const [showRefundDialog, setShowRefundDialog] = useState(false);
-  const [refundAmount, setRefundAmount] = useState('');
+  const [refundReason, setRefundReason] = useState('');
   const [refundProof, setRefundProof] = useState<File | null>(null);
   const [selectedOrderForRefund, setSelectedOrderForRefund] = useState<Order | null>(null);
+  // 每晚退款设置：{ date: string, mode: 'fixed' | 'percentage', value: string }
+  const [nightlyRefundSettings, setNightlyRefundSettings] = useState<Record<string, { mode: 'fixed' | 'percentage', value: string }>>({});
 
   // 使用 mock 数据
   const allOrders: Order[] = getMockOrders();
@@ -108,14 +112,15 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
     const config = {
       pending_payment: { label: '待支付', className: 'bg-yellow-50 text-yellow-700 border-yellow-300' },
       pending_confirm: { label: '待确认', className: 'bg-orange-50 text-orange-700 border-orange-300' },
-      confirmed: { label: '已确认/待入住', className: 'bg-blue-50 text-blue-700 border-blue-300' },
+      confirmed: { label: '已确认', className: 'bg-blue-50 text-blue-700 border-blue-300' },
+      pending_checkin: { label: '待入住', className: 'bg-indigo-50 text-indigo-700 border-indigo-300' },
       completed: { label: '已完成', className: 'bg-green-50 text-green-700 border-green-300' },
-      completed_settleable: { label: '已完成(可结算)', className: 'bg-green-100 text-green-800 border-green-400' },
+      settleable: { label: '可结算', className: 'bg-teal-50 text-teal-700 border-teal-300' },
       cancelled_free: { label: '已取消(免费)', className: 'bg-gray-50 text-gray-700 border-gray-300' },
       cancelled_paid: { label: '已取消(付费)', className: 'bg-red-50 text-red-700 border-red-300' },
-      no_show: { label: 'No-Show', className: 'bg-red-100 text-red-800 border-red-400' },
-      disputed: { label: '争议中', className: 'bg-red-200 text-red-900 border-red-500' },
-    };
+      no_show: { label: '未入住', className: 'bg-slate-50 text-slate-700 border-slate-300' },
+      after_sale: { label: '售后中', className: 'bg-rose-50 text-rose-700 border-rose-300' },
+    } as const;
     const { label, className } = config[status];
     return <Badge variant="outline" className={className}>{label}</Badge>;
   };
@@ -123,22 +128,47 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
   const getSettlementStatusBadge = (status: SettlementStatus) => {
     const config = {
       pending: { label: '待结算', className: 'bg-yellow-50 text-yellow-700 border-yellow-300' },
-      ready: { label: '可结算', className: 'bg-blue-50 text-blue-700 border-blue-300' },
+      settleable: { label: '可结算', className: 'bg-blue-50 text-blue-700 border-blue-300' },
       processing: { label: '处理中', className: 'bg-purple-50 text-purple-700 border-purple-300' },
-      completed: { label: '已结算', className: 'bg-green-50 text-green-700 border-green-300' },
+      settled: { label: '已结算', className: 'bg-green-50 text-green-700 border-green-300' },
     };
     const { label, className } = config[status];
     return <Badge variant="outline" className={className}>{label}</Badge>;
   };
 
-  const getPartnerTypeBadge = (type: string) => {
+  const userInfoTypeConfig = {
+    individual: { label: '旅行代理', value: 'travel_agent', className: 'bg-blue-50 text-blue-700 border-blue-300' },
+    influencer: { label: '网络博主', value: 'influencer', className: 'bg-purple-50 text-purple-700 border-purple-300' },
+    enterprise: { label: '旅游类应用', value: 'app', className: 'bg-orange-50 text-orange-700 border-orange-300' },
+  };
+
+  const getUserInfoTypeValue = (type: string) => {
+    return userInfoTypeConfig[type as keyof typeof userInfoTypeConfig]?.value ?? 'travel_agent';
+  };
+
+  const getUserInfoTypeBadge = (type: string) => {
+    const config = userInfoTypeConfig[type as keyof typeof userInfoTypeConfig];
+    if (!config) return <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-300">-</Badge>;
+    return <Badge variant="outline" className={config.className}>{config.label}</Badge>;
+  };
+
+  const getCertificationBadge = (type?: 'personal' | 'enterprise') => {
+    if (!type) {
+      return <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-300">-</Badge>;
+    }
     const config = {
-      individual: { label: '个人', className: 'bg-blue-50 text-blue-700 border-blue-300' },
-      influencer: { label: '博主', className: 'bg-purple-50 text-purple-700 border-purple-300' },
-      enterprise: { label: '企业', className: 'bg-orange-50 text-orange-700 border-orange-300' },
+      personal: { label: '个人认证', className: 'bg-sky-50 text-sky-700 border-sky-300' },
+      enterprise: { label: '企业认证', className: 'bg-emerald-50 text-emerald-700 border-emerald-300' },
     };
-    const { label, className } = config[type as keyof typeof config];
+    const { label, className } = config[type];
     return <Badge variant="outline" className={className}>{label}</Badge>;
+  };
+
+  const formatCurrency = (value?: number) => {
+    if (value === undefined || value === null || Number.isNaN(value)) {
+      return '-';
+    }
+    return `¥${value.toFixed(2)}`;
   };
 
   const getGateIcon = (passed: boolean) => {
@@ -159,6 +189,7 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
   const handleOpenCancelDialog = (order: Order) => {
     setSelectedOrderForCancel(order);
     setCancelReason('');
+    setSelectedCancelDates([]);
     setShowCancelDialog(true);
   };
 
@@ -168,47 +199,100 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
       toast.error('请选择取消原因');
       return;
     }
+    if (selectedCancelDates.length === 0) {
+      toast.error('请至少选择一个取消日期');
+      return;
+    }
     if (!selectedOrderForCancel) return;
 
+    const isFullCancel = selectedCancelDates.length === selectedOrderForCancel.nights;
+    const cancelType = isFullCancel ? '全部取消' : '部分取消';
+    
     // 这里应该调用API更新订单状态
-    toast.success(`订单 ${selectedOrderForCancel.orderId} 已免费取消`);
+    toast.success(`订单 ${selectedOrderForCancel.orderId} ${cancelType}成功，取消日期：${selectedCancelDates.join(', ')}`);
     setShowCancelDialog(false);
     setSelectedOrderForCancel(null);
     setCancelReason('');
+    setSelectedCancelDates([]);
   };
 
   // 打开部分退款对话框
   const handleOpenRefundDialog = (order: Order) => {
     setSelectedOrderForRefund(order);
-    setRefundAmount('');
+    setRefundReason('');
     setRefundProof(null);
+    setNightlyRefundSettings({});
     setShowRefundDialog(true);
   };
 
-  // 确认部分退款
+  // 确认部分退款（每晚独立设置）
   const handleConfirmRefund = () => {
-    if (!refundAmount || parseFloat(refundAmount) <= 0) {
-      toast.error('请输入有效的退款金额');
+    if (!selectedOrderForRefund) return;
+    
+    // 验证至少有一晚设置了退款
+    const selectedDates = Object.keys(nightlyRefundSettings);
+    if (selectedDates.length === 0) {
+      toast.error('请至少为一晚设置退款金额或比例');
+      return;
+    }
+    
+    // 验证每晚的设置
+    for (const date of selectedDates) {
+      const setting = nightlyRefundSettings[date];
+      if (!setting.value || parseFloat(setting.value) <= 0) {
+        toast.error(`请为 ${date} 设置有效的退款金额或比例`);
+        return;
+      }
+      if (setting.mode === 'percentage' && parseFloat(setting.value) > 100) {
+        toast.error(`${date} 的退款比例不能超过100%`);
+        return;
+      }
+    }
+    
+    if (!refundReason) {
+      toast.error('请填写退款原因');
       return;
     }
     if (!refundProof) {
       toast.error('请上传退款凭证');
       return;
     }
-    if (!selectedOrderForRefund) return;
 
-    const refundValue = parseFloat(refundAmount);
-    if (refundValue > selectedOrderForRefund.p2_salePrice) {
-      toast.error('退款金额不能超过订单金额');
+    // 计算总退款金额（每晚独立计算）
+    let calculatedRefundAmount = 0;
+    const nightly = selectedOrderForRefund.nightlyRates || [];
+    const refundDetails: { date: string, amount: number }[] = [];
+    
+    for (const date of selectedDates) {
+      const setting = nightlyRefundSettings[date];
+      const night = nightly.find(n => n.date === date);
+      const actualAmount = night ? (night.actualAmount ?? night.p2 ?? 0) : 0;
+      
+      let refundForNight = 0;
+      if (setting.mode === 'fixed') {
+        refundForNight = Math.min(parseFloat(setting.value), actualAmount);
+      } else { // percentage
+        refundForNight = actualAmount * (parseFloat(setting.value) / 100);
+      }
+      
+      calculatedRefundAmount += refundForNight;
+      refundDetails.push({ date, amount: refundForNight });
+    }
+
+    if (calculatedRefundAmount > selectedOrderForRefund.actualAmount) {
+      toast.error('总退款金额不能超过订单实付金额');
       return;
     }
 
     // 这里应该调用API处理退款
-    toast.success(`订单 ${selectedOrderForRefund.orderId} 部分退款 ¥${refundValue.toFixed(2)} 已提交`);
+    const refundInfo = refundDetails.map(d => `${d.date}: ¥${d.amount.toFixed(2)}`).join(', ');
+    toast.success(`订单 ${selectedOrderForRefund.orderId} 部分退款 ¥${calculatedRefundAmount.toFixed(2)} 已提交。明细：${refundInfo}`);
+    
     setShowRefundDialog(false);
     setSelectedOrderForRefund(null);
-    setRefundAmount('');
+    setRefundReason('');
     setRefundProof(null);
+    setNightlyRefundSettings({});
   };
 
   // 处理文件上传
@@ -229,7 +313,8 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
 
     const matchesOrderStatus = filterOrderStatus === 'all' || order.orderStatus === filterOrderStatus;
     const matchesSettlementStatus = filterSettlementStatus === 'all' || order.settlementStatus === filterSettlementStatus;
-    const matchesPartnerType = filterPartnerType === 'all' || order.partnerType === filterPartnerType;
+    const matchesUserInfoType = filterUserInfoType === 'all' || getUserInfoTypeValue(order.partnerType) === filterUserInfoType;
+    const matchesCertificationType = filterCertificationType === 'all' || order.certificationType === filterCertificationType;
     
     // 酒店名称筛选
     const matchesHotelName = !filterHotelName || order.hotelName.toLowerCase().includes(filterHotelName.toLowerCase());
@@ -262,7 +347,7 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
       (minActualAmount === null || !isNaN(minActualAmount) && order.actualAmount >= minActualAmount) &&
       (maxActualAmount === null || !isNaN(maxActualAmount) && order.actualAmount <= maxActualAmount);
 
-    return matchesSearch && matchesOrderStatus && matchesSettlementStatus && matchesPartnerType &&
+    return matchesSearch && matchesOrderStatus && matchesSettlementStatus && matchesUserInfoType && matchesCertificationType &&
       matchesHotelName && matchesPartnerName && matchesCreateDate && matchesCheckInDate &&
       matchesOrderAmount && matchesActualAmount;
   });
@@ -279,7 +364,7 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
   // 当筛选条件改变时，重置到第一页
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterOrderStatus, filterSettlementStatus, filterPartnerType, filterHotelName, filterPartnerName, filterCreateDateStart, filterCreateDateEnd, filterCheckInDateStart, filterCheckInDateEnd, filterOrderAmountMin, filterOrderAmountMax, filterActualAmountMin, filterActualAmountMax]);
+  }, [searchQuery, filterOrderStatus, filterSettlementStatus, filterUserInfoType, filterCertificationType, filterHotelName, filterPartnerName, filterCreateDateStart, filterCreateDateEnd, filterCheckInDateStart, filterCheckInDateEnd, filterOrderAmountMin, filterOrderAmountMax, filterActualAmountMin, filterActualAmountMax]);
 
   return (
     <div className="p-6 space-y-6">
@@ -301,10 +386,10 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
               订单列表
             </CardTitle>
             <div className="flex items-center gap-3">
-              <div className="relative w-64">
+              <div className="relative w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
-                  placeholder="搜索订单号、酒店、商户"
+                  placeholder="搜索订单号、酒店、商户、客户或入住人"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
@@ -342,13 +427,14 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                       <SelectItem value="all">全部状态</SelectItem>
                       <SelectItem value="pending_payment">待支付</SelectItem>
                       <SelectItem value="pending_confirm">待确认</SelectItem>
-                      <SelectItem value="confirmed">已确认/待入住</SelectItem>
+                      <SelectItem value="confirmed">已确认</SelectItem>
+                      <SelectItem value="pending_checkin">待入住</SelectItem>
                       <SelectItem value="completed">已完成</SelectItem>
-                      <SelectItem value="completed_settleable">已完成(可结算)</SelectItem>
+                      <SelectItem value="settleable">可结算</SelectItem>
                       <SelectItem value="cancelled_free">已取消(免费)</SelectItem>
                       <SelectItem value="cancelled_paid">已取消(付费)</SelectItem>
-                      <SelectItem value="no_show">No-Show</SelectItem>
-                      <SelectItem value="disputed">争议中</SelectItem>
+                      <SelectItem value="no_show">未入住</SelectItem>
+                      <SelectItem value="after_sale">售后中</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -362,31 +448,31 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                     <SelectContent>
                       <SelectItem value="all">全部状态</SelectItem>
                       <SelectItem value="pending">待结算</SelectItem>
-                      <SelectItem value="ready">可结算</SelectItem>
+                      <SelectItem value="settleable">可结算</SelectItem>
                       <SelectItem value="processing">处理中</SelectItem>
-                      <SelectItem value="completed">已结算</SelectItem>
+                      <SelectItem value="settled">已结算</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">商户类型</Label>
-                  <Select value={filterPartnerType} onValueChange={(value: any) => setFilterPartnerType(value)}>
+                  <Label className="text-sm text-gray-700 w-24 flex-shrink-0">用户信息类型</Label>
+                  <Select value={filterUserInfoType} onValueChange={(value: any) => setFilterUserInfoType(value)}>
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="全部类型" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">全部类型</SelectItem>
-                      <SelectItem value="individual">个人</SelectItem>
-                      <SelectItem value="influencer">博主</SelectItem>
-                      <SelectItem value="enterprise">企业</SelectItem>
+                      <SelectItem value="travel_agent">旅行代理</SelectItem>
+                      <SelectItem value="influencer">网络博主</SelectItem>
+                      <SelectItem value="app">旅游类应用</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
               {/* 第二行：名称筛选 */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="flex items-center gap-2">
                   <Label className="text-sm text-gray-700 w-20 flex-shrink-0">酒店名称</Label>
                   <Input
@@ -398,13 +484,27 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">小B商户</Label>
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">商户名称</Label>
                   <Input
                     placeholder="输入商户名称或邮箱"
                     value={filterPartnerName}
                     onChange={(e) => setFilterPartnerName(e.target.value)}
                     className="flex-1"
                   />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">认证方式</Label>
+                  <Select value={filterCertificationType} onValueChange={(value: any) => setFilterCertificationType(value)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="全部认证" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部认证</SelectItem>
+                      <SelectItem value="personal">个人认证</SelectItem>
+                      <SelectItem value="enterprise">企业认证</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -504,7 +604,7 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
 
               {/* 清除筛选按钮 */}
               <div className="flex items-center justify-end pt-2">
-                {(filterOrderStatus !== 'all' || filterSettlementStatus !== 'all' || filterPartnerType !== 'all' ||
+                {(filterOrderStatus !== 'all' || filterSettlementStatus !== 'all' || filterUserInfoType !== 'all' || filterCertificationType !== 'all' ||
                   filterHotelName || filterPartnerName || filterCreateDateStart || filterCreateDateEnd ||
                   filterCheckInDateStart || filterCheckInDateEnd || filterOrderAmountMin || filterOrderAmountMax ||
                   filterActualAmountMin || filterActualAmountMax) && (
@@ -514,7 +614,8 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                     onClick={() => {
                       setFilterOrderStatus('all');
                       setFilterSettlementStatus('all');
-                      setFilterPartnerType('all');
+                      setFilterUserInfoType('all');
+                      setFilterCertificationType('all');
                       setFilterHotelName('');
                       setFilterPartnerName('');
                       setFilterCreateDateStart('');
@@ -558,18 +659,22 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[140px] sticky left-0 bg-white z-10 shadow-[2px_0_4px_rgba(0,0,0,0.05)]">订单号</TableHead>
-                    <TableHead className="min-w-[150px]">酒店名称</TableHead>
+                    <TableHead className="min-w-[170px]">酒店名称</TableHead>
                     <TableHead className="min-w-[120px]">房型</TableHead>
                     <TableHead className="min-w-[100px]">入住人姓名</TableHead>
                     <TableHead className="min-w-[100px]">入住人数</TableHead>
                     <TableHead className="min-w-[120px]">入住日期</TableHead>
                     <TableHead className="min-w-[120px]">离店日期</TableHead>
-                    <TableHead className="min-w-[150px]">小B商户名称</TableHead>
-                    <TableHead className="min-w-[100px]">商户类型</TableHead>
-                    <TableHead className="min-w-[180px]">商户邮箱</TableHead>
-                    <TableHead className="min-w-[100px]">订单金额</TableHead>
-                    <TableHead className="min-w-[100px]">实付金额</TableHead>
-                    <TableHead className="min-w-[100px]">退款金额</TableHead>
+                    <TableHead className="min-w-[160px]">商户名称</TableHead>
+                    <TableHead className="min-w-[120px]">业务模式</TableHead>
+                    <TableHead className="min-w-[140px]">用户信息类型</TableHead>
+                    <TableHead className="min-w-[120px]">认证方式</TableHead>
+                    <TableHead className="min-w-[150px]">商户电话</TableHead>
+                    <TableHead className="min-w-[200px]">商户邮箱</TableHead>
+                    <TableHead className="min-w-[110px]">订单金额</TableHead>
+                    <TableHead className="min-w-[110px]">总优惠金额</TableHead>
+                    <TableHead className="min-w-[110px]">实付金额</TableHead>
+                    <TableHead className="min-w-[110px]">退款金额</TableHead>
                     <TableHead className="min-w-[120px]">订单状态</TableHead>
                     <TableHead className="min-w-[100px]">结算状态</TableHead>
                     <TableHead className="text-right w-[100px] sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">操作</TableHead>
@@ -578,7 +683,7 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={16} className="text-center py-12 text-gray-500">
+                    <TableCell colSpan={17} className="text-center py-12 text-gray-500">
                       暂无订单数据
                     </TableCell>
                   </TableRow>
@@ -597,31 +702,45 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                         <TableCell className="text-gray-600">{order.roomType}</TableCell>
                         <TableCell>{order.guestName || order.customerName}</TableCell>
                         <TableCell>
-                          <div className="text-sm">
-                            {order.adultCount !== undefined && (
-                              <span>{order.adultCount}成人</span>
-                            )}
-                            {order.childCount !== undefined && order.childCount > 0 && (
-                              <span className="ml-1">{order.childCount}儿童</span>
-                            )}
-                            {order.adultCount === undefined && order.childCount === undefined && (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </div>
+                          {(() => {
+                            const segments: string[] = [];
+                            if (order.adultCount !== undefined) {
+                              segments.push(`${order.adultCount}成人`);
+                            }
+                            if (order.childCount !== undefined && order.childCount > 0) {
+                              segments.push(`${order.childCount}小孩`);
+                            }
+                            return segments.length > 0 ? (
+                              <span className="text-sm text-gray-700">{segments.join(' ')}</span>
+                            ) : (
+                              <span className="text-sm text-gray-400">-</span>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell>{order.checkInDate}</TableCell>
                         <TableCell>{order.checkOutDate}</TableCell>
-                        <TableCell>{order.partnerName}</TableCell>
-                        <TableCell>{getPartnerTypeBadge(order.partnerType)}</TableCell>
-                        <TableCell className="text-sm text-gray-500">{order.partnerEmail}</TableCell>
                         <TableCell>
-                          ¥{order.p2_salePrice.toFixed(2)}
+                          <div className="flex flex-col">
+                            <span className="font-medium">{order.partnerName}</span>
+                            {order.smallBPartnerId && order.parentPartnerName && (
+                              <span className="text-xs text-gray-500">大B: {order.parentPartnerName}</span>
+                            )}
+                          </div>
                         </TableCell>
-                        <TableCell className="text-indigo-600 font-medium">
-                          ¥{order.actualAmount.toFixed(2)}
+                        <TableCell>
+                          <span className="text-sm text-gray-700">
+                            {order.partnerBusinessModel === 'saas' ? 'SaaS' : order.partnerBusinessModel === 'mcp' ? 'MCP' : '推广联盟'}
+                          </span>
                         </TableCell>
-                        <TableCell className={order.refundAmount && order.refundAmount > 0 ? "text-orange-600 font-medium" : "text-gray-400"}>
-                          {order.refundAmount && order.refundAmount > 0 ? `¥${order.refundAmount.toFixed(2)}` : '-'}
+                        <TableCell>{getUserInfoTypeBadge(order.partnerType)}</TableCell>
+                        <TableCell>{getCertificationBadge(order.certificationType)}</TableCell>
+                        <TableCell className="text-sm text-gray-700">{order.partnerPhone || '-'}</TableCell>
+                        <TableCell className="text-sm text-gray-500">{order.partnerEmail}</TableCell>
+                        <TableCell className="font-mono text-sm text-gray-900">{formatCurrency(order.p2_salePrice)}</TableCell>
+                        <TableCell className="font-mono text-sm text-gray-900">{formatCurrency(order.totalDiscountAmount)}</TableCell>
+                        <TableCell className="font-mono text-sm text-indigo-600 font-semibold">{formatCurrency(order.actualAmount)}</TableCell>
+                        <TableCell className={order.refundAmount && order.refundAmount > 0 ? 'font-mono text-sm text-orange-600 font-semibold' : 'font-mono text-sm text-gray-400'}>
+                          {order.refundAmount && order.refundAmount > 0 ? formatCurrency(order.refundAmount) : '-'}
                         </TableCell>
                         <TableCell>{getOrderStatusBadge(order.orderStatus)}</TableCell>
                         <TableCell>{getSettlementStatusBadge(order.settlementStatus)}</TableCell>
@@ -663,7 +782,7 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                             )}
                             
                             {/* 部分退款按钮 */}
-                            {(order.orderStatus === 'completed' || order.orderStatus === 'completed_settleable') && (
+                            {(order.orderStatus === 'completed' || order.orderStatus === 'settleable') && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
@@ -743,14 +862,41 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
 
       {/* 免费取消对话框 */}
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>免费取消预订</DialogTitle>
+            <DialogTitle>免费取消预订（支持按晚选择）</DialogTitle>
             <DialogDescription>
-              订单号: {selectedOrderForCancel?.orderId}
+              订单号: {selectedOrderForCancel?.orderId} | 入住日期: {selectedOrderForCancel?.checkInDate} 至 {selectedOrderForCancel?.checkOutDate} ({selectedOrderForCancel?.nights}晚)
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>选择取消日期 *</Label>
+              <div className="border rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
+                {selectedOrderForCancel?.nightlyRates?.map((night) => (
+                  <label key={night.date} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedCancelDates.includes(night.date)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedCancelDates([...selectedCancelDates, night.date]);
+                        } else {
+                          setSelectedCancelDates(selectedCancelDates.filter(d => d !== night.date));
+                        }
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <span className="flex-1 text-sm">{night.date}</span>
+                    <span className="text-sm text-gray-600">¥{night.p2.toFixed(2)}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500">
+                已选择 {selectedCancelDates.length} 晚，
+                {selectedCancelDates.length === selectedOrderForCancel?.nights ? '全部取消' : '部分取消'}
+              </p>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="cancel-reason">取消原因 *</Label>
               <Select value={cancelReason} onValueChange={(value: any) => setCancelReason(value)}>
@@ -766,7 +912,10 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
             </div>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <p className="text-sm text-yellow-800">
-                <strong>注意：</strong>免费取消后，订单将无法恢复，请确认操作。
+                <strong>注意：</strong>
+                {selectedCancelDates.length === selectedOrderForCancel?.nights 
+                  ? '全部取消后，订单状态将变为"已取消(免费)"，订单将无法恢复。' 
+                  : '部分取消后，订单将保持原状态，生成退款记录并更新订单金额。'}
               </p>
             </div>
           </div>
@@ -781,28 +930,180 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
         </DialogContent>
       </Dialog>
 
-      {/* 部分退款对话框 */}
+      {/* 部分退款对话框（每晚独立设置） */}
       <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle>部分退款</DialogTitle>
+            <DialogTitle>部分退款（每晚独立设置）</DialogTitle>
             <DialogDescription>
-              订单号: {selectedOrderForRefund?.orderId} | 订单金额: ¥{selectedOrderForRefund?.p2_salePrice.toFixed(2)}
+              订单号: {selectedOrderForRefund?.orderId} | 实付金额: ¥{selectedOrderForRefund ? selectedOrderForRefund.actualAmount.toFixed(2) : '0.00'} | 入住: {selectedOrderForRefund?.checkInDate} 至 {selectedOrderForRefund?.checkOutDate} ({selectedOrderForRefund?.nights}晚)
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 overflow-y-auto max-h-[calc(90vh-200px)]">
+            {/* 快速操作按钮 */}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newSettings: Record<string, { mode: 'fixed' | 'percentage', value: string }> = {};
+                  selectedOrderForRefund?.nightlyRates?.forEach(night => {
+                    newSettings[night.date] = { mode: 'fixed', value: '' };
+                  });
+                  setNightlyRefundSettings(newSettings);
+                }}
+              >
+                全部按固定金额
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newSettings: Record<string, { mode: 'fixed' | 'percentage', value: string }> = {};
+                  selectedOrderForRefund?.nightlyRates?.forEach(night => {
+                    newSettings[night.date] = { mode: 'percentage', value: '' };
+                  });
+                  setNightlyRefundSettings(newSettings);
+                }}
+              >
+                全部按比例
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setNightlyRefundSettings({})}
+              >
+                清空设置
+              </Button>
+            </div>
+
+            {/* 每晚退款设置表格 */}
             <div className="space-y-2">
-              <Label htmlFor="refund-amount">退款金额 *</Label>
+              <Label>每晚退款设置 *</Label>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium text-gray-700">日期</th>
+                      <th className="px-3 py-2 text-right font-medium text-gray-700">实付金额</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-700">退款方式</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-700">退款金额/比例</th>
+                      <th className="px-3 py-2 text-right font-medium text-gray-700">预估退款</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedOrderForRefund?.nightlyRates?.map((night) => {
+                      const actualAmount = night.actualAmount ?? night.p2 ?? 0;
+                      const setting = nightlyRefundSettings[night.date];
+                      const hasRefund = setting && setting.value;
+                      
+                      let estimatedRefund = 0;
+                      if (hasRefund) {
+                        if (setting.mode === 'fixed') {
+                          estimatedRefund = Math.min(parseFloat(setting.value) || 0, actualAmount);
+                        } else {
+                          estimatedRefund = actualAmount * ((parseFloat(setting.value) || 0) / 100);
+                        }
+                      }
+                      
+                      return (
+                        <tr key={night.date} className="border-b last:border-b-0 hover:bg-gray-50">
+                          <td className="px-3 py-2 font-mono">{night.date}</td>
+                          <td className="px-3 py-2 text-right">¥{actualAmount.toFixed(2)}</td>
+                          <td className="px-3 py-2">
+                            <Select
+                              value={setting?.mode || ''}
+                              onValueChange={(value: 'fixed' | 'percentage') => {
+                                setNightlyRefundSettings(prev => ({
+                                  ...prev,
+                                  [night.date]: { mode: value, value: prev[night.date]?.value || '' }
+                                }));
+                              }}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="选择方式" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="fixed">固定金额</SelectItem>
+                                <SelectItem value="percentage">比例</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="px-3 py-2">
+                            {setting && (
+                              <Input
+                                type="number"
+                                placeholder={setting.mode === 'fixed' ? '金额' : '比例%'}
+                                value={setting.value}
+                                onChange={(e) => {
+                                  setNightlyRefundSettings(prev => ({
+                                    ...prev,
+                                    [night.date]: { ...setting, value: e.target.value }
+                                  }));
+                                }}
+                                min="0"
+                                max={setting.mode === 'percentage' ? '100' : undefined}
+                                step={setting.mode === 'fixed' ? '0.01' : '0.1'}
+                                className="h-8 text-xs"
+                              />
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right font-medium text-blue-600">
+                            {hasRefund ? `¥${estimatedRefund.toFixed(2)}` : '-'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-gray-500">
+                已设置 {Object.keys(nightlyRefundSettings).filter(d => nightlyRefundSettings[d].value).length} 晚
+              </p>
+            </div>
+
+            {/* 总退款金额预估 */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-blue-900">预估总退款金额：</span>
+                <span className="text-lg font-bold text-blue-700">
+                  ¥{
+                    (() => {
+                      if (!selectedOrderForRefund) return '0.00';
+                      let total = 0;
+                      const nightly = selectedOrderForRefund.nightlyRates || [];
+                      Object.keys(nightlyRefundSettings).forEach(date => {
+                        const setting = nightlyRefundSettings[date];
+                        if (!setting.value) return;
+                        const night = nightly.find(n => n.date === date);
+                        const actualAmount = night ? (night.actualAmount ?? night.p2 ?? 0) : 0;
+                        if (setting.mode === 'fixed') {
+                          total += Math.min(parseFloat(setting.value) || 0, actualAmount);
+                        } else {
+                          total += actualAmount * ((parseFloat(setting.value) || 0) / 100);
+                        }
+                      });
+                      return total.toFixed(2);
+                    })()
+                  }
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="refund-reason">退款原因 *</Label>
               <Input
-                id="refund-amount"
-                type="number"
-                placeholder="请输入退款金额"
-                value={refundAmount}
-                onChange={(e) => setRefundAmount(e.target.value)}
-                min="0"
-                step="0.01"
+                id="refund-reason"
+                type="text"
+                placeholder="请输入退款原因"
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="refund-proof">上传凭证 *</Label>
               <div className="flex items-center gap-2">
@@ -822,9 +1123,10 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
               </div>
               <p className="text-xs text-gray-500">支持图片或PDF格式</p>
             </div>
+
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-sm text-blue-800">
-                <strong>说明：</strong>退款后，订单底价和订单金额将按比例调整。
+                <strong>说明：</strong>退款后将生成退款记录，更新订单实付金额和退款金额。
               </p>
             </div>
           </div>
