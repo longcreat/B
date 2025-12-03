@@ -37,17 +37,24 @@ export function BigBAccountList() {
         email: 'contact@huadong.com',
         phone: '138****5678',
       },
-      stats: {
-        totalOrderAmount: 500000,
-        totalRefund: 20000,
-        totalP1: 450000,
-        totalCommission: 5000,
-        bigBDiscountContribution: 10000,
-        totalPayable: 150000,
+      registeredAt: '2024-01-15',
+      lastLoginAt: '2024-11-13 10:30:00',
+      businessStats: {
+        totalSalesAmount: 500000,
         settledAmount: 100000,
         pendingAmount: 50000,
+        accountBalance: 120000,
+        availableBalance: 100000,
+        frozenBalance: 20000,
+        totalOrderCount: 150,
+        totalCustomerCount: 80,
+        refundRate: 4.0,
+        monthlyAvgSales: 50000,
+        registrationDays: 303,
       },
       canManageAffiliate: true,
+      riskLevel: 'L1',
+      settlementMode: 'batch',
     },
     {
       id: 'BB-002',
@@ -60,17 +67,54 @@ export function BigBAccountList() {
         email: 'contact@huabei.com',
         phone: '139****1234',
       },
-      stats: {
-        totalOrderAmount: 300000,
-        totalRefund: 10000,
-        totalP1: 270000,
-        totalCommission: 0,
-        bigBDiscountContribution: 5000,
-        totalPayable: 80000,
+      registeredAt: '2024-03-20',
+      lastLoginAt: '2024-11-12 15:20:00',
+      businessStats: {
+        totalSalesAmount: 300000,
         settledAmount: 60000,
         pendingAmount: 20000,
+        accountBalance: 70000,
+        availableBalance: 65000,
+        frozenBalance: 5000,
+        totalOrderCount: 90,
+        totalCustomerCount: 45,
+        refundRate: 3.3,
+        monthlyAvgSales: 30000,
+        registrationDays: 238,
       },
       canManageAffiliate: false,
+      riskLevel: 'L0',
+      settlementMode: 'per_order',
+    },
+    {
+      id: 'BB-003',
+      name: 'AIGO平台自营',
+      userType: 'travel_agent',
+      authType: 'enterprise',
+      businessMode: 'platform_self_operated',
+      accountStatus: 'active',
+      contactInfo: {
+        email: 'platform@aigo.com',
+        phone: '400****8888',
+      },
+      registeredAt: '2023-12-01',
+      lastLoginAt: '2024-11-13 09:00:00',
+      businessStats: {
+        totalSalesAmount: 1200000,
+        settledAmount: 800000,
+        pendingAmount: 150000,
+        accountBalance: 850000,
+        availableBalance: 800000,
+        frozenBalance: 50000,
+        totalOrderCount: 500,
+        totalCustomerCount: 280,
+        refundRate: 2.5,
+        monthlyAvgSales: 120000,
+        registrationDays: 348,
+      },
+      canManageAffiliate: true,
+      riskLevel: 'L0',
+      settlementMode: 'batch',
     },
   ]);
 
@@ -97,6 +141,7 @@ export function BigBAccountList() {
     const config = {
       saas: { label: 'SaaS', className: 'bg-green-50 text-green-700 border-green-300' },
       mcp: { label: 'MCP', className: 'bg-orange-50 text-orange-700 border-orange-300' },
+      platform_self_operated: { label: '平台自营', className: 'bg-purple-50 text-purple-700 border-purple-300' },
     };
     const { label, className } = config[mode];
     return <Badge variant="outline" className={className}>{label}</Badge>;
@@ -218,6 +263,7 @@ export function BigBAccountList() {
                       <SelectItem value="all">全部模式</SelectItem>
                       <SelectItem value="saas">SaaS</SelectItem>
                       <SelectItem value="mcp">MCP</SelectItem>
+                      <SelectItem value="platform_self_operated">平台自营</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -260,6 +306,58 @@ export function BigBAccountList() {
       </CardHeader>
 
       <CardContent>
+        {/* 统计信息 */}
+        <div className="mb-6 grid grid-cols-4 gap-4">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="text-sm text-gray-600">总大B数量</div>
+            <div className="text-2xl font-bold text-blue-700 mt-1">{filteredAccounts.length}</div>
+          </div>
+          <div className="bg-green-50 p-4 rounded-lg">
+            <div className="text-sm text-gray-600">活跃大B数量</div>
+            <div className="text-2xl font-bold text-green-700 mt-1">
+              {filteredAccounts.filter(a => a.accountStatus === 'active').length}
+            </div>
+          </div>
+          <div className="bg-yellow-50 p-4 rounded-lg">
+            <div className="text-sm text-gray-600">冻结大B数量</div>
+            <div className="text-2xl font-bold text-yellow-700 mt-1">
+              {filteredAccounts.filter(a => a.accountStatus === 'frozen').length}
+            </div>
+          </div>
+          <div className="bg-orange-50 p-4 rounded-lg">
+            <div className="text-sm text-gray-600">总累计销售额</div>
+            <div className="text-2xl font-bold text-orange-700 mt-1">
+              ¥{filteredAccounts.reduce((sum, a) => sum + a.businessStats.totalSalesAmount, 0).toLocaleString()}
+            </div>
+          </div>
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <div className="text-sm text-gray-600">总账户余额</div>
+            <div className="text-2xl font-bold text-purple-700 mt-1">
+              ¥{filteredAccounts.reduce((sum, a) => sum + a.businessStats.accountBalance, 0).toLocaleString()}
+            </div>
+          </div>
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="text-sm text-gray-600">平均退款率</div>
+            <div className="text-2xl font-bold text-gray-700 mt-1">
+              {filteredAccounts.length > 0 
+                ? (filteredAccounts.reduce((sum, a) => sum + a.businessStats.refundRate, 0) / filteredAccounts.length).toFixed(1)
+                : '0.0'}%
+            </div>
+          </div>
+          <div className="bg-red-50 p-4 rounded-lg">
+            <div className="text-sm text-gray-600">高退款率大B数量</div>
+            <div className="text-2xl font-bold text-red-700 mt-1">
+              {filteredAccounts.filter(a => a.businessStats.refundRate > 5).length}
+            </div>
+          </div>
+          <div className="bg-cyan-50 p-4 rounded-lg">
+            <div className="text-sm text-gray-600">新注册大B数量</div>
+            <div className="text-2xl font-bold text-cyan-700 mt-1">
+              {filteredAccounts.filter(a => a.businessStats.registrationDays < 30).length}
+            </div>
+          </div>
+        </div>
+
         <style>
           {`
             .bigb-table-container table {
@@ -289,18 +387,27 @@ export function BigBAccountList() {
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">用户信息类型</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">认证方式</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">业务模式</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">推广联盟权限</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">账户状态</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">累计应付账款</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">累计销售额</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">已结算金额</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">待结算金额</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">累计订单佣金</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">待结金额</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">账户余额</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">可提现金额</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">冻结金额</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">累计订单数</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">累计客户数</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">退款率</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">月销售额</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">注册天数</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">最后登录</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">操作</th>
               </tr>
             </thead>
             <tbody>
               {filteredAccounts.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={19} className="px-4 py-10 text-center text-gray-500">
                     暂无大B账户数据
                   </td>
                 </tr>
@@ -311,18 +418,51 @@ export function BigBAccountList() {
                     <td className="px-4 py-3 text-sm">{getUserTypeBadge(account.userType)}</td>
                     <td className="px-4 py-3 text-sm">{getAuthTypeBadge(account.authType)}</td>
                     <td className="px-4 py-3 text-sm">{getBusinessModeBadge(account.businessMode)}</td>
+                    <td className="px-4 py-3 text-center text-sm">
+                      {account.canManageAffiliate ? (
+                        <span className="text-green-600 font-medium">✓</span>
+                      ) : (
+                        <span className="text-gray-400">×</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-sm">{getAccountStatusBadge(account.accountStatus)}</td>
-                    <td className="px-4 py-3 text-sm text-right font-medium text-orange-600">
-                      ¥{account.stats.totalPayable.toLocaleString()}
+                    <td className="px-4 py-3 text-sm text-right font-medium">
+                      ¥{account.businessStats.totalSalesAmount.toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-sm text-right text-green-600">
-                      ¥{account.stats.settledAmount.toLocaleString()}
+                      ¥{account.businessStats.settledAmount.toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-sm text-right text-blue-600">
-                      ¥{account.stats.pendingAmount.toLocaleString()}
+                      ¥{account.businessStats.pendingAmount.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-sm text-right text-purple-600">
-                      {account.stats.totalCommission > 0 ? `¥${account.stats.totalCommission.toLocaleString()}` : '-'}
+                    <td className="px-4 py-3 text-sm text-right font-medium">
+                      ¥{account.businessStats.accountBalance.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right text-green-600">
+                      ¥{account.businessStats.availableBalance.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right text-orange-600">
+                      ¥{account.businessStats.frozenBalance.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right">
+                      {account.businessStats.totalOrderCount}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right">
+                      {account.businessStats.totalCustomerCount}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right">
+                      <span className={account.businessStats.refundRate > 5 ? 'text-red-600 font-medium' : ''}>
+                        {account.businessStats.refundRate.toFixed(1)}%
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right">
+                      ¥{account.businessStats.monthlyAvgSales.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right">
+                      {account.businessStats.registrationDays}天
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {account.lastLoginAt || '-'}
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <Button

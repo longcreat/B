@@ -71,9 +71,9 @@ export function calculateOrderCommission(order: Order, partner?: Partner) {
       bigBProfit: order.bigBProfit || (order.p1_platformPrice ? order.p1_platformPrice - order.p0_supplierCost : 0),
     };
   } else if (order.partnerBusinessModel === 'affiliate' || order.partnerBusinessModel === 'mcp') {
-    // MCP/推广联盟模式：小B佣金 = 总利润 × 佣金比例（由大B设置）
+    // MCP/推广联盟模式：小B佣金 = 订单总金额P2 × 佣金率（由大B设置）
     const commissionRate = order.partnerCommissionRate || partner?.defaultCommissionRate || 0;
-    const smallBCommission = totalProfit * (commissionRate / 100);
+    const smallBCommission = order.p2_salePrice * (commissionRate / 100);
     const bigBProfit = totalProfit - smallBCommission;
     
     return {

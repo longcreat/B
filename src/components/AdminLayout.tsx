@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import { Bell, LogOut, FileCheck, Users, ChevronLeft, ChevronRight, Receipt, Settings, Package, Key, Wallet, Building2, FileText, CreditCard, Calculator, ArrowRight, ChevronDown, ChevronUp, Cog, Shield, Link2 } from 'lucide-react';
+import { Bell, LogOut, FileCheck, Users, ChevronLeft, ChevronRight, Receipt, Settings, Package, Key, Wallet, Building2, FileText, CreditCard, Calculator, ArrowRight, ChevronDown, ChevronUp, Cog, Shield, Link2, Percent } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,12 +15,22 @@ import { Badge } from './ui/badge';
 // 统一的菜单图标大小配置
 const MENU_ICON_SIZE = 'w-4 h-4';
 
-export type AdminMenuItem = 'review' | 'users' | 'orders' | 'finance' | 'apikeys' | 'pricing' | 'business-model-config' | 'feature-permissions';
+export type AdminMenuItem =
+  | 'review'
+  | 'users'
+  | 'orders'
+  | 'finance'
+  | 'marketing'
+  | 'apikeys'
+  | 'pricing'
+  | 'business-model-config'
+  | 'feature-permissions';
 export type UserSubMenu = 'user-list' | 'promotion-links';
 export type FinanceSubMenu = 'platform-account' | 'merchant-accounts' | 'business-documents' | 'settlement' | 'reconciliation' | 'withdrawal' | 'invoice';
 export type ReconciliationSubMenu = 'reconciliation-management' | 'reconciliation-summary';
 export type SettlementSubMenu = 'partner-batches' | 'supplier-batches' | 'settlement-config';
-export type BusinessDocumentsSubMenu = 'violation-fee' | 'order-transaction' | 'order-price-change' | 'order-refund' | 'settlement-detail';
+export type BusinessDocumentsSubMenu = 'order-transaction' | 'order-refund' | 'settlement-detail';
+export type MarketingSubMenu = 'promotions' | 'marketing-accounts' | 'crowd-tags';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -42,6 +52,8 @@ interface AdminLayoutProps {
   onSettlementSubMenuChange?: (subMenu: SettlementSubMenu) => void;
   currentBusinessDocumentsSubMenu?: BusinessDocumentsSubMenu;
   onBusinessDocumentsSubMenuChange?: (subMenu: BusinessDocumentsSubMenu) => void;
+  currentMarketingSubMenu?: MarketingSubMenu;
+  onMarketingSubMenuChange?: (subMenu: MarketingSubMenu) => void;
   pendingReviewCount?: number;
 }
 
@@ -61,6 +73,8 @@ export function AdminLayout({
   onSettlementSubMenuChange,
   currentBusinessDocumentsSubMenu,
   onBusinessDocumentsSubMenuChange,
+  currentMarketingSubMenu,
+  onMarketingSubMenuChange,
   pendingReviewCount = 0,
 }: AdminLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -78,6 +92,7 @@ export function AdminLayout({
   // 菜单展开状态管理
   const [userMenuExpanded, setUserMenuExpanded] = useState(false);
   const [financeMenuExpanded, setFinanceMenuExpanded] = useState(false);
+  const [marketingMenuExpanded, setMarketingMenuExpanded] = useState(false);
   const [reconciliationMenuExpanded, setReconciliationMenuExpanded] = useState(false);
   const [settlementMenuExpanded, setSettlementMenuExpanded] = useState(false);
   const [businessDocumentsMenuExpanded, setBusinessDocumentsMenuExpanded] = useState(false);
@@ -87,6 +102,7 @@ export function AdminLayout({
     { id: 'users' as AdminMenuItem, icon: Users, label: '用户管理', count: 0, hasSubMenu: true },
     { id: 'orders' as AdminMenuItem, icon: Package, label: '订单管理', count: 0 },
     { id: 'finance' as AdminMenuItem, icon: Receipt, label: '财务中心', count: 0 },
+    { id: 'marketing' as AdminMenuItem, icon: Wallet, label: '营销', count: 0, hasSubMenu: true },
     { id: 'apikeys' as AdminMenuItem, icon: Key, label: '密钥管理', count: 0 },
     { id: 'pricing' as AdminMenuItem, icon: Settings, label: '价格配置', count: 0 },
     { id: 'business-model-config' as AdminMenuItem, icon: Cog, label: '业务模式配置', count: 0 },
@@ -120,21 +136,23 @@ export function AdminLayout({
   ];
 
   const businessDocumentsSubMenus = [
-    { id: 'violation-fee' as BusinessDocumentsSubMenu, icon: FileText, label: '违约扣费记录', parent: 'control-bill' },
     { id: 'order-transaction' as BusinessDocumentsSubMenu, icon: FileText, label: '订单交易', parent: 'transaction-record' },
-    { id: 'order-price-change' as BusinessDocumentsSubMenu, icon: FileText, label: '订单改价记录', parent: 'transaction-record' },
     { id: 'order-refund' as BusinessDocumentsSubMenu, icon: FileText, label: '订单退款记录', parent: 'transaction-record' },
     { id: 'settlement-detail' as BusinessDocumentsSubMenu, icon: FileText, label: '结算明细', parent: null },
   ];
 
-  // 三级菜单分组（管控账单、交易记录、结算明细）
+  // 三级菜单分组（交易记录、结算明细）
   const businessDocumentsThirdMenus = [
-    { id: 'control-bill', label: '管控账单', icon: FileText, subMenus: ['violation-fee' as BusinessDocumentsSubMenu] },
-    { id: 'transaction-record', label: '交易记录', icon: FileText, subMenus: ['order-transaction' as BusinessDocumentsSubMenu, 'order-price-change' as BusinessDocumentsSubMenu, 'order-refund' as BusinessDocumentsSubMenu] },
+    { id: 'transaction-record', label: '交易记录', icon: FileText, subMenus: ['order-transaction' as BusinessDocumentsSubMenu, 'order-refund' as BusinessDocumentsSubMenu] },
     { id: 'settlement-detail-menu', label: '结算明细', icon: FileText, subMenus: ['settlement-detail' as BusinessDocumentsSubMenu] },
   ];
 
   // ========== 菜单事件处理 ==========
+  const marketingSubMenus = [
+    { id: 'promotions' as MarketingSubMenu, icon: Percent, label: '优惠活动管理' },
+    { id: 'marketing-accounts' as MarketingSubMenu, icon: Wallet, label: '营销账户管理' },
+    { id: 'crowd-tags' as MarketingSubMenu, icon: Users, label: '人群标签' },
+  ];
   
   // 处理一级菜单（用户管理）点击
   const handleUserMenuClick = () => {
@@ -150,6 +168,22 @@ export function AdminLayout({
       // 如果已经在用户管理，切换展开/收起
       if (!sidebarCollapsed) {
         setUserMenuExpanded(!userMenuExpanded);
+      }
+    }
+  };
+
+  // 处理一级菜单（营销）点击
+  const handleMarketingMenuClick = () => {
+    if (currentMenu !== 'marketing') {
+      onMenuChange?.('marketing');
+      if (!sidebarCollapsed) {
+        setMarketingMenuExpanded(true);
+        // 默认选中优惠活动管理
+        onMarketingSubMenuChange?.('promotions');
+      }
+    } else {
+      if (!sidebarCollapsed) {
+        setMarketingMenuExpanded(!marketingMenuExpanded);
       }
     }
   };
@@ -318,12 +352,16 @@ export function AdminLayout({
         // 如果切换到其他二级菜单，收起业务单据管理菜单
         setBusinessDocumentsMenuExpanded(false);
       }
+    } else if (currentMenu === 'marketing') {
+      // 在营销菜单时，确保营销菜单展开
+      setMarketingMenuExpanded(true);
     } else {
-      // 不在财务中心时，收起所有子菜单
+      // 不在财务中心/营销时，收起相关子菜单
       setFinanceMenuExpanded(false);
       setReconciliationMenuExpanded(false);
       setSettlementMenuExpanded(false);
       setBusinessDocumentsMenuExpanded(false);
+      setMarketingMenuExpanded(false);
     }
   }, [currentMenu, currentFinanceSubMenu, currentReconciliationSubMenu, currentSettlementSubMenu, currentBusinessDocumentsSubMenu, sidebarCollapsed]);
 
@@ -403,6 +441,7 @@ export function AdminLayout({
                 const Icon = item.icon;
                 const isActive = currentMenu === item.id;
                 const isFinance = item.id === 'finance';
+                const isMarketing = item.id === 'marketing';
                 const isUsers = item.id === 'users';
                 
                 if (isUsers && !sidebarCollapsed) {
@@ -449,6 +488,56 @@ export function AdminLayout({
                                 <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0 ${
                                   isSubActive ? 'text-blue-700' : 'text-gray-600'
                                 }`} />
+                                <span className="flex-1 text-left">{subMenu.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                if (isMarketing && !sidebarCollapsed) {
+                  return (
+                    <div key={item.id} className="space-y-1">
+                      <button
+                        onClick={handleMarketingMenuClick}
+                        className={`flex items-center rounded-lg transition-colors w-full gap-3 px-3 py-2 text-sm ${
+                          isActive
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <Icon className={`${ICON_SIZES.level1} flex-shrink-0`} />
+                        <span className="flex-1 text-left">{item.label}</span>
+                        {marketingMenuExpanded ? (
+                          <ChevronUp className={`${ICON_SIZES.level2} flex-shrink-0`} />
+                        ) : (
+                          <ChevronDown className={`${ICON_SIZES.level2} flex-shrink-0`} />
+                        )}
+                      </button>
+                      {marketingMenuExpanded && isActive && (
+                        <div className="ml-6 space-y-1">
+                          {marketingSubMenus.map((subMenu) => {
+                            const SubIcon = subMenu.icon;
+                            const isSubActive = currentMarketingSubMenu === subMenu.id;
+
+                            return (
+                              <button
+                                key={subMenu.id}
+                                onClick={() => onMarketingSubMenuChange?.(subMenu.id)}
+                                className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${
+                                  isSubActive
+                                    ? 'bg-blue-100 text-blue-700 font-medium'
+                                    : 'text-gray-600 hover:bg-gray-50'
+                                }`}
+                              >
+                                <SubIcon
+                                  className={`${ICON_SIZES.level2} flex-shrink-0 ${
+                                    isSubActive ? 'text-blue-700' : 'text-gray-600'
+                                  }`}
+                                />
                                 <span className="flex-1 text-left">{subMenu.label}</span>
                               </button>
                             );

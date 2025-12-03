@@ -4,7 +4,7 @@ import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
-import { Search, Download, Filter, Eye, Store } from 'lucide-react';
+import { Search, Download, Filter, Eye, Store, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -23,6 +23,8 @@ export function SmallBAccountList() {
   const [parentBigBFilter, setParentBigBFilter] = useState<string>('all');
   const [accountStatusFilter, setAccountStatusFilter] = useState<AccountStatus | 'all'>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
 
   // Mock数据
   const [accounts] = useState<SmallBAccount[]>([
@@ -38,6 +40,7 @@ export function SmallBAccountList() {
         email: 'zhangsan@example.com',
         phone: '138****5678',
       },
+      lastLoginAt: '2024-01-15 10:30:00',
       stats: {
         totalOrderAmount: 50000,
         totalRefund: 2000,
@@ -45,6 +48,7 @@ export function SmallBAccountList() {
         totalCommission: 5000,
         settledCommission: 3000,
         pendingCommission: 2000,
+        commissionRate: 10,
       },
     },
     {
@@ -59,6 +63,7 @@ export function SmallBAccountList() {
         email: 'lisi@example.com',
         phone: '139****1234',
       },
+      lastLoginAt: '2024-01-14 15:20:00',
       stats: {
         totalOrderAmount: 30000,
         totalRefund: 1000,
@@ -66,6 +71,7 @@ export function SmallBAccountList() {
         totalCommission: 3000,
         settledCommission: 2000,
         pendingCommission: 1000,
+        commissionRate: 8,
       },
     },
   ]);
@@ -127,6 +133,13 @@ export function SmallBAccountList() {
     authTypeFilter !== 'all' ||
     parentBigBFilter !== 'all' ||
     accountStatusFilter !== 'all';
+
+  // 分页逻辑
+  const totalPages = Math.ceil(filteredAccounts.length / pageSize);
+  const paginatedAccounts = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredAccounts.slice(startIndex, startIndex + pageSize);
+  }, [filteredAccounts, currentPage]);
 
   // 如果选中了账户，显示详情页
   if (selectedAccount) {
@@ -289,20 +302,21 @@ export function SmallBAccountList() {
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">账户状态</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">累计订单金额</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">累计订单佣金</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">佣金比例</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">已结算佣金</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">待结算佣金</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">操作</th>
               </tr>
             </thead>
             <tbody>
-              {filteredAccounts.length === 0 ? (
+              {paginatedAccounts.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-10 text-center text-gray-500">
-                    暂无小B账户数据
+                  <td colSpan={11} className="px-4 py-10 text-center text-gray-500">
+                    {searchQuery || hasActiveFilters ? '未找到符合条件的小B账户' : '暂无小B账户数据'}
                   </td>
                 </tr>
               ) : (
-                filteredAccounts.map((account) => (
+                paginatedAccounts.map((account) => (
                   <tr key={account.id} className="border-b hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">{account.name}</td>
                     <td className="px-4 py-3 text-sm">{getUserTypeBadge(account.userType)}</td>
@@ -310,16 +324,19 @@ export function SmallBAccountList() {
                     <td className="px-4 py-3 text-sm text-gray-600">{account.parentBigBName}</td>
                     <td className="px-4 py-3 text-sm">{getAccountStatusBadge(account.accountStatus)}</td>
                     <td className="px-4 py-3 text-sm text-right font-medium">
-                      ¥{account.stats.totalOrderAmount.toLocaleString()}
+                      {account.stats.totalOrderAmount > 0 ? `¥${account.stats.totalOrderAmount.toLocaleString()}` : '–'}
                     </td>
                     <td className="px-4 py-3 text-sm text-right text-purple-600">
-                      ¥{account.stats.totalCommission.toLocaleString()}
+                      {account.stats.totalCommission > 0 ? `¥${account.stats.totalCommission.toLocaleString()}` : '–'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right font-medium">
+                      {account.stats.commissionRate}%
                     </td>
                     <td className="px-4 py-3 text-sm text-right text-green-600">
-                      ¥{account.stats.settledCommission.toLocaleString()}
+                      {account.stats.settledCommission > 0 ? `¥${account.stats.settledCommission.toLocaleString()}` : '–'}
                     </td>
                     <td className="px-4 py-3 text-sm text-right text-blue-600">
-                      ¥{account.stats.pendingCommission.toLocaleString()}
+                      {account.stats.pendingCommission > 0 ? `¥${account.stats.pendingCommission.toLocaleString()}` : '–'}
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <Button
@@ -339,9 +356,32 @@ export function SmallBAccountList() {
           </table>
         </div>
 
-        {filteredAccounts.length > 0 && (
-          <div className="mt-4 text-sm text-gray-600">
-            共 {filteredAccounts.length} 条记录
+        {/* 分页 */}
+        {totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              第 {currentPage} / {totalPages} 页，共 {filteredAccounts.length} 条记录
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                上一页
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+              >
+                下一页
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>

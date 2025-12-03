@@ -1,71 +1,5 @@
 // 业务单据管理 - Mock数据
 
-// ==================== 违约扣费记录 ====================
-
-export type ViolationFeeType = 'dispute_deduction' | 'no_show_fee' | 'violation_fee' | 'other';
-export type ViolationFeeStatus = 'pending' | 'deducted' | 'cancelled';
-export type AccountType = 'points' | 'cash';
-
-export interface ViolationFeeRecord {
-  feeId: string;
-  orderId: string;
-  relatedObjectId: string;
-  relatedObjectName: string;
-  feeType: ViolationFeeType;
-  feeReason: string;
-  feeAmount: number;
-  feeTime: string;
-  feeStatus: ViolationFeeStatus;
-  accountType: AccountType;
-  operatorId: string;
-  operatorName: string;
-  remark?: string;
-}
-
-export function getMockViolationFeeRecords(): ViolationFeeRecord[] {
-  const records: ViolationFeeRecord[] = [];
-  const feeTypes: ViolationFeeType[] = ['dispute_deduction', 'no_show_fee', 'violation_fee', 'other'];
-  const statuses: ViolationFeeStatus[] = ['pending', 'deducted', 'cancelled'];
-  const accountTypes: AccountType[] = ['points', 'cash'];
-  const customers = ['张三的旅游工作室', '李四的酒店预订', '王五的旅游服务', '赵六的酒店代理', '孙七的旅游平台'];
-  
-  for (let i = 0; i < 45; i++) {
-    const feeType = feeTypes[i % 4];
-    const status = statuses[i % 3];
-    const accountType = accountTypes[i % 2];
-    const customer = customers[i % 5];
-    const day = (i % 30) + 1;
-    const month = Math.floor(i / 30) % 12 + 1;
-    const year = 2025;
-    
-    const feeAmount = Math.floor(Math.random() * 5000) + 100;
-    const feeReasonMap = {
-      dispute_deduction: '订单结算后发生客诉，全额退款',
-      no_show_fee: '客户未入住，产生No-Show费用',
-      violation_fee: '违反平台规则，扣除违约金',
-      other: '其他违约扣费'
-    };
-    
-    records.push({
-      feeId: `FEE-${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}-${String(i + 1).padStart(3, '0')}`,
-      orderId: `ORD-${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}-${String(i + 1).padStart(3, '0')}`,
-      relatedObjectId: `CUSTOMER-${String(i % 5 + 1).padStart(3, '0')}`,
-      relatedObjectName: customer,
-      feeType,
-      feeReason: feeReasonMap[feeType],
-      feeAmount: -feeAmount,
-      feeTime: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(10 + (i % 10)).padStart(2, '0')}:${String(30 + (i % 30)).padStart(2, '0')}:00`,
-      feeStatus: status,
-      accountType,
-      operatorId: 'FINANCE-001',
-      operatorName: '财务-李四',
-      remark: status === 'deducted' ? '已通知客户' : undefined,
-    });
-  }
-  
-  return records;
-}
-
 // ==================== 订单交易记录 ====================
 
 export type TransactionType = 'order_payment' | 'order_refund' | 'order_supplement' | 'other';
@@ -125,98 +59,45 @@ export function getMockOrderTransactions(): OrderTransaction[] {
   return records;
 }
 
-// ==================== 订单改价记录 ====================
-
-export type PriceChangeType = 'price_increase' | 'price_decrease' | 'price_correction';
-export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
-
-export interface OrderPriceChangeRecord {
-  priceChangeId: string;
-  orderId: string;
-  relatedObjectId: string;
-  relatedObjectName: string;
-  changeType: PriceChangeType;
-  originalAmount: number;
-  newAmount: number;
-  changeAmount: number;
-  changeReason: string;
-  changeTime: string;
-  operatorId: string;
-  operatorName: string;
-  approvalStatus: ApprovalStatus;
-  approverId?: string;
-  approverName?: string;
-  remark?: string;
-}
-
-export function getMockOrderPriceChangeRecords(): OrderPriceChangeRecord[] {
-  const records: OrderPriceChangeRecord[] = [];
-  const changeTypes: PriceChangeType[] = ['price_increase', 'price_decrease', 'price_correction'];
-  const approvalStatuses: ApprovalStatus[] = ['pending', 'approved', 'rejected'];
-  const customers = ['张三的旅游工作室', '李四的酒店预订', '王五的旅游服务', '赵六的酒店代理', '孙七的旅游平台'];
-  
-  for (let i = 0; i < 40; i++) {
-    const changeType = changeTypes[i % 3];
-    const approvalStatus = approvalStatuses[i % 3];
-    const customer = customers[i % 5];
-    const day = (i % 30) + 1;
-    const month = Math.floor(i / 30) % 12 + 1;
-    const year = 2025;
-    
-    const originalAmount = Math.floor(Math.random() * 5000) + 1000;
-    const changePercent = (Math.random() * 0.2 - 0.1); // -10% 到 +10%
-    const changeAmount = Math.floor(originalAmount * changePercent);
-    const newAmount = originalAmount + changeAmount;
-    
-    const changeReasonMap = {
-      price_increase: '客户要求升级房型，增加费用',
-      price_decrease: '客户投诉，补偿差价',
-      price_correction: '价格计算错误，修正价格'
-    };
-    
-    records.push({
-      priceChangeId: `PRICE-${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}-${String(i + 1).padStart(3, '0')}`,
-      orderId: `ORD-${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}-${String(i + 1).padStart(3, '0')}`,
-      relatedObjectId: `CUSTOMER-${String(i % 5 + 1).padStart(3, '0')}`,
-      relatedObjectName: customer,
-      changeType,
-      originalAmount,
-      newAmount,
-      changeAmount,
-      changeReason: changeReasonMap[changeType],
-      changeTime: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(10 + (i % 10)).padStart(2, '0')}:${String(30 + (i % 30)).padStart(2, '0')}:00`,
-      operatorId: 'SERVICE-001',
-      operatorName: '客服-王五',
-      approvalStatus,
-      approverId: approvalStatus !== 'pending' ? 'FINANCE-001' : undefined,
-      approverName: approvalStatus !== 'pending' ? '财务-李四' : undefined,
-      remark: approvalStatus === 'rejected' ? '改价原因不充分' : undefined,
-    });
-  }
-  
-  return records;
-}
-
 // ==================== 订单退款记录 ====================
 
 export type RefundType = 'full_refund' | 'partial_refund' | 'cancel_refund';
 export type RefundStatus = 'processing' | 'success' | 'failed';
+export type RefundTriggerMethod = 'auto' | 'manual';
+export type RefundChannel = 'wechat' | 'alipay' | 'bank' | 'other';
+export type RefundPath = 'original' | 'offline';
+export type RelatedObjectType = 'bigb' | 'smallb';
+export type BusinessModel = 'saas' | 'mcp' | 'affiliate';
+export type OperatorRole = 'customer_service' | 'finance' | 'system';
 
 export interface OrderRefundRecord {
   refundId: string;
   orderId: string;
   relatedObjectId: string;
   relatedObjectName: string;
+  relatedObjectType: RelatedObjectType;
+  managingBigB?: string;
+  businessModel: BusinessModel;
   refundType: RefundType;
-  originalAmount: number;
+  refundTriggerMethod: RefundTriggerMethod;
+  affectsSettlement: boolean;
+  orderTotalPrice: number;
+  customerActualPayment: number;
   refundAmount: number;
-  refundReason: string;
+  refundSupplierPrice: number;
+  refundDistributionPrice: number;
+  refundCommission?: number;
+  refundChannel: RefundChannel;
+  refundPath: RefundPath;
   refundStatus: RefundStatus;
   refundTime: string;
   refundCompletedTime?: string;
   refundNo?: string;
+  refundProof?: string;
+  refundReason: string;
   operatorId: string;
   operatorName: string;
+  operatorRole: OperatorRole;
   remark?: string;
 }
 
@@ -224,18 +105,43 @@ export function getMockOrderRefundRecords(): OrderRefundRecord[] {
   const records: OrderRefundRecord[] = [];
   const refundTypes: RefundType[] = ['full_refund', 'partial_refund', 'cancel_refund'];
   const refundStatuses: RefundStatus[] = ['processing', 'success', 'failed'];
+  const refundTriggerMethods: RefundTriggerMethod[] = ['auto', 'manual'];
+  const refundChannels: RefundChannel[] = ['wechat', 'alipay', 'bank', 'other'];
+  const refundPaths: RefundPath[] = ['original', 'offline'];
+  const relatedObjectTypes: RelatedObjectType[] = ['bigb', 'smallb'];
+  const businessModels: BusinessModel[] = ['saas', 'mcp', 'affiliate'];
+  const operatorRoles: OperatorRole[] = ['customer_service', 'finance', 'system'];
   const customers = ['张三的旅游工作室', '李四的酒店预订', '王五的旅游服务', '赵六的酒店代理', '孙七的旅游平台'];
+  const managingBigBs = ['AIGO渠道大B', '华东渠道大B', '华北渠道大B'];
   
   for (let i = 0; i < 45; i++) {
     const refundType = refundTypes[i % 3];
     const refundStatus = refundStatuses[i % 3];
+    const refundTriggerMethod = refundTriggerMethods[i % 2];
+    const refundChannel = refundChannels[i % 4];
+    const refundPath = refundPaths[i % 2];
+    const relatedObjectType = relatedObjectTypes[i % 2];
+    const businessModel = businessModels[i % 3];
+    const operatorRole = operatorRoles[i % 3];
     const customer = customers[i % 5];
+    const managingBigB = relatedObjectType === 'smallb' ? managingBigBs[i % 3] : undefined;
     const day = (i % 30) + 1;
     const month = Math.floor(i / 30) % 12 + 1;
     const year = 2025;
     
-    const originalAmount = Math.floor(Math.random() * 5000) + 1000;
-    const refundAmount = refundType === 'full_refund' ? originalAmount : Math.floor(originalAmount * (0.3 + Math.random() * 0.5));
+    const orderTotalPrice = Math.floor(Math.random() * 5000) + 1000;
+    const customerActualPayment = orderTotalPrice - Math.floor(Math.random() * 200);
+    const refundAmount = refundType === 'full_refund' ? orderTotalPrice : Math.floor(orderTotalPrice * (0.3 + Math.random() * 0.5));
+    
+    // 计算退款金额拆分
+    const supplierCostRatio = 0.75; // P0/P2比例
+    const distributionPriceRatio = 0.85; // P1/P2比例
+    const refundSupplierPrice = Math.floor(refundAmount * supplierCostRatio);
+    const refundDistributionPrice = Math.floor(refundAmount * distributionPriceRatio);
+    const refundCommission = relatedObjectType === 'smallb' && businessModel === 'affiliate' ? 
+      Math.floor(refundAmount * 0.05) : undefined;
+    
+    const affectsSettlement = i % 3 !== 0; // 大部分影响结算
     
     const refundReasonMap = {
       full_refund: '客户取消订单',
@@ -247,21 +153,40 @@ export function getMockOrderRefundRecords(): OrderRefundRecord[] {
     const completedTime = refundStatus === 'success' ? 
       `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(11 + (i % 10)).padStart(2, '0')}:${String(30 + (i % 30)).padStart(2, '0')}:00` : undefined;
     
+    const operatorNameMap = {
+      customer_service: '客服-王五',
+      finance: '财务-李四',
+      system: '系统'
+    };
+    
     records.push({
       refundId: `REFUND-${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}-${String(i + 1).padStart(3, '0')}`,
       orderId: `ORD-${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}-${String(i + 1).padStart(3, '0')}`,
       relatedObjectId: `CUSTOMER-${String(i % 5 + 1).padStart(3, '0')}`,
       relatedObjectName: customer,
+      relatedObjectType,
+      managingBigB,
+      businessModel,
       refundType,
-      originalAmount,
+      refundTriggerMethod,
+      affectsSettlement,
+      orderTotalPrice,
+      customerActualPayment,
       refundAmount,
-      refundReason: refundReasonMap[refundType],
+      refundSupplierPrice,
+      refundDistributionPrice,
+      refundCommission,
+      refundChannel,
+      refundPath,
       refundStatus,
       refundTime,
       refundCompletedTime: completedTime,
       refundNo: refundStatus === 'success' ? `RF${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}${String(i + 1).padStart(3, '0')}` : undefined,
+      refundProof: refundPath === 'offline' ? `https://example.com/proof/${i + 1}.jpg` : undefined,
+      refundReason: refundReasonMap[refundType],
       operatorId: 'SERVICE-001',
-      operatorName: '客服-王五',
+      operatorName: operatorNameMap[operatorRole],
+      operatorRole,
       remark: refundStatus === 'failed' ? '退款失败，请重新发起' : undefined,
     });
   }

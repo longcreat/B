@@ -10,10 +10,16 @@ export type AuthType = 'individual' | 'enterprise';
 export type AccountStatus = 'active' | 'frozen' | 'closed';
 
 // 业务模式
-export type BusinessMode = 'saas' | 'mcp';
+export type BusinessMode = 'saas' | 'mcp' | 'platform_self_operated';
+
+// 结算模式
+export type SettlementMode = 'batch' | 'per_order';
 
 // 结算状态
 export type SettlementStatus = 'pending' | 'settleable' | 'processing' | 'settled';
+
+// 结算类型
+export type SettlementType = 'batch' | 'per_order';
 
 // 对账状态
 export type ReconciliationStatus = 'pending' | 'reconciled' | 'difference' | 'adjusted';
@@ -76,20 +82,19 @@ export interface BigBAccount {
   registeredAt: string;
   lastLoginAt?: string;
   
-  // 应收应付数据（订单维度）
-  payableStats: {
-    totalPayable: number;    // 累计应付账款
-    settledAmount: number;   // 已结算金额
-    pendingAmount: number;   // 待结算金额
-  };
-  
-  // 账户余额数据（资金维度）
-  balanceInfo: {
-    totalBalance: number;        // 账户总余额
-    availableBalance: number;    // 可提现余额
-    frozenBalance: number;       // 冻结余额
-    pendingReconciliation: number; // 待对账余额
-    inTransitAmount: number;     // 在途金额（已发起提现但未到账）
+  // 业务数据
+  businessStats: {
+    totalSalesAmount: number;      // 累计销售金额（订单总金额P2的总和）
+    settledAmount: number;         // 已结算金额
+    pendingAmount: number;         // 待结金额
+    accountBalance: number;        // 账户余额
+    availableBalance: number;      // 可提现金额
+    frozenBalance: number;         // 冻结金额
+    totalOrderCount: number;       // 累计订单数量
+    totalCustomerCount: number;    // 累计客户数量
+    refundRate: number;            // 退款率（百分比）
+    monthlyAvgSales: number;       // 月均销售额
+    registrationDays: number;      // 注册时长（天数）
   };
   
   // 推广联盟权限
@@ -97,6 +102,9 @@ export interface BigBAccount {
   
   // 风控等级
   riskLevel: RiskLevel;
+  
+  // 结算模式
+  settlementMode: SettlementMode;
 }
 
 // 账户流水明细
@@ -111,6 +119,22 @@ export interface AccountTransaction {
   relatedObjectType?: 'order' | 'withdrawal' | 'adjustment';
   operator: string; // 操作人（系统/管理员/大B自己）
   remark?: string; // 备注说明
+}
+
+// 订单类型
+export type OrderType = 'direct' | 'smallb_promotion';
+
+// 大B订单明细
+export interface BigBOrderDetail {
+  orderId: string;
+  orderType: OrderType;          // 订单类型：直接订单/小B推广订单
+  orderAmount: number;           // 订单金额P2
+  refundAmount: number;          // 退款金额
+  settlementAmount: number;      // 结算金额
+  orderStatus: string;           // 订单状态
+  settlementStatus: SettlementStatus; // 结算状态
+  orderTime: string;             // 订单时间
+  settlementTime?: string;       // 结算时间
 }
 
 // 大B结算明细（按订单汇总）
@@ -133,7 +157,7 @@ export interface BigBSettlementDetail {
   settlementTime?: string;
 }
 
-// 大B结算批次记录
+// 大B结算批次记录（周期结算模式）
 export interface BigBSettlementBatch {
   batchId: string;
   batchNumber: string;
@@ -147,7 +171,34 @@ export interface BigBSettlementBatch {
   rejectionReason?: string;
   settledAt?: string;
   settledBy?: string;
+  operator?: string;
   orders?: BigBSettlementDetail[]; // 批次包含的订单明细
+}
+
+// 大B结算记录（按单结算模式）
+export interface BigBSettlementRecord {
+  id: string;
+  orderId: string;
+  settlementAmount: number;
+  settlementTime: string;
+  settlementStatus: SettlementStatus;
+  operator: string;
+}
+
+// 余额变动类型
+export type BalanceChangeType = 'income' | 'expense' | 'freeze' | 'unfreeze';
+
+// 大B余额明细（余额变动记录）
+export interface BigBBalanceDetail {
+  id: string;
+  changeTime: string;
+  changeType: BalanceChangeType;
+  changeAmount: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  relatedOrderId?: string;
+  operator: string;
+  remark?: string;
 }
 
 // 提现记录
@@ -266,6 +317,8 @@ export interface ManagedSmallB {
   authType: AuthType;
   mountedTime: string;
   accountStatus: AccountStatus;
+  currentCommissionRate: number; // 当前佣金比例（百分比）
+  shopConfigEnabled: boolean; // 是否拥有店铺配置权限
   totalOrderAmount: number;
   totalCommission: number;
   settledCommission: number;
@@ -294,6 +347,7 @@ export interface SmallBAccount {
     email: string;
     phone: string;
   };
+  lastLoginAt?: string; // 最近登录时间
   
   // 业务统计
   stats: {
@@ -303,6 +357,7 @@ export interface SmallBAccount {
     totalCommission: number; // 累计订单总佣金
     settledCommission: number; // 已结算佣金
     pendingCommission: number; // 待结算佣金
+    commissionRate: number; // 当前佣金比例（百分比）
   };
 }
 
@@ -321,11 +376,21 @@ export interface SmallBOrderDetail {
 // 小B佣金结算记录
 export interface SmallBCommissionRecord {
   id: string;
-  batchNumber: string;
+  settlementType: SettlementType; // 结算类型：周期结算/按单结算
+  batchNumber: string; // 结算批次号（周期结算）或订单号（按单结算）
   settlementAmount: number;
   settlementTime: string;
   settlementStatus: SettlementStatus;
   settledBy: string; // 结算方（挂载大B名称）
+  orders?: SmallBSettlementOrderDetail[]; // 结算包含的订单明细
+}
+
+// 小B结算订单明细
+export interface SmallBSettlementOrderDetail {
+  orderId: string;
+  orderAmount: number; // 订单总金额P2
+  totalCommission: number; // 订单总佣金
+  settlementAmount: number; // 结算金额
 }
 
 // 筛选条件

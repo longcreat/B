@@ -31,20 +31,20 @@ import {
 import { toast } from 'sonner';
 
 interface SettlementConfig {
-  // 小B结算配置
+  // 大B结算配置
+  partnerSettlementMode: 'cycle' | 'order'; // 结算模式：按周期/按单
   partnerCycleType: 'weekly' | 'monthly' | 'custom';
   partnerCycleValue: string;
   partnerFreezeDays: number;
-  partnerMinAmount: number;
   partnerAutoGenerate: boolean;
   partnerAutoApprove: boolean;
   partnerAutoCredit: boolean;
   
   // 供应商结算配置
+  supplierSettlementMode: 'cycle' | 'order'; // 结算模式：按周期/按单
   supplierCycleType: 'monthly' | 'quarterly' | 'custom';
   supplierCycleValue: string;
   supplierFreezeDays: number;
-  supplierMinAmount: number;
   supplierAutoGenerate: boolean;
   supplierAutoApprove: boolean;
   supplierAutoPay: boolean;
@@ -53,7 +53,7 @@ interface SettlementConfig {
 interface ConfigLog {
   logTime: string;
   logUser: string;
-  configType: '小B结算' | '供应商结算';
+  configType: '大B结算' | '供应商结算';
   configKey: string;
   oldValue: string;
   newValue: string;
@@ -61,17 +61,17 @@ interface ConfigLog {
 
 export function SettlementConfig() {
   const [config, setConfig] = useState<SettlementConfig>({
+    partnerSettlementMode: 'cycle',
     partnerCycleType: 'weekly',
     partnerCycleValue: 'monday',
     partnerFreezeDays: 7,
-    partnerMinAmount: 100.00,
     partnerAutoGenerate: true,
     partnerAutoApprove: false,
     partnerAutoCredit: false,
+    supplierSettlementMode: 'cycle',
     supplierCycleType: 'monthly',
     supplierCycleValue: '1',
     supplierFreezeDays: 15,
-    supplierMinAmount: 1000.00,
     supplierAutoGenerate: true,
     supplierAutoApprove: false,
     supplierAutoPay: false,
@@ -89,8 +89,8 @@ export function SettlementConfig() {
       logs.push({
         logTime: new Date(2025, 0, 8 - i, 10, 30, 0).toISOString().replace('T', ' ').substring(0, 19),
         logUser: '李财务',
-        configType: i % 2 === 0 ? '小B结算' : '供应商结算',
-        configKey: ['结算冻结期天数', '最低起付金额', '自动生成批次', '自动审批'][i % 4],
+        configType: i % 2 === 0 ? '大B结算' : '供应商结算',
+        configKey: ['结算模式', '结算冻结期天数', '自动生成批次', '自动审批'][i % 4],
         oldValue: String(7 - (i % 3)),
         newValue: String(7 - (i % 3) + 1),
       });
@@ -121,17 +121,17 @@ export function SettlementConfig() {
   const handleReset = () => {
     if (confirm('确定要重置为默认值吗？此操作将覆盖当前配置。')) {
       const defaultConfig: SettlementConfig = {
+        partnerSettlementMode: 'cycle',
         partnerCycleType: 'weekly',
         partnerCycleValue: 'monday',
         partnerFreezeDays: 7,
-        partnerMinAmount: 100.00,
         partnerAutoGenerate: true,
         partnerAutoApprove: false,
         partnerAutoCredit: false,
+        supplierSettlementMode: 'cycle',
         supplierCycleType: 'monthly',
         supplierCycleValue: '1',
         supplierFreezeDays: 15,
-        supplierMinAmount: 1000.00,
         supplierAutoGenerate: true,
         supplierAutoApprove: false,
         supplierAutoPay: false,
@@ -165,52 +165,68 @@ export function SettlementConfig() {
           </BreadcrumbList>
         </Breadcrumb>
 
-        {/* 小B结算配置 */}
+        {/* 大B结算配置 */}
         <Card>
           <CardHeader>
-            <CardTitle>小B结算配置</CardTitle>
+            <CardTitle>大B结算配置</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
-                <Label className="text-sm">结算周期类型</Label>
-                <Select value={config.partnerCycleType} onValueChange={(value: 'weekly' | 'monthly' | 'custom') => updateConfig('partnerCycleType', value)}>
+                <Label className="text-sm">结算模式</Label>
+                <Select value={config.partnerSettlementMode} onValueChange={(value: 'cycle' | 'order') => updateConfig('partnerSettlementMode', value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="weekly">每周</SelectItem>
-                    <SelectItem value="monthly">每月</SelectItem>
-                    <SelectItem value="custom">自定义</SelectItem>
+                    <SelectItem value="cycle">按周期结算</SelectItem>
+                    <SelectItem value="order">按单结算</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label className="text-sm">结算周期</Label>
-                {config.partnerCycleType === 'weekly' ? (
-                  <Select value={config.partnerCycleValue} onValueChange={(value) => updateConfig('partnerCycleValue', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="monday">周一</SelectItem>
-                      <SelectItem value="tuesday">周二</SelectItem>
-                      <SelectItem value="wednesday">周三</SelectItem>
-                      <SelectItem value="thursday">周四</SelectItem>
-                      <SelectItem value="friday">周五</SelectItem>
-                      <SelectItem value="saturday">周六</SelectItem>
-                      <SelectItem value="sunday">周日</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    type="text"
-                    value={config.partnerCycleValue}
-                    onChange={(e) => updateConfig('partnerCycleValue', e.target.value)}
-                    placeholder="每月1号"
-                  />
-                )}
-              </div>
+              {config.partnerSettlementMode === 'cycle' && (
+                <>
+                  <div>
+                    <Label className="text-sm">结算周期类型</Label>
+                    <Select value={config.partnerCycleType} onValueChange={(value: 'weekly' | 'monthly' | 'custom') => updateConfig('partnerCycleType', value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="weekly">每周</SelectItem>
+                        <SelectItem value="monthly">每月</SelectItem>
+                        <SelectItem value="custom">自定义</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-sm">结算周期</Label>
+                    {config.partnerCycleType === 'weekly' ? (
+                      <Select value={config.partnerCycleValue} onValueChange={(value: string) => updateConfig('partnerCycleValue', value)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monday">周一</SelectItem>
+                          <SelectItem value="tuesday">周二</SelectItem>
+                          <SelectItem value="wednesday">周三</SelectItem>
+                          <SelectItem value="thursday">周四</SelectItem>
+                          <SelectItem value="friday">周五</SelectItem>
+                          <SelectItem value="saturday">周六</SelectItem>
+                          <SelectItem value="sunday">周日</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        type="text"
+                        value={config.partnerCycleValue}
+                        onChange={(e) => updateConfig('partnerCycleValue', e.target.value)}
+                        placeholder="每月1号"
+                      />
+                    )}
+                  </div>
+                </>
+              )}
               <div>
                 <Label className="text-sm">结算冻结期天数</Label>
                 <Input
@@ -219,16 +235,6 @@ export function SettlementConfig() {
                   onChange={(e) => updateConfig('partnerFreezeDays', parseInt(e.target.value) || 7)}
                   min={1}
                   max={30}
-                />
-              </div>
-              <div>
-                <Label className="text-sm">最低起付金额（元）</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={config.partnerMinAmount}
-                  onChange={(e) => updateConfig('partnerMinAmount', parseFloat(e.target.value) || 100)}
-                  min={0.01}
                 />
               </div>
             </div>
@@ -272,38 +278,54 @@ export function SettlementConfig() {
             <CardTitle>供应商结算配置</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
-                <Label className="text-sm">结算周期类型</Label>
-                <Select value={config.supplierCycleType} onValueChange={(value: 'monthly' | 'quarterly' | 'custom') => updateConfig('supplierCycleType', value)}>
+                <Label className="text-sm">结算模式</Label>
+                <Select value={config.supplierSettlementMode} onValueChange={(value: 'cycle' | 'order') => updateConfig('supplierSettlementMode', value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="monthly">每月</SelectItem>
-                    <SelectItem value="quarterly">每季度</SelectItem>
-                    <SelectItem value="custom">自定义</SelectItem>
+                    <SelectItem value="cycle">按周期结算</SelectItem>
+                    <SelectItem value="order">按单结算</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label className="text-sm">结算周期</Label>
-                {config.supplierCycleType === 'monthly' ? (
-                  <Input
-                    type="text"
-                    value={config.supplierCycleValue}
-                    onChange={(e) => updateConfig('supplierCycleValue', e.target.value)}
-                    placeholder="每月1号"
-                  />
-                ) : (
-                  <Input
-                    type="text"
-                    value={config.supplierCycleValue}
-                    onChange={(e) => updateConfig('supplierCycleValue', e.target.value)}
-                    placeholder="季度首月1号"
-                  />
-                )}
-              </div>
+              {config.supplierSettlementMode === 'cycle' && (
+                <>
+                  <div>
+                    <Label className="text-sm">结算周期类型</Label>
+                    <Select value={config.supplierCycleType} onValueChange={(value: 'monthly' | 'quarterly' | 'custom') => updateConfig('supplierCycleType', value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">每月</SelectItem>
+                        <SelectItem value="quarterly">每季度</SelectItem>
+                        <SelectItem value="custom">自定义</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-sm">结算周期</Label>
+                    {config.supplierCycleType === 'monthly' ? (
+                      <Input
+                        type="text"
+                        value={config.supplierCycleValue}
+                        onChange={(e) => updateConfig('supplierCycleValue', e.target.value)}
+                        placeholder="每月1号"
+                      />
+                    ) : (
+                      <Input
+                        type="text"
+                        value={config.supplierCycleValue}
+                        onChange={(e) => updateConfig('supplierCycleValue', e.target.value)}
+                        placeholder="季度首月1号"
+                      />
+                    )}
+                  </div>
+                </>
+              )}
               <div>
                 <Label className="text-sm">结算冻结期天数</Label>
                 <Input
@@ -312,16 +334,6 @@ export function SettlementConfig() {
                   onChange={(e) => updateConfig('supplierFreezeDays', parseInt(e.target.value) || 15)}
                   min={1}
                   max={60}
-                />
-              </div>
-              <div>
-                <Label className="text-sm">最低起付金额（元）</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={config.supplierMinAmount}
-                  onChange={(e) => updateConfig('supplierMinAmount', parseFloat(e.target.value) || 1000)}
-                  min={0.01}
                 />
               </div>
             </div>
