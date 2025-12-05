@@ -94,7 +94,6 @@ export function AdminLayout({
   const [financeMenuExpanded, setFinanceMenuExpanded] = useState(false);
   const [marketingMenuExpanded, setMarketingMenuExpanded] = useState(false);
   const [reconciliationMenuExpanded, setReconciliationMenuExpanded] = useState(false);
-  const [settlementMenuExpanded, setSettlementMenuExpanded] = useState(false);
   const [businessDocumentsMenuExpanded, setBusinessDocumentsMenuExpanded] = useState(false);
 
   const menuItems = [
@@ -118,7 +117,7 @@ export function AdminLayout({
     { id: 'platform-account' as FinanceSubMenu, icon: Building2, label: '平台账户', hasSubMenu: false },
     { id: 'merchant-accounts' as FinanceSubMenu, icon: Users, label: '商户账户', hasSubMenu: false },
     { id: 'business-documents' as FinanceSubMenu, icon: FileText, label: '业务单据管理', hasSubMenu: true },
-    { id: 'settlement' as FinanceSubMenu, icon: CreditCard, label: '结算管理', hasSubMenu: true },
+    { id: 'settlement' as FinanceSubMenu, icon: CreditCard, label: '结算管理', hasSubMenu: false },
     { id: 'reconciliation' as FinanceSubMenu, icon: Calculator, label: '对账', hasSubMenu: true },
     { id: 'withdrawal' as FinanceSubMenu, icon: ArrowRight, label: '提现管理', hasSubMenu: false },
     { id: 'invoice' as FinanceSubMenu, icon: Receipt, label: '发票管理', hasSubMenu: false },
@@ -129,11 +128,6 @@ export function AdminLayout({
     { id: 'reconciliation-summary' as ReconciliationSubMenu, icon: FileText, label: '对账差异汇总' },
   ];
 
-  const settlementSubMenus = [
-    { id: 'partner-batches' as SettlementSubMenu, icon: Users, label: '客户结算' },
-    { id: 'supplier-batches' as SettlementSubMenu, icon: Building2, label: '供应商结算' },
-    { id: 'settlement-config' as SettlementSubMenu, icon: Settings, label: '结算配置' },
-  ];
 
   const businessDocumentsSubMenus = [
     { id: 'order-transaction' as BusinessDocumentsSubMenu, icon: FileText, label: '订单交易', parent: 'transaction-record' },
@@ -238,37 +232,10 @@ export function AdminLayout({
     onReconciliationSubMenuChange?.(menuId);
   };
 
-  // 处理二级菜单（结算管理）点击
+  // 处理二级菜单（结算管理）点击 - 不再有三级菜单
   const handleSettlementMenuClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    // 如果当前不是结算管理，切换到结算管理
-    if (currentFinanceSubMenu !== 'settlement') {
-      onFinanceSubMenuChange?.('settlement');
-      // 不自动选中三级菜单，只选中二级菜单
-      if (!sidebarCollapsed) {
-        setSettlementMenuExpanded(true);
-      }
-    } else {
-      // 如果已经是结算管理，切换展开/收起
-      if (!sidebarCollapsed) {
-        // 如果三级菜单已选中，不允许收起
-        if (currentSettlementSubMenu) {
-          setSettlementMenuExpanded(true);
-        } else {
-          setSettlementMenuExpanded(!settlementMenuExpanded);
-        }
-      }
-    }
-  };
-
-  // 处理三级菜单（结算管理下的子菜单）点击
-  const handleSettlementThirdMenuClick = (menuId: SettlementSubMenu) => {
-    // 确保父菜单展开并选中
-    setSettlementMenuExpanded(true);
     onFinanceSubMenuChange?.('settlement');
-    // 选中三级菜单
-    onSettlementSubMenuChange?.(menuId);
   };
 
   // 处理二级菜单（业务单据管理）点击
@@ -312,7 +279,6 @@ export function AdminLayout({
       // 清除三级菜单选中状态
       if (!sidebarCollapsed) {
         setReconciliationMenuExpanded(false);
-        setSettlementMenuExpanded(false);
         setBusinessDocumentsMenuExpanded(false);
       }
     }
@@ -338,13 +304,6 @@ export function AdminLayout({
         // 如果切换到其他二级菜单，收起对账菜单
         setReconciliationMenuExpanded(false);
       }
-      if (currentFinanceSubMenu === 'settlement') {
-        // 如果选中结算管理，确保结算管理菜单展开
-        setSettlementMenuExpanded(true);
-      } else {
-        // 如果切换到其他二级菜单，收起结算管理菜单
-        setSettlementMenuExpanded(false);
-      }
       if (currentFinanceSubMenu === 'business-documents') {
         // 如果选中业务单据管理，确保业务单据管理菜单展开
         setBusinessDocumentsMenuExpanded(true);
@@ -359,7 +318,6 @@ export function AdminLayout({
       // 不在财务中心/营销时，收起相关子菜单
       setFinanceMenuExpanded(false);
       setReconciliationMenuExpanded(false);
-      setSettlementMenuExpanded(false);
       setBusinessDocumentsMenuExpanded(false);
       setMarketingMenuExpanded(false);
     }
@@ -662,85 +620,6 @@ export function AdminLayout({
                               );
                             }
                             
-                            if (isSettlement && subMenu.hasSubMenu) {
-                              // 结算管理有三级菜单
-                              const hasThirdMenuActive = !!currentSettlementSubMenu;
-                              const isSubMenuActive = isSubActive && !hasThirdMenuActive;
-                              
-                              return (
-                                <div key={subMenu.id} className="space-y-1">
-                                  {/* 二级菜单按钮 */}
-                                  <button
-                                    onClick={handleSettlementMenuClick}
-                                    className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${
-                                      isSubMenuActive
-                                        ? 'bg-blue-100 text-blue-700 font-medium'
-                                        : isSubActive
-                                        ? 'text-blue-600 hover:bg-blue-50'
-                                        : 'text-gray-600 hover:bg-gray-50'
-                                    }`}
-                                  >
-                                    <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0 ${
-                                      isSubMenuActive
-                                        ? 'text-blue-700'
-                                        : isSubActive
-                                        ? 'text-blue-600'
-                                        : 'text-gray-600'
-                                    }`} />
-                                    <span className="flex-1 text-left">{subMenu.label}</span>
-                                    {settlementMenuExpanded ? (
-                                      <ChevronUp className={`${ICON_SIZES.chevron} flex-shrink-0 ${
-                                        isSubMenuActive
-                                          ? 'text-blue-700'
-                                          : isSubActive
-                                          ? 'text-blue-600'
-                                          : 'text-gray-600'
-                                      }`} />
-                                    ) : (
-                                      <ChevronDown className={`${ICON_SIZES.chevron} flex-shrink-0 ${
-                                        isSubMenuActive
-                                          ? 'text-blue-700'
-                                          : isSubActive
-                                          ? 'text-blue-600'
-                                          : 'text-gray-600'
-                                      }`} />
-                                    )}
-                                  </button>
-                                  
-                                  {/* 三级菜单 */}
-                                  {settlementMenuExpanded && (
-                                    <div className="ml-6 space-y-1">
-                                      {settlementSubMenus.map((thirdMenu) => {
-                                        const ThirdIcon = thirdMenu.icon;
-                                        const isThirdActive = currentSettlementSubMenu === thirdMenu.id;
-                                        return (
-                                          <button
-                                            key={thirdMenu.id}
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleSettlementThirdMenuClick(thirdMenu.id);
-                                            }}
-                                            className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${
-                                              isThirdActive
-                                                ? 'bg-blue-200 text-blue-800 font-medium'
-                                                : 'text-gray-600 hover:bg-gray-50'
-                                            }`}
-                                          >
-                                            <ThirdIcon className={`${ICON_SIZES.level3} flex-shrink-0 ${
-                                              isThirdActive
-                                                ? 'text-blue-800'
-                                                : 'text-gray-600'
-                                            }`} />
-                                            <span className="flex-1 text-left">{thirdMenu.label}</span>
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            }
                             
                             if (isBusinessDocuments && subMenu.hasSubMenu) {
                               // 业务单据管理有三级菜单（管控账单、交易记录、结算明细）
