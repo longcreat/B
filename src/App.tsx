@@ -341,10 +341,12 @@ export default function App() {
         setCurrentView(defaultView);
       }
     } else {
-      // 如果申请未通过，清除Partner数据
-      setCurrentPartner(null);
+      // 如果申请未通过，仅在有当前申请ID的情况下清除Partner数据，避免覆盖纯 Partner 登录场景
+      if (currentApplicationId) {
+        setCurrentPartner(null);
+      }
     }
-  }, [applications, currentApplicationId, currentUser]);
+  }, [applications, currentApplicationId, currentUser, currentView]);
 
 
 
@@ -476,41 +478,73 @@ export default function App() {
       phone: userData.phone,
       registeredAt: userData.registeredAt,
     };
-    setCurrentUser(enrichedUserData);
-    setIsLoggedIn(true);
-    localStorage.setItem('currentUser', JSON.stringify(enrichedUserData));
     
     // 如果是管理员，直接跳过检查已有申请的逻辑
     if (userData.role === 'admin') {
+      setCurrentUser(enrichedUserData);
+      setIsLoggedIn(true);
+      localStorage.setItem('currentUser', JSON.stringify(enrichedUserData));
       setHasCheckedExistingApplication(true);
       return;
     }
     
     // Check if user has existing application (reload from localStorage to get latest)
     const userEmail = userData.email;
-    if (userEmail) {
-      const storedApplications = JSON.parse(localStorage.getItem('applications') || '[]');
-      const existingApp = storedApplications.find((app: any) => 
-        app.data?.email === userEmail || app.userEmail === userEmail
-      );
-      if (existingApp) {
-        setCurrentApplicationId(existingApp.id);
-        setSelectedBusinessModel(existingApp.businessModel as BusinessModel);
-        setSelectedUserType(existingApp.userType as UserType || null);
-        setSelectedCertificationType(existingApp.certificationType as CertificationType || null);
-        setApplications(storedApplications);
-        // Set view based on application status
-        if (existingApp.status === 'approved') {
-          setCurrentView('registration');
-        } else {
-          setCurrentView('registration');
-        }
+    const storedApplications = JSON.parse(localStorage.getItem('applications') || '[]');
+    const existingApp = userEmail 
+      ? storedApplications.find((app: any) => 
+          app.data?.email === userEmail || app.userEmail === userEmail
+        )
+      : null;
+    
+    // 查找 Partner 数据
+    const partners = getMockPartners();
+    const partner = findPartnerByEmail(userEmail || '', partners);
+    
+    // 如果有已通过的申请或已认证的 Partner，更新用户服务信息
+    let finalUserData = enrichedUserData;
+    if (existingApp && existingApp.status === 'approved') {
+      finalUserData = {
+        ...enrichedUserData,
+        serviceType: existingApp.businessModel as ServiceType,
+        serviceStatus: 'approved',
+        applicationId: existingApp.id,
+      };
+      setCurrentApplicationId(existingApp.id);
+      setSelectedBusinessModel(existingApp.businessModel as BusinessModel);
+      setSelectedUserType(existingApp.userType as UserType || null);
+      setSelectedCertificationType(existingApp.certificationType as CertificationType || null);
+      setApplications(storedApplications);
+      
+      // 设置 Partner
+      if (partner) {
+        setCurrentPartner(partner);
       } else {
-        setCurrentView('registration');
+        // 从 Application 创建 Partner
+        const newPartner = createPartnerFromApplication(existingApp, userEmail || '');
+        setCurrentPartner(newPartner);
       }
-    } else {
-      setCurrentView('registration');
+    } else if (partner && partner.certificationStatus === 'approved') {
+      // 没有申请记录但有已认证的 Partner，直接使用 Partner 信息
+      finalUserData = {
+        ...enrichedUserData,
+        serviceType: partner.businessModel as ServiceType,
+        serviceStatus: 'approved',
+      };
+      setCurrentPartner(partner);
+    } else if (existingApp) {
+      // 有申请但未通过
+      setCurrentApplicationId(existingApp.id);
+      setSelectedBusinessModel(existingApp.businessModel as BusinessModel);
+      setSelectedUserType(existingApp.userType as UserType || null);
+      setSelectedCertificationType(existingApp.certificationType as CertificationType || null);
+      setApplications(storedApplications);
     }
+    
+    setCurrentUser(finalUserData);
+    setIsLoggedIn(true);
+    localStorage.setItem('currentUser', JSON.stringify(finalUserData));
+    setCurrentView('registration');
     setHasCheckedExistingApplication(true);
   };
 
@@ -531,6 +565,7 @@ export default function App() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     setCurrentUser(null);
+    setCurrentPartner(null);
     setCurrentView('registration');
     setSelectedBusinessModel(null);
     setSelectedUserType(null);
@@ -1180,14 +1215,31 @@ export default function App() {
     if (!currentUser) return 'registration';
     if (currentUser.role === 'admin') return 'admin';
     
-    // 如果申请已通过，根据业务模式判断
+    // 1）优先：根据当前申请 + Partner 判断（完整链路）
     const app = getCurrentApplication();
     if (app && app.status === 'approved' && currentPartner) {
       const userType = getUserType(currentUser, currentPartner);
       if (userType === 'bigb') return 'bigb';
       if (userType === 'smallb') return 'smallb';
     }
-    
+
+    // 2）fallback：只根据 Partner（例如直接从 mockPartners 登录）
+    if (currentPartner && currentPartner.certificationStatus === 'approved') {
+      const userType = getUserType(currentUser, currentPartner);
+      if (userType === 'bigb') return 'bigb';
+      if (userType === 'smallb') return 'smallb';
+    }
+
+    // 3）最后兜底：根据 currentUser 的服务类型 / 状态判断
+    if (currentUser.serviceStatus === 'approved' && currentUser.serviceType) {
+      if (currentUser.serviceType === 'mcp' || currentUser.serviceType === 'saas') {
+        return 'bigb';
+      }
+      if (currentUser.serviceType === 'affiliate') {
+        return 'smallb';
+      }
+    }
+
     // 默认显示注册页面
     return 'registration';
   };
