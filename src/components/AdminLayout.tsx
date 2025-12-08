@@ -101,16 +101,15 @@ export function AdminLayout({
     { id: 'users' as AdminMenuItem, icon: Users, label: '用户管理', count: 0, hasSubMenu: true },
     { id: 'orders' as AdminMenuItem, icon: Package, label: '订单管理', count: 0 },
     { id: 'finance' as AdminMenuItem, icon: Receipt, label: '财务中心', count: 0 },
-    { id: 'marketing' as AdminMenuItem, icon: Wallet, label: '营销', count: 0, hasSubMenu: true },
+    // { id: 'marketing' as AdminMenuItem, icon: Wallet, label: '营销', count: 0, hasSubMenu: true }, // 暂时隐藏
     { id: 'apikeys' as AdminMenuItem, icon: Key, label: '密钥管理', count: 0 },
     { id: 'pricing' as AdminMenuItem, icon: Settings, label: '价格配置', count: 0 },
-    { id: 'business-model-config' as AdminMenuItem, icon: Cog, label: '业务模式配置', count: 0 },
-    { id: 'feature-permissions' as AdminMenuItem, icon: Shield, label: '功能权限管理', count: 0 },
+    // { id: 'business-model-config' as AdminMenuItem, icon: Cog, label: '业务模式配置', count: 0 }, // 暂时隐藏
+    // { id: 'feature-permissions' as AdminMenuItem, icon: Shield, label: '功能权限管理', count: 0 }, // 暂时隐藏
   ];
 
   const userSubMenus = [
     { id: 'user-list' as UserSubMenu, icon: Users, label: '用户列表', hasSubMenu: false },
-    { id: 'promotion-links' as UserSubMenu, icon: Link2, label: '推广链接管理', hasSubMenu: false },
   ];
 
   const financeSubMenus = [
@@ -142,11 +141,11 @@ export function AdminLayout({
   ];
 
   // ========== 菜单事件处理 ==========
-  const marketingSubMenus = [
-    { id: 'promotions' as MarketingSubMenu, icon: Percent, label: '优惠活动管理' },
-    { id: 'marketing-accounts' as MarketingSubMenu, icon: Wallet, label: '营销账户管理' },
-    { id: 'crowd-tags' as MarketingSubMenu, icon: Users, label: '人群标签' },
-  ];
+  // const marketingSubMenus = [
+  //   { id: 'promotions' as MarketingSubMenu, icon: Percent, label: '优惠活动管理' },
+  //   { id: 'marketing-accounts' as MarketingSubMenu, icon: Wallet, label: '营销账户管理' },
+  //   { id: 'crowd-tags' as MarketingSubMenu, icon: Users, label: '人群标签' },
+  // ];
   
   // 处理一级菜单（用户管理）点击
   const handleUserMenuClick = () => {
@@ -456,55 +455,55 @@ export function AdminLayout({
                   );
                 }
 
-                if (isMarketing && !sidebarCollapsed) {
-                  return (
-                    <div key={item.id} className="space-y-1">
-                      <button
-                        onClick={handleMarketingMenuClick}
-                        className={`flex items-center rounded-lg transition-colors w-full gap-3 px-3 py-2 text-sm ${
-                          isActive
-                            ? 'bg-blue-50 text-blue-700'
-                            : 'text-gray-700 hover:bg-gray-100'
-                        }`}
-                      >
-                        <Icon className={`${ICON_SIZES.level1} flex-shrink-0`} />
-                        <span className="flex-1 text-left">{item.label}</span>
-                        {marketingMenuExpanded ? (
-                          <ChevronUp className={`${ICON_SIZES.level2} flex-shrink-0`} />
-                        ) : (
-                          <ChevronDown className={`${ICON_SIZES.level2} flex-shrink-0`} />
-                        )}
-                      </button>
-                      {marketingMenuExpanded && isActive && (
-                        <div className="ml-6 space-y-1">
-                          {marketingSubMenus.map((subMenu) => {
-                            const SubIcon = subMenu.icon;
-                            const isSubActive = currentMarketingSubMenu === subMenu.id;
-
-                            return (
-                              <button
-                                key={subMenu.id}
-                                onClick={() => onMarketingSubMenuChange?.(subMenu.id)}
-                                className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${
-                                  isSubActive
-                                    ? 'bg-blue-100 text-blue-700 font-medium'
-                                    : 'text-gray-600 hover:bg-gray-50'
-                                }`}
-                              >
-                                <SubIcon
-                                  className={`${ICON_SIZES.level2} flex-shrink-0 ${
-                                    isSubActive ? 'text-blue-700' : 'text-gray-600'
-                                  }`}
-                                />
-                                <span className="flex-1 text-left">{subMenu.label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
+                // if (isMarketing && !sidebarCollapsed) {
+                //   return (
+                //     <div key={item.id} className="space-y-1">
+                //       <button
+                //         onClick={handleMarketingMenuClick}
+                //         className={`flex items-center rounded-lg transition-colors w-full gap-3 px-3 py-2 text-sm ${
+                //           isActive
+                //             ? 'bg-blue-50 text-blue-700'
+                //             : 'text-gray-700 hover:bg-gray-100'
+                //         }`}
+                //       >
+                //         <Icon className={`${ICON_SIZES.level1} flex-shrink-0`} />
+                //         <span className="flex-1 text-left">{item.label}</span>
+                //         {marketingMenuExpanded ? (
+                //           <ChevronUp className={`${ICON_SIZES.level2} flex-shrink-0`} />
+                //         ) : (
+                //           <ChevronDown className={`${ICON_SIZES.level2} flex-shrink-0`} />
+                //         )}
+                //       </button>
+                //       {marketingMenuExpanded && isActive && (
+                //         <div className="ml-6 space-y-1">
+                //           {marketingSubMenus.map((subMenu) => {
+                //             const SubIcon = subMenu.icon;
+                //             const isSubActive = currentMarketingSubMenu === subMenu.id;
+                //
+                //             return (
+                //               <button
+                //                 key={subMenu.id}
+                //                 onClick={() => onMarketingSubMenuChange?.(subMenu.id)}
+                //                 className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${
+                //                   isSubActive
+                //                     ? 'bg-blue-100 text-blue-700 font-medium'
+                //                     : 'text-gray-600 hover:bg-gray-50'
+                //                 }`}
+                //               >
+                //                 <SubIcon
+                //                   className={`${ICON_SIZES.level2} flex-shrink-0 ${
+                //                     isSubActive ? 'text-blue-700' : 'text-gray-600'
+                //                   }`}
+                //                 />
+                //                 <span className="flex-1 text-left">{subMenu.label}</span>
+                //               </button>
+                //             );
+                //           })}
+                //         </div>
+                //       )}
+                //     </div>
+                //   );
+                // }
                 
                 if (isFinance && !sidebarCollapsed) {
                   // 财务中心菜单带二级菜单

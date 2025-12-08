@@ -374,6 +374,64 @@ export function getMockApplications(): ApplicationData[] {
         portfolioLink: 'https://sunshier.dev',
         appScreenshots: ['https://images.unsplash.com/photo-1589395937921-e452d6a2f37f?w=400'],
       }
+    },
+    // ========== 登录页测试账号对应的申请 ==========
+    // 待审核测试账号 (pending@test.com)
+    {
+      id: 'APP-TEST-PENDING',
+      applicantName: '待审核测试用户',
+      phoneNumber: '13800138011',
+      userEmail: 'pending@test.com',
+      userType: 'travel_agent' as UserType,
+      certificationType: 'individual' as CertificationType,
+      businessModel: 'mcp' as BusinessModel,
+      identityType: 'individual',
+      status: 'pending' as const,
+      submittedAt: '2025-10-30 10:00:00',
+      reviewHistory: [
+        { reviewer: '系统', timestamp: '2025-10-30 10:00:00', action: 'created' as const, details: '用户提交申请' },
+      ],
+      data: {
+        realName: '待审核测试用户',
+        idNumber: '110101199001011234',
+        phone: '13800138011',
+        email: 'pending@test.com',
+        accountType: 'bank',
+        bankName: '中国工商银行',
+        bankAccount: '6222021234567890123',
+        accountHolder: '待审核测试用户',
+      }
+    },
+    // 已驳回测试账号 (rejected@test.com)
+    {
+      id: 'APP-TEST-REJECTED',
+      applicantName: '已驳回测试用户',
+      phoneNumber: '13800138013',
+      userEmail: 'rejected@test.com',
+      userType: 'travel_app' as UserType,
+      certificationType: 'enterprise' as CertificationType,
+      businessModel: 'saas' as BusinessModel,
+      identityType: 'enterprise',
+      status: 'rejected' as const,
+      submittedAt: '2025-10-28 14:00:00',
+      reviewedAt: '2025-10-29 10:00:00',
+      rejectionReason: '营业执照图片不清晰，无法核实企业信息。请重新上传高清营业执照照片，确保所有文字信息清晰可见。',
+      reviewHistory: [
+        { reviewer: '系统', timestamp: '2025-10-28 14:00:00', action: 'created' as const, details: '用户提交申请' },
+        { reviewer: '管理员', timestamp: '2025-10-29 10:00:00', action: 'rejected' as const, details: '营业执照图片不清晰' },
+      ],
+      data: {
+        companyName: '北京测试科技有限公司',
+        creditCode: '91110000MA001234XY',
+        legalPerson: '已驳回测试用户',
+        legalIdNumber: '110101198001011236',
+        contactName: '已驳回测试用户',
+        contactPhone: '13800138013',
+        contactEmail: 'rejected@test.com',
+        bankName: '中国农业银行',
+        bankAccount: '1234567890123456789',
+        accountName: '北京测试科技有限公司',
+      }
     }
   ];
 }

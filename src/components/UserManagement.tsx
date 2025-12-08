@@ -20,13 +20,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from './ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from './ui/select';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import {
@@ -35,10 +28,10 @@ import {
   Ban,
   CheckCircle,
   Shield,
-  Filter,
   User,
   TrendingUp,
   Building2,
+  Filter,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -50,6 +43,14 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from './ui/pagination';
+import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 import { getMockPartners, type Partner, type PartnerType, type AccountStatus, type SettlementStatus, type PermissionLevel, type BusinessModel } from '../data/mockPartners';
 import { cn } from './ui/utils';
 
@@ -61,17 +62,16 @@ export interface UserManagementProps {
 
 export function UserManagement({ onViewDetail }: UserManagementProps = {}) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<'all' | PartnerType>('all');
-  const [filterAccountStatus, setFilterAccountStatus] = useState<'all' | AccountStatus>('all');
-  const [filterBusinessModel, setFilterBusinessModel] = useState<'all' | BusinessModel>('all');
+  const [activeTab, setActiveTab] = useState<'bigb' | 'smallb'>('bigb');
+  const [showFilters, setShowFilters] = useState(false);
   const [filterCertificationType, setFilterCertificationType] = useState<'all' | 'individual' | 'enterprise'>('all');
-  const [filterPermissionLevel, setFilterPermissionLevel] = useState<'all' | PermissionLevel>('all');
+  const [filterBusinessModel, setFilterBusinessModel] = useState<'all' | BusinessModel>('all');
+  const [filterAccountStatus, setFilterAccountStatus] = useState<'all' | AccountStatus>('all');
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [statusAction, setStatusAction] = useState<'freeze' | 'activate' | 'close' | null>(null);
   const [statusReason, setStatusReason] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
   
   // 风控等级编辑
   const [showLevelDialog, setShowLevelDialog] = useState(false);
@@ -322,6 +322,11 @@ export function UserManagement({ onViewDetail }: UserManagementProps = {}) {
   };
 
   const filteredPartners = partners.filter((partner) => {
+    const matchesTab =
+      activeTab === 'bigb'
+        ? partner.businessModel !== 'affiliate'
+        : partner.businessModel === 'affiliate';
+
     const query = searchQuery.trim().toLowerCase();
     const matchesSearch = query
       ? [partner.displayName, partner.email, partner.phone, partner.id]
@@ -329,20 +334,14 @@ export function UserManagement({ onViewDetail }: UserManagementProps = {}) {
           .some((field) => field.toLowerCase().includes(query))
       : true;
 
-    const matchesType = filterType === 'all' || partner.type === filterType;
-    const matchesBusinessModel = filterBusinessModel === 'all' || partner.businessModel === filterBusinessModel;
-    const matchesCertification = filterCertificationType === 'all' || partner.certificationType === filterCertificationType;
-    const matchesAccountStatus = filterAccountStatus === 'all' || partner.accountStatus === filterAccountStatus;
-    const matchesPermissionLevel = filterPermissionLevel === 'all' || partner.permissionLevel === filterPermissionLevel;
+    const matchesCertification =
+      filterCertificationType === 'all' || partner.certificationType === filterCertificationType;
+    const matchesBusinessModel =
+      filterBusinessModel === 'all' || partner.businessModel === filterBusinessModel;
+    const matchesAccountStatus =
+      filterAccountStatus === 'all' || partner.accountStatus === filterAccountStatus;
 
-    return (
-      matchesSearch &&
-      matchesType &&
-      matchesBusinessModel &&
-      matchesCertification &&
-      matchesAccountStatus &&
-      matchesPermissionLevel
-    );
+    return matchesTab && matchesSearch && matchesCertification && matchesBusinessModel && matchesAccountStatus;
   });
 
   // 计算分页数据
@@ -357,7 +356,16 @@ export function UserManagement({ onViewDetail }: UserManagementProps = {}) {
   // 当筛选条件改变时，重置到第一页
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterType, filterBusinessModel, filterCertificationType, filterAccountStatus, filterPermissionLevel]);
+  }, [searchQuery, activeTab, filterCertificationType, filterBusinessModel, filterAccountStatus]);
+
+  // tab 切换时同步业务模式筛选：大B不包含推广联盟，小B强制推广联盟
+  useEffect(() => {
+    if (activeTab === 'smallb') {
+      setFilterBusinessModel('affiliate');
+    } else if (filterBusinessModel === 'affiliate') {
+      setFilterBusinessModel('all');
+    }
+  }, [activeTab, filterBusinessModel]);
 
   return (
     <div className="p-6 space-y-6">
@@ -376,11 +384,17 @@ export function UserManagement({ onViewDetail }: UserManagementProps = {}) {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* 用户列表 */}
+      {/* Tab 切换与搜索 */}
       <Card>
         <CardHeader className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="relative w-full sm:w-80">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'bigb' | 'smallb')}>
+              <TabsList>
+                <TabsTrigger value="bigb">大B</TabsTrigger>
+                <TabsTrigger value="smallb">小B</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <div className="relative w-full sm:w-80 flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="搜索名称 / 邮箱 / 手机号 / 用户 ID"
@@ -390,9 +404,6 @@ export function UserManagement({ onViewDetail }: UserManagementProps = {}) {
               />
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="border-dashed">
-                导出当前列表
-              </Button>
               <Button
                 variant={showFilters ? 'default' : 'outline'}
                 size="sm"
@@ -405,100 +416,79 @@ export function UserManagement({ onViewDetail }: UserManagementProps = {}) {
           </div>
 
           {showFilters && (
-            <div className="pt-4 border-t mt-4 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="pt-2 border-t space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="flex items-center gap-2">
-                  <Label className="text-sm text-gray-600 w-24 flex-shrink-0">用户类型</Label>
-                  <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">个人/企业</Label>
+                  <Select
+                    value={filterCertificationType}
+                    onValueChange={(value: 'all' | 'individual' | 'enterprise') => setFilterCertificationType(value)}
+                  >
                     <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="全部类型" />
+                      <SelectValue placeholder="全部" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">全部类型</SelectItem>
+                      <SelectItem value="all">全部</SelectItem>
                       <SelectItem value="individual">个人</SelectItem>
-                      <SelectItem value="influencer">博主</SelectItem>
                       <SelectItem value="enterprise">企业</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Label className="text-sm text-gray-600 w-24 flex-shrink-0">业务模式</Label>
-                  <Select value={filterBusinessModel} onValueChange={(value: any) => setFilterBusinessModel(value)}>
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">业务模式</Label>
+                  <Select
+                    value={filterBusinessModel}
+                    onValueChange={(value: 'all' | BusinessModel) => setFilterBusinessModel(value)}
+                    disabled={activeTab === 'smallb'}
+                  >
                     <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="全部模式" />
+                      <SelectValue placeholder="全部" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">全部模式</SelectItem>
-                      <SelectItem value="saas">SaaS</SelectItem>
-                      <SelectItem value="mcp">MCP</SelectItem>
-                      <SelectItem value="affiliate">推广联盟</SelectItem>
+                      {activeTab === 'smallb' ? (
+                        <SelectItem value="affiliate">推广联盟</SelectItem>
+                      ) : (
+                        <>
+                          <SelectItem value="all">全部</SelectItem>
+                          <SelectItem value="saas">SaaS</SelectItem>
+                          <SelectItem value="mcp">MCP</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Label className="text-sm text-gray-600 w-24 flex-shrink-0">认证方式</Label>
-                  <Select value={filterCertificationType} onValueChange={(value: any) => setFilterCertificationType(value)}>
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">账户状态</Label>
+                  <Select
+                    value={filterAccountStatus}
+                    onValueChange={(value: 'all' | AccountStatus) => setFilterAccountStatus(value)}
+                  >
                     <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="全部认证" />
+                      <SelectValue placeholder="全部" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">全部认证</SelectItem>
-                      <SelectItem value="individual">个人认证</SelectItem>
-                      <SelectItem value="enterprise">企业认证</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm text-gray-600 w-24 flex-shrink-0">账户状态</Label>
-                  <Select value={filterAccountStatus} onValueChange={(value: any) => setFilterAccountStatus(value)}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="全部状态" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">全部状态</SelectItem>
+                      <SelectItem value="all">全部</SelectItem>
                       <SelectItem value="active">正常</SelectItem>
                       <SelectItem value="frozen">冻结</SelectItem>
                       <SelectItem value="closed">关闭</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm text-gray-600 w-24 flex-shrink-0">风控等级</Label>
-                  <Select value={filterPermissionLevel} onValueChange={(value: any) => setFilterPermissionLevel(value)}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="全部等级" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">全部等级</SelectItem>
-                      <SelectItem value="L0">L0 (战略级)</SelectItem>
-                      <SelectItem value="L1">L1 (核心级)</SelectItem>
-                      <SelectItem value="L2">L2 (优质级)</SelectItem>
-                      <SelectItem value="L3">L3 (标准级)</SelectItem>
-                      <SelectItem value="L4">L4 (入门级)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
 
-              {(filterType !== 'all' ||
+              {(filterCertificationType !== 'all' ||
                 filterBusinessModel !== 'all' ||
-                filterCertificationType !== 'all' ||
-                filterAccountStatus !== 'all' ||
-                filterPermissionLevel !== 'all') && (
+                filterAccountStatus !== 'all') && (
                 <div className="flex justify-end">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      setFilterType('all');
-                      setFilterBusinessModel('all');
                       setFilterCertificationType('all');
+                      setFilterBusinessModel('all');
                       setFilterAccountStatus('all');
-                      setFilterPermissionLevel('all');
                     }}
                   >
                     清除筛选
@@ -533,61 +523,56 @@ export function UserManagement({ onViewDetail }: UserManagementProps = {}) {
             <table className="border-collapse">
               <thead>
                 <tr className="border-b bg-gray-50">
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">用户 ID</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">用户名称</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">用户信息类型</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">认证方式</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">ID</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">名称</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">个人/企业</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">业务模式</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">B 端类型</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">挂载大B</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">注册时间</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">风控等级</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">邮箱</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">手机号</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">订单数</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">平均加价率</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">账户状态</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">最后登录时间</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">累计订单数</th>
+                  {activeTab === 'smallb' && (
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">挂载大B</th>
+                  )}
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 text-right">操作</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedPartners.length === 0 ? (
                   <tr>
-                    <td colSpan={14} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={activeTab === 'smallb' ? 10 : 9} className="px-4 py-8 text-center text-gray-500">
                       暂无数据
                     </td>
                   </tr>
                 ) : (
                   paginatedPartners.map((partner) => {
                     const isSmallB = partner.businessModel === 'affiliate';
+                    const businessModelLabel =
+                      partner.businessModel === 'saas' ? 'SaaS' : partner.businessModel === 'mcp' ? 'MCP' : '推广联盟';
+                    const certificationLabel = partner.certificationType === 'enterprise' ? '企业' : '个人';
                     return (
                       <tr key={partner.id} className="border-b hover:bg-gray-50">
                         <td className="px-4 py-3 text-sm font-mono text-gray-900">{partner.id}</td>
                         <td className="px-4 py-3 text-sm text-gray-900">{partner.displayName}</td>
-                        <td className="px-4 py-3 text-sm">{getUserInfoTypeBadge(partner.type)}</td>
                         <td className="px-4 py-3 text-sm">
                           <Badge variant="outline" className="px-2 py-0.5 text-xs font-medium bg-slate-50 text-slate-700 border-slate-200">
-                            {partner.certificationType === 'enterprise' ? '企业认证' : '个人认证'}
+                            {certificationLabel}
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <Badge variant="outline" className="px-2 py-0.5 text-xs font-medium bg-slate-50 text-slate-700 border-slate-200">
-                            {partner.businessModel === 'saas' ? 'SaaS' : partner.businessModel === 'mcp' ? 'MCP' : '推广联盟'}
+                            {businessModelLabel}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{isSmallB ? '小B' : '大B'}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{isSmallB ? partner.parentPartnerId ?? '-' : '-'}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">{partner.registeredAt}</td>
-                        <td className="px-4 py-3 text-sm">
-                          {getPermissionLevelBadge(partner.permissionLevel)}
-                        </td>
                         <td className="px-4 py-3 text-sm text-gray-900">{partner.email}</td>
                         <td className="px-4 py-3 text-sm text-gray-900">{partner.phone}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{isSmallB ? '-' : partner.businessData.totalOrders}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{isSmallB ? '-' : `${partner.businessData.avgMarkupRate}%`}</td>
                         <td className="px-4 py-3 text-sm">{getAccountStatusBadge(partner.accountStatus)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{partner.lastLoginAt ?? '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{partner.businessData.totalOrders}</td>
+                        {activeTab === 'smallb' && (
+                          <td className="px-4 py-3 text-sm text-gray-700">{partner.parentPartnerId ?? '-'}</td>
+                        )}
                         <td className="px-4 py-3 text-sm text-right">
                           <div className="flex flex-col items-end gap-1">
                             <Button variant="ghost" size="sm" onClick={() => handleViewDetail(partner)} className="h-8 px-2">

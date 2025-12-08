@@ -1,6 +1,6 @@
 // API密钥相关的 mock 数据
 
-export type ApiKeyStatus = 'active' | 'suspended' | 'revoked';
+export type ApiKeyStatus = 'active' | 'suspended';
 export type PartnerType = 'individual' | 'influencer' | 'enterprise';
 
 export interface ApiKeyInfo {
@@ -199,7 +199,7 @@ export function getMockApiKeys(): ApiKeyInfo[] {
       accountNumber: '6221551234567890123',
       keyName: 'MCP开发测试',
       keyPrefix: 'sk_test_9e0f1a2b',
-      status: 'revoked',
+      status: 'suspended',
       riskLevel: 'L2',
       totalCalls: 3450,
       callsToday: 0,

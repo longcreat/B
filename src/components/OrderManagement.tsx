@@ -30,6 +30,8 @@ import {
   XCircle,
   DollarSign,
   Upload,
+  Edit,
+  RefreshCw,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import {
@@ -94,6 +96,19 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
   const [selectedOrderForRefund, setSelectedOrderForRefund] = useState<Order | null>(null);
   // 每晚退款设置：{ date: string, mode: 'fixed' | 'percentage', value: string }
   const [nightlyRefundSettings, setNightlyRefundSettings] = useState<Record<string, { mode: 'fixed' | 'percentage', value: string }>>({});
+
+  // 修改订单对话框状态
+  const [showModifyDialog, setShowModifyDialog] = useState(false);
+  const [selectedOrderForModify, setSelectedOrderForModify] = useState<Order | null>(null);
+  const [modifyCheckInDate, setModifyCheckInDate] = useState('');
+  const [modifyCheckOutDate, setModifyCheckOutDate] = useState('');
+  const [modifyRoomCount, setModifyRoomCount] = useState(1);
+
+  // 简化退款对话框状态（按每晚退款）
+  const [showSimpleRefundDialog, setShowSimpleRefundDialog] = useState(false);
+  const [selectedOrderForSimpleRefund, setSelectedOrderForSimpleRefund] = useState<Order | null>(null);
+  // 每晚供应商退款金额: { date: string, amount: string }
+  const [nightlySupplierRefunds, setNightlySupplierRefunds] = useState<Record<string, string>>({});
 
   // 使用 mock 数据
   const allOrders: Order[] = getMockOrders();
@@ -300,6 +315,101 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
     const file = e.target.files?.[0];
     if (file) {
       setRefundProof(file);
+    }
+  };
+
+  // 打开修改订单对话框
+  const handleOpenModifyDialog = (order: Order) => {
+    setSelectedOrderForModify(order);
+    setModifyCheckInDate(order.checkInDate);
+    setModifyCheckOutDate(order.checkOutDate);
+    setModifyRoomCount(order.roomCount || order.rooms || 1);
+    setShowModifyDialog(true);
+  };
+
+  // 确认修改订单
+  const handleConfirmModify = () => {
+    if (!selectedOrderForModify) return;
+    
+    if (!modifyCheckInDate || !modifyCheckOutDate) {
+      toast.error('请填写入住和离店日期');
+      return;
+    }
+    
+    if (modifyCheckInDate >= modifyCheckOutDate) {
+      toast.error('离店日期必须大于入住日期');
+      return;
+    }
+    
+    if (modifyRoomCount < 1) {
+      toast.error('房间数必须大于0');
+      return;
+    }
+    
+    // 这里应该调用API更新订单
+    toast.success(`订单 ${selectedOrderForModify.orderId} 修改成功，入住: ${modifyCheckInDate}，离店: ${modifyCheckOutDate}，房间数: ${modifyRoomCount}`);
+    setShowModifyDialog(false);
+    setSelectedOrderForModify(null);
+  };
+
+  // 打开简化退款对话框（按每晚退款）
+  const handleOpenSimpleRefundDialog = (order: Order) => {
+    setSelectedOrderForSimpleRefund(order);
+    setNightlySupplierRefunds({});
+    setShowSimpleRefundDialog(true);
+  };
+
+  // 确认简化退款（按每晚退款，只填供应商退款金额，其他按比例自动计算）
+  const handleConfirmSimpleRefund = () => {
+    if (!selectedOrderForSimpleRefund) return;
+    
+    const order = selectedOrderForSimpleRefund;
+    const nightly = order.nightlyRates || [];
+    
+    // 检查是否至少有一晚设置了退款
+    const refundDates = Object.keys(nightlySupplierRefunds).filter(
+      date => nightlySupplierRefunds[date] && parseFloat(nightlySupplierRefunds[date]) > 0
+    );
+    
+    if (refundDates.length === 0) {
+      toast.error('请至少为一晚设置退款金额');
+      return;
+    }
+    
+    // 验证每晚退款金额
+    let totalSupplierRefund = 0;
+    let totalBigBRefund = 0;
+    const refundDetails: string[] = [];
+    
+    for (const date of refundDates) {
+      const refundAmount = parseFloat(nightlySupplierRefunds[date]) || 0;
+      const night = nightly.find(n => n.date === date);
+      if (!night) continue;
+      
+      if (refundAmount > night.p0) {
+        toast.error(`${date} 的退款金额不能超过该晚供应商价 ¥${night.p0.toFixed(2)}`);
+        return;
+      }
+      
+      // 按比例计算大B退款
+      const refundRatio = refundAmount / night.p0;
+      const bigBRefund = night.p2 * refundRatio;
+      
+      totalSupplierRefund += refundAmount;
+      totalBigBRefund += bigBRefund;
+      refundDetails.push(`${date}: 供应商¥${refundAmount.toFixed(2)}, 大B¥${bigBRefund.toFixed(2)}`);
+    }
+    
+    toast.success(`订单 ${order.orderId} 退款成功！共${refundDates.length}晚，供应商退款: ¥${totalSupplierRefund.toFixed(2)}，大B退款: ¥${totalBigBRefund.toFixed(2)}`);
+    setShowSimpleRefundDialog(false);
+    setSelectedOrderForSimpleRefund(null);
+    setNightlySupplierRefunds({});
+  };
+
+  // 取消订单
+  const handleCancelOrder = (order: Order) => {
+    if (window.confirm(`确定要取消订单 ${order.orderId} 吗？`)) {
+      toast.success(`订单 ${order.orderId} 已取消`);
     }
   };
 
@@ -662,28 +772,21 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                     <TableHead className="min-w-[170px]">酒店名称</TableHead>
                     <TableHead className="min-w-[120px]">房型</TableHead>
                     <TableHead className="min-w-[100px]">入住人姓名</TableHead>
-                    <TableHead className="min-w-[100px]">入住人数</TableHead>
-                    <TableHead className="min-w-[120px]">入住日期</TableHead>
-                    <TableHead className="min-w-[120px]">离店日期</TableHead>
-                    <TableHead className="min-w-[160px]">商户名称</TableHead>
-                    <TableHead className="min-w-[120px]">业务模式</TableHead>
-                    <TableHead className="min-w-[140px]">用户信息类型</TableHead>
-                    <TableHead className="min-w-[120px]">认证方式</TableHead>
-                    <TableHead className="min-w-[150px]">商户电话</TableHead>
-                    <TableHead className="min-w-[200px]">商户邮箱</TableHead>
-                    <TableHead className="min-w-[110px]">订单金额</TableHead>
-                    <TableHead className="min-w-[110px]">总优惠金额</TableHead>
-                    <TableHead className="min-w-[110px]">实付金额</TableHead>
-                    <TableHead className="min-w-[110px]">退款金额</TableHead>
-                    <TableHead className="min-w-[120px]">订单状态</TableHead>
+                    <TableHead className="min-w-[120px]">人数</TableHead>
+                    <TableHead className="min-w-[100px]">供应商价</TableHead>
+                    <TableHead className="min-w-[100px]">底价</TableHead>
+                    <TableHead className="min-w-[100px]">大B售价</TableHead>
+                    <TableHead className="min-w-[100px]">优惠金额</TableHead>
+                    <TableHead className="min-w-[100px]">实付金额</TableHead>
+                    <TableHead className="min-w-[100px]">订单状态</TableHead>
                     <TableHead className="min-w-[100px]">结算状态</TableHead>
-                    <TableHead className="text-right w-[100px] sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">操作</TableHead>
+                    <TableHead className="text-right w-[140px] sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">操作</TableHead>
                   </TableRow>
                 </TableHeader>
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={17} className="text-center py-12 text-gray-500">
+                    <TableCell colSpan={13} className="text-center py-12 text-gray-500">
                       暂无订单数据
                     </TableCell>
                   </TableRow>
@@ -708,50 +811,30 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                               segments.push(`${order.adultCount}成人`);
                             }
                             if (order.childCount !== undefined && order.childCount > 0) {
-                              segments.push(`${order.childCount}小孩`);
+                              segments.push(`${order.childCount}儿童`);
                             }
                             return segments.length > 0 ? (
-                              <span className="text-sm text-gray-700">{segments.join(' ')}</span>
+                              <span className="text-sm text-gray-700">{segments.join('/')}</span>
                             ) : (
                               <span className="text-sm text-gray-400">-</span>
                             );
                           })()}
                         </TableCell>
-                        <TableCell>{order.checkInDate}</TableCell>
-                        <TableCell>{order.checkOutDate}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{order.partnerName}</span>
-                            {order.smallBPartnerId && order.parentPartnerName && (
-                              <span className="text-xs text-gray-500">大B: {order.parentPartnerName}</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-gray-700">
-                            {order.partnerBusinessModel === 'saas' ? 'SaaS' : order.partnerBusinessModel === 'mcp' ? 'MCP' : '推广联盟'}
-                          </span>
-                        </TableCell>
-                        <TableCell>{getUserInfoTypeBadge(order.partnerType)}</TableCell>
-                        <TableCell>{getCertificationBadge(order.certificationType)}</TableCell>
-                        <TableCell className="text-sm text-gray-700">{order.partnerPhone || '-'}</TableCell>
-                        <TableCell className="text-sm text-gray-500">{order.partnerEmail}</TableCell>
+                        <TableCell className="font-mono text-sm text-gray-900">{formatCurrency(order.p0_supplierCost)}</TableCell>
+                        <TableCell className="font-mono text-sm text-gray-900">{formatCurrency(order.p1_platformPrice)}</TableCell>
                         <TableCell className="font-mono text-sm text-gray-900">{formatCurrency(order.p2_salePrice)}</TableCell>
                         <TableCell className="font-mono text-sm text-gray-900">{formatCurrency(order.totalDiscountAmount)}</TableCell>
                         <TableCell className="font-mono text-sm text-indigo-600 font-semibold">{formatCurrency(order.actualAmount)}</TableCell>
-                        <TableCell className={order.refundAmount && order.refundAmount > 0 ? 'font-mono text-sm text-orange-600 font-semibold' : 'font-mono text-sm text-gray-400'}>
-                          {order.refundAmount && order.refundAmount > 0 ? formatCurrency(order.refundAmount) : '-'}
-                        </TableCell>
                         <TableCell>{getOrderStatusBadge(order.orderStatus)}</TableCell>
                         <TableCell>{getSettlementStatusBadge(order.settlementStatus)}</TableCell>
                         <TableCell className="text-right sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8"
+                                  className="h-7 w-7"
                                   onClick={() => handleViewOrderDetail(order)}
                                 >
                                   <Eye className="w-4 h-4" />
@@ -762,40 +845,59 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                               </TooltipContent>
                             </Tooltip>
                             
-                            {/* 免费取消按钮 */}
-                            {(order.orderStatus === 'confirmed' || order.orderStatus === 'pending_confirm') && (
+                            {/* 修改订单按钮 */}
+                            {(order.orderStatus === 'confirmed' || order.orderStatus === 'pending_confirm' || order.orderStatus === 'pending_checkin') && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    onClick={() => handleOpenCancelDialog(order)}
+                                    className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    onClick={() => handleOpenModifyDialog(order)}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>修改订单</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            
+                            {/* 退款按钮 */}
+                            {(order.orderStatus !== 'cancelled_free' && order.orderStatus !== 'cancelled_paid' && order.orderStatus !== 'pending_payment') && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                    onClick={() => handleOpenSimpleRefundDialog(order)}
+                                  >
+                                    <RefreshCw className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>退款</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            
+                            {/* 取消订单按钮 */}
+                            {(order.orderStatus === 'confirmed' || order.orderStatus === 'pending_confirm' || order.orderStatus === 'pending_checkin') && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    onClick={() => handleCancelOrder(order)}
                                   >
                                     <XCircle className="w-4 h-4" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>免费取消</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                            
-                            {/* 部分退款按钮 */}
-                            {(order.orderStatus === 'completed' || order.orderStatus === 'settleable') && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                                    onClick={() => handleOpenRefundDialog(order)}
-                                  >
-                                    <DollarSign className="w-4 h-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>部分退款</p>
+                                  <p>取消订单</p>
                                 </TooltipContent>
                               </Tooltip>
                             )}
@@ -1135,6 +1237,184 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
               取消
             </Button>
             <Button onClick={handleConfirmRefund} className="bg-orange-600 hover:bg-orange-700">
+              确认退款
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 修改订单对话框 */}
+      <Dialog open={showModifyDialog} onOpenChange={setShowModifyDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>修改订单</DialogTitle>
+            <DialogDescription>
+              订单号: {selectedOrderForModify?.orderId} | 酒店: {selectedOrderForModify?.hotelName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="modify-checkin">入住日期 *</Label>
+                <Input
+                  id="modify-checkin"
+                  type="date"
+                  value={modifyCheckInDate}
+                  onChange={(e) => setModifyCheckInDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="modify-checkout">离店日期 *</Label>
+                <Input
+                  id="modify-checkout"
+                  type="date"
+                  value={modifyCheckOutDate}
+                  onChange={(e) => setModifyCheckOutDate(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="modify-rooms">房间数 *</Label>
+              <Input
+                id="modify-rooms"
+                type="number"
+                min="1"
+                value={modifyRoomCount}
+                onChange={(e) => setModifyRoomCount(parseInt(e.target.value) || 1)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowModifyDialog(false)}>
+              取消
+            </Button>
+            <Button onClick={handleConfirmModify}>
+              确认修改
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 简化退款对话框（按每晚退款） */}
+      <Dialog open={showSimpleRefundDialog} onOpenChange={setShowSimpleRefundDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>订单退款（按每晚）</DialogTitle>
+            <DialogDescription>
+              订单号: {selectedOrderForSimpleRefund?.orderId} | 入住: {selectedOrderForSimpleRefund?.checkInDate} 至 {selectedOrderForSimpleRefund?.checkOutDate} ({selectedOrderForSimpleRefund?.nights}晚)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* 每晚退款设置表格 */}
+            <div className="space-y-2">
+              <Label>每晚供应商退款金额 *</Label>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium text-gray-700">日期</th>
+                      <th className="px-3 py-2 text-right font-medium text-gray-700">供应商价(P0)</th>
+                      <th className="px-3 py-2 text-right font-medium text-gray-700">底价(P1)</th>
+                      <th className="px-3 py-2 text-right font-medium text-gray-700">大B售价(P2)</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-700">
+                        <div className="flex items-center gap-1">
+                          <span>供应商退款</span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <AlertCircle className="w-3 h-3 text-gray-400 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>输入退款金额不能大于供应商价格</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </th>
+                      <th className="px-3 py-2 text-right font-medium text-gray-700">预估退款</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedOrderForSimpleRefund?.nightlyRates?.map((night) => {
+                      const refundValue = nightlySupplierRefunds[night.date] || '';
+                      const refundAmount = parseFloat(refundValue) || 0;
+                      const bigBRefund = refundAmount > 0 ? (night.p2 * (refundAmount / night.p0)) : 0;
+                      
+                      return (
+                        <tr key={night.date} className="border-b last:border-b-0 hover:bg-gray-50">
+                          <td className="px-3 py-2 font-mono">{night.date}</td>
+                          <td className="px-3 py-2 text-right">¥{night.p0.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right">¥{night.p1?.toFixed(2) || '-'}</td>
+                          <td className="px-3 py-2 text-right">¥{night.p2.toFixed(2)}</td>
+                          <td className="px-3 py-2">
+                            <Input
+                              type="number"
+                              min="0"
+                              max={night.p0}
+                              step="0.01"
+                              placeholder="退款金额"
+                              value={refundValue}
+                              onChange={(e) => {
+                                const raw = parseFloat(e.target.value);
+                                const safeValue = Number.isNaN(raw) ? '' : Math.min(raw, night.p0).toString();
+                                setNightlySupplierRefunds(prev => ({
+                                  ...prev,
+                                  [night.date]: safeValue,
+                                }));
+                              }}
+                              className="h-8 text-xs w-24"
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-right font-medium text-orange-600">
+                            {refundAmount > 0 ? `¥${bigBRefund.toFixed(2)}` : '-'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 退款汇总 */}
+            {(() => {
+              const nightly = selectedOrderForSimpleRefund?.nightlyRates || [];
+              let totalSupplierRefund = 0;
+              let totalBigBRefund = 0;
+              
+              Object.keys(nightlySupplierRefunds).forEach(date => {
+                const refundAmount = parseFloat(nightlySupplierRefunds[date]) || 0;
+                if (refundAmount > 0) {
+                  const night = nightly.find(n => n.date === date);
+                  if (night) {
+                    totalSupplierRefund += refundAmount;
+                    totalBigBRefund += night.p2 * (refundAmount / night.p0);
+                  }
+                }
+              });
+              
+              if (totalSupplierRefund > 0) {
+                return (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-2">
+                    <p className="text-sm font-medium text-orange-800">退款汇总：</p>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-orange-700">供应商退款合计：</span>
+                      <span className="font-mono font-medium">¥{totalSupplierRefund.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-orange-700">大B退款合计：</span>
+                      <span className="font-mono font-medium">¥{totalBigBRefund.toFixed(2)}</span>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSimpleRefundDialog(false)}>
+              取消
+            </Button>
+            <Button onClick={handleConfirmSimpleRefund}>
               确认退款
             </Button>
           </DialogFooter>

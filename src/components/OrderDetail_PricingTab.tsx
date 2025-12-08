@@ -38,8 +38,10 @@ export function PricingTab({ order }: PricingTabProps) {
   const partnerMarkupRate = order.partnerMarkupRate || 0;
   const partnerCommissionRate = order.partnerCommissionRate || 0;
   
-  // 是否为推广联盟模式
+  // 是否为推广联盟模式（小B订单）
   const isAffiliateMode = order.partnerBusinessModel === 'affiliate';
+  // 是否为小B订单（有smallBPartnerId表示是小B订单）
+  const isSmallBOrder = !!order.smallBPartnerId;
 
   return (
     <Card className="border border-t-0 border-gray-200 rounded-t-none rounded-b-sm">
@@ -50,20 +52,21 @@ export function PricingTab({ order }: PricingTabProps) {
             <TrendingUp className="w-5 h-5 text-blue-600" />
             加价率信息
           </h3>
-          <div className="grid grid-cols-3 gap-4">
+          <div className={`grid gap-4 ${isSmallBOrder ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            {/* 平台加价率 - 始终显示 */}
             <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
               <Label className="text-blue-700 text-sm font-medium">平台加价率</Label>
               <p className="text-xs text-blue-600 mt-1">P0 → P1</p>
               <p className="text-2xl font-bold text-blue-700 mt-2">{platformMarkupRate}%</p>
             </div>
-            {!isAffiliateMode && (
-              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                <Label className="text-green-700 text-sm font-medium">大B加价率</Label>
-                <p className="text-xs text-green-600 mt-1">P1 → P2 (SaaS模式)</p>
-                <p className="text-2xl font-bold text-green-700 mt-2">{partnerMarkupRate}%</p>
-              </div>
-            )}
-            {isAffiliateMode && (
+            {/* 大B加价率 - 始终显示 */}
+            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+              <Label className="text-green-700 text-sm font-medium">大B加价率</Label>
+              <p className="text-xs text-green-600 mt-1">P1 → P2</p>
+              <p className="text-2xl font-bold text-green-700 mt-2">{partnerMarkupRate}%</p>
+            </div>
+            {/* 小B佣金率 - 仅小B订单显示 */}
+            {isSmallBOrder && (
               <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
                 <Label className="text-purple-700 text-sm font-medium">小B佣金率</Label>
                 <p className="text-xs text-purple-600 mt-1">总利润的佣金比例</p>
@@ -90,11 +93,10 @@ export function PricingTab({ order }: PricingTabProps) {
                     <th className="px-3 py-3 text-right text-gray-600 font-medium whitespace-nowrap">退款</th>
                     <th className="px-3 py-3 text-right text-gray-600 font-medium whitespace-nowrap">平台利润</th>
                     <th className="px-3 py-3 text-right text-gray-600 font-medium whitespace-nowrap">大B利润</th>
-                    {isAffiliateMode && (
+                    {isSmallBOrder && (
                       <th className="px-3 py-3 text-right text-gray-600 font-medium whitespace-nowrap">小B佣金</th>
                     )}
                     <th className="px-3 py-3 text-left text-gray-600 font-medium whitespace-nowrap">状态</th>
-                    <th className="px-3 py-3 text-center text-gray-600 font-medium whitespace-nowrap">操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -110,7 +112,7 @@ export function PricingTab({ order }: PricingTabProps) {
                     // 计算每晚利润
                     const totalProfitNightly = p2 - p0; // 每晚总利润
                     const platformProfitNightly = p1 - p0; // 每晚平台利润
-                    const commissionNightly = isAffiliateMode ? p2 * (partnerCommissionRate / 100) : 0; // 每晚小B佣金 = P2 × 佣金率
+                    const commissionNightly = isSmallBOrder ? p2 * (partnerCommissionRate / 100) : 0; // 每晚小B佣金 = P2 × 佣金率
                     const partnerProfitNightly = (p2 - p1) - commissionNightly; // 每晚大B利润 = (P2-P1) - 佣金
                     
                     const statusMap: Record<string, { label: string; className: string }> = {
@@ -135,7 +137,7 @@ export function PricingTab({ order }: PricingTabProps) {
                         <td className="px-3 py-3 text-right text-orange-600 whitespace-nowrap">{refund ? `-¥${refund.toFixed(2)}` : '-'}</td>
                         <td className="px-3 py-3 text-right text-blue-600 whitespace-nowrap font-medium">¥{platformProfitNightly.toFixed(2)}</td>
                         <td className="px-3 py-3 text-right text-green-600 whitespace-nowrap font-medium">¥{partnerProfitNightly.toFixed(2)}</td>
-                        {isAffiliateMode && (
+                        {isSmallBOrder && (
                           <td className="px-3 py-3 text-right text-purple-600 whitespace-nowrap font-medium">¥{commissionNightly.toFixed(2)}</td>
                         )}
                         <td className="px-3 py-3 text-left whitespace-nowrap">
@@ -143,29 +145,12 @@ export function PricingTab({ order }: PricingTabProps) {
                             {statusInfo.label}
                           </span>
                         </td>
-                        <td className="px-3 py-3 text-center whitespace-nowrap">
-                          {canRefund ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                              onClick={() => {
-                                // TODO: 实现单晚退款功能
-                                console.log('退款', n.date);
-                              }}
-                            >
-                              退款
-                            </Button>
-                          ) : (
-                            <span className="text-xs text-gray-400">-</span>
-                          )}
-                        </td>
                       </tr>
                     );
                   })}
                   {nightlyRates.length === 0 && (
                     <tr>
-                      <td className="px-3 py-8 text-center text-gray-500" colSpan={isAffiliateMode ? 12 : 11}>
+                      <td className="px-3 py-8 text-center text-gray-500" colSpan={isSmallBOrder ? 11 : 10}>
                         暂无按晚价格数据
                       </td>
                     </tr>
@@ -254,7 +239,7 @@ export function PricingTab({ order }: PricingTabProps) {
                     <span className="text-gray-600">总大B利润</span>
                     <span className="font-medium text-green-600">¥{totalPartnerProfit.toFixed(2)}</span>
                   </div>
-                  {isAffiliateMode && (
+                  {isSmallBOrder && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">总小B佣金</span>
                       <span className="font-medium text-purple-600">¥{totalCommission.toFixed(2)}</span>

@@ -64,7 +64,6 @@ export function ApiKeyManagement({ onViewApiKeyDetail }: ApiKeyManagementProps) 
     const config = {
       active: { label: '活跃', className: 'bg-green-50 text-green-700 border-green-300' },
       suspended: { label: '已暂停', className: 'bg-orange-50 text-orange-700 border-orange-300' },
-      revoked: { label: '已吊销', className: 'bg-red-50 text-red-700 border-red-300' },
     };
     const { label, className } = config[status];
     return <Badge variant="outline" className={className}>{label}</Badge>;
@@ -220,7 +219,6 @@ export function ApiKeyManagement({ onViewApiKeyDetail }: ApiKeyManagementProps) 
                       <SelectItem value="all">全部状态</SelectItem>
                       <SelectItem value="active">活跃</SelectItem>
                       <SelectItem value="suspended">已暂停</SelectItem>
-                      <SelectItem value="revoked">已吊销</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -311,8 +309,6 @@ export function ApiKeyManagement({ onViewApiKeyDetail }: ApiKeyManagementProps) 
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">密钥前缀</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">风控等级</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">总调用次数</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">今日调用</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">本月调用</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">成功率</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">平均响应时间</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">最后使用</th>
@@ -324,7 +320,7 @@ export function ApiKeyManagement({ onViewApiKeyDetail }: ApiKeyManagementProps) 
               <tbody>
                 {paginatedApiKeys.length === 0 ? (
                   <tr>
-                    <td colSpan={17} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={15} className="px-4 py-8 text-center text-gray-500">
                       暂无API密钥数据
                     </td>
                   </tr>
@@ -340,8 +336,6 @@ export function ApiKeyManagement({ onViewApiKeyDetail }: ApiKeyManagementProps) 
                       <td className="px-4 py-3 text-sm text-gray-900 font-mono">{key.keyPrefix}...</td>
                       <td className="px-4 py-3 text-sm">{getRiskLevelBadge(key.riskLevel)}</td>
                       <td className="px-4 py-3 text-sm text-gray-900">{key.totalCalls.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{key.callsToday.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{key.callsThisMonth.toLocaleString()}</td>
                       <td className="px-4 py-3 text-sm text-green-600 font-medium">{key.successRate}%</td>
                       <td className="px-4 py-3 text-sm text-gray-900">{key.avgResponseTime}ms</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{key.lastUsed}</td>
@@ -349,14 +343,14 @@ export function ApiKeyManagement({ onViewApiKeyDetail }: ApiKeyManagementProps) 
                       <td className="px-4 py-3 text-sm">{getStatusBadge(key.status)}</td>
                       <td className="px-4 py-3 text-sm">
                         <div className="flex gap-2">
-                          <Button
+                          {/* <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleViewDetail(key)}
                             className="h-8 px-2"
                           >
                             查看详情
-                          </Button>
+                          </Button> */}
                           {key.status === 'active' && (
                             <Button
                               variant="ghost"

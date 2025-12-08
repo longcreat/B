@@ -77,8 +77,21 @@ export function RegistrationSteps({
       if (applicationData.status === 'rejected' && isEditMode) {
         // 修改信息模式：直接跳转到表单
         setCurrentStep('form');
-      } else if (applicationData.status !== 'rejected') {
-        // 非驳回状态：显示状态页
+      } else if (applicationData.status === 'rejected' && !isEditMode) {
+        // 驳回状态但非编辑模式：显示状态页（用户可以点击重新申请或修改信息）
+        setCurrentStep('status');
+        // 从申请数据恢复选择的状态
+        if (applicationData.userType) {
+          setSelectedUserType(applicationData.userType);
+        }
+        if (applicationData.certificationType) {
+          setSelectedCertificationType(applicationData.certificationType);
+        }
+        if (applicationData.businessModel) {
+          setSelectedBusinessModel(applicationData.businessModel);
+        }
+      } else if (applicationData.status === 'pending' || applicationData.status === 'approved') {
+        // 待审核或已通过状态：显示状态页
         setCurrentStep('status');
         // 从申请数据恢复选择的状态
         if (applicationData.userType) {
@@ -91,7 +104,6 @@ export function RegistrationSteps({
           setSelectedBusinessModel(applicationData.businessModel);
         }
       }
-      // 驳回状态但非编辑模式：保持在状态页（用户可以点击重新申请）
     } else if (!existingApplicationId && !applicationData) {
       // 没有申请ID和数据（首次访问），从用户信息类型选择开始
       setCurrentStep('userType');
@@ -133,7 +145,7 @@ export function RegistrationSteps({
     setIsReapplying(true); // 进入重新申请模式
     onUserTypeChange?.(null as any);
     onCertificationTypeChange?.(null as any);
-    onBusinessModelChange?.(null);
+    onBusinessModelChange?.(null as any);
     if (onReapply) {
       onReapply();
     }

@@ -154,7 +154,7 @@ const initializeTestAccounts = () => {
   const testApplicationsDefinition = [
     // 待审核申请
     {
-      id: 'APP-001',
+      id: 'APP-TEST-PENDING',
       userId: 'test-pending',
       userEmail: 'pending@test.com',
       applicantName: '张三',
@@ -175,7 +175,7 @@ const initializeTestAccounts = () => {
     },
     // 审核通过申请 - MCP模式
     {
-      id: 'APP-002',
+      id: 'APP-TEST-MCP',
       userId: 'test-approved-mcp',
       userEmail: 'mcp@test.com',
       applicantName: '李四',
@@ -204,7 +204,7 @@ const initializeTestAccounts = () => {
     },
     // 审核通过申请 - SaaS模式
     {
-      id: 'APP-003',
+      id: 'APP-TEST-SAAS',
       userId: 'test-approved-saas',
       userEmail: 'saas@test.com',
       applicantName: '赵六',
@@ -226,7 +226,7 @@ const initializeTestAccounts = () => {
     },
     // 审核通过申请 - 推广联盟模式
     {
-      id: 'APP-004',
+      id: 'APP-TEST-AFFILIATE',
       userId: 'test-approved-affiliate',
       userEmail: 'affiliate@test.com',
       applicantName: '孙七',
@@ -251,7 +251,7 @@ const initializeTestAccounts = () => {
     },
     // 已驳回申请
     {
-      id: 'APP-005',
+      id: 'APP-TEST-REJECTED',
       userId: 'test-rejected',
       userEmail: 'rejected@test.com',
       applicantName: '王五',

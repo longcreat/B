@@ -180,6 +180,7 @@ export function getMockOrders(): Order[] {
         { date: '2025-10-19', p0: 400, p1: 440, p2: 484 },
       ],
       platformMarkupRate: 10, // 平台加价率10%
+      partnerMarkupRate: 10, // 大B加价率10% (P1→P2)
       partnerCommissionRate: 1.736, // 小B佣金率1.736%（基于P2，上限=10%/(1+10%)≈9.09%，符合规则✓）
       platformProfit: 80, // 平台利润 = P1 - P0 = 880 - 800 = 80
       partnerProfit: 16.8, // 小B佣金 = P2 × 佣金率 = 968 × 1.736% = 16.8
@@ -235,14 +236,14 @@ export function getMockOrders(): Order[] {
       p0_supplierCost: 1200,
       p1_platformPrice: 1320,
       p2_salePrice: 1452,
-      platformMarkupRate: 10,
-      partnerMarkupRate: 10,
+      platformMarkupRate: 10, // 平台加价率10% (P0→P1)
+      partnerMarkupRate: 10, // 大B加价率10% (P1→P2)
       nightlyRates: [
         { date: '2025-10-23', p0: 600, p1: 660, p2: 726 },
         { date: '2025-10-24', p0: 600, p1: 660, p2: 726 },
       ],
-      platformProfit: 120,
-      partnerProfit: 132,
+      platformProfit: 120, // 平台利润 = P1 - P0 = 1320 - 1200 = 120
+      partnerProfit: 132, // 大B利润 = P2 - P1 = 1452 - 1320 = 132
       totalDiscountAmount: 80,
       discountContribution: { platform: 60, bigB: 20 },
       commissionAmount: 132,
@@ -318,6 +319,7 @@ export function getMockOrders(): Order[] {
         { date: '2025-10-21', p0: 475, p1: 522.5, p2: 574.75 },
       ],
       platformMarkupRate: 10,
+      partnerMarkupRate: 10, // 大B加价率10% (P1→P2)
       partnerCommissionRate: 1.736, // 小B佣金率1.736%（基于P2，上限=10%/(1+10%)≈9.09%，符合规则✓）
       platformProfit: 95, // 平台利润 = P1 - P0 = 1045 - 950 = 95
       partnerProfit: 19.95, // 小B佣金 = P2 × 佣金率 = 1149.5 × 1.736% = 19.95
@@ -378,13 +380,14 @@ export function getMockOrders(): Order[] {
       p0_supplierCost: 1100,
       p1_platformPrice: 1210,
       p2_salePrice: 1331,
-      platformMarkupRate: 10,
+      platformMarkupRate: 10, // 平台加价率10% (P0→P1)
+      partnerMarkupRate: 10, // 大B加价率10% (P1→P2)
       nightlyRates: [
         { date: '2025-10-25', p0: 550, p1: 605, p2: 665.5 },
         { date: '2025-10-26', p0: 550, p1: 605, p2: 665.5 },
       ],
-      platformProfit: 110,
-      partnerProfit: 121,
+      platformProfit: 110, // 平台利润 = P1 - P0 = 1210 - 1100 = 110
+      partnerProfit: 121, // 大B利润 = P2 - P1 = 1331 - 1210 = 121
       totalDiscountAmount: 0,
       discountContribution: { platform: 0, bigB: 0 },
       commissionAmount: 121,
@@ -430,14 +433,15 @@ export function getMockOrders(): Order[] {
       p0_supplierCost: 720,
       p1_platformPrice: 792,
       p2_salePrice: 878,
-      platformMarkupRate: 10,
+      platformMarkupRate: 10, // 平台加价率10% (P0→P1)
+      partnerMarkupRate: 10.86, // 大B加价率10.86% (P1→P2: (878-792)/792≈10.86%)
       nightlyRates: [
         { date: '2025-10-21', p0: 240, p1: 264, p2: 292.67 },
         { date: '2025-10-22', p0: 240, p1: 264, p2: 292.67 },
         { date: '2025-10-23', p0: 240, p1: 264, p2: 292.67 },
       ],
-      platformProfit: 72,
-      partnerProfit: 86,
+      platformProfit: 72, // 平台利润 = P1 - P0 = 792 - 720 = 72
+      partnerProfit: 86, // 大B利润 = P2 - P1 = 878 - 792 = 86
       totalDiscountAmount: 0,
       discountContribution: { platform: 0, bigB: 0 },
       commissionAmount: 86,
@@ -485,13 +489,14 @@ export function getMockOrders(): Order[] {
       p0_supplierCost: 850,
       p1_platformPrice: 935,
       p2_salePrice: 1028.5,
-      platformMarkupRate: 10,
+      platformMarkupRate: 10, // 平台加价率10% (P0→P1)
+      partnerMarkupRate: 10, // 大B加价率10% (P1→P2)
       nightlyRates: [
         { date: '2025-10-19', p0: 425, p1: 467.5, p2: 514.25 },
         { date: '2025-10-20', p0: 425, p1: 467.5, p2: 514.25 },
       ],
-      platformProfit: 85,
-      partnerProfit: 93.5,
+      platformProfit: 85, // 平台利润 = P1 - P0 = 935 - 850 = 85
+      partnerProfit: 93.5, // 大B利润 = P2 - P1 = 1028.5 - 935 = 93.5
       totalDiscountAmount: 0,
       discountContribution: { platform: 0, bigB: 0 },
       commissionAmount: 93.5,
@@ -544,6 +549,7 @@ export function getMockOrders(): Order[] {
       p1_platformPrice: 792,
       p2_salePrice: 878,
       platformMarkupRate: 10,
+      partnerMarkupRate: 10.86, // 大B加价率10.86% (P1→P2: (439-396)/396≈10.86%)
       partnerCommissionRate: 1.8, // 小B佣金率1.8%（基于P2，上限=10%/(1+10%)≈9.09%，符合规则✓）
       nightlyRates: [
         { date: '2025-10-22', p0: 360, p1: 396, p2: 439 },
@@ -551,7 +557,7 @@ export function getMockOrders(): Order[] {
       ],
       platformProfit: 72, // 平台利润 = P1 - P0 = 792 - 720 = 72
       partnerProfit: 15.8, // 小B佣金 = P2 × 佣金率 = 878 × 1.8% = 15.8
-      bigBProfit: 72.2, // 大B利润 = (P2-P1) - 小B佣金 = (878-792) - 15.8 = 72.2（>0，大B不亏损✓）
+      bigBProfit: 70.2, // 大B利润 = (P2-P1) - 小B佣金 = (878-792) - 15.8 = 70.2（>0，大B不亏损✓）
       totalDiscountAmount: 0,
       discountContribution: { platform: 0, bigB: 0 },
       commissionAmount: 15.8,
@@ -599,13 +605,14 @@ export function getMockOrders(): Order[] {
       p0_supplierCost: 1200,
       p1_platformPrice: 1320,
       p2_salePrice: 1452,
-      platformMarkupRate: 10,
+      platformMarkupRate: 10, // 平台加价率10% (P0→P1)
+      partnerMarkupRate: 10, // 大B加价率10% (P1→P2)
       nightlyRates: [
         { date: '2025-10-16', p0: 600, p1: 660, p2: 726 },
         { date: '2025-10-17', p0: 600, p1: 660, p2: 726 },
       ],
-      platformProfit: 120,
-      partnerProfit: 132,
+      platformProfit: 120, // 平台利润 = P1 - P0 = 1320 - 1200 = 120
+      partnerProfit: 132, // 大B利润 = P2 - P1 = 1452 - 1320 = 132
       totalDiscountAmount: 0,
       discountContribution: { platform: 0, bigB: 0 },
       commissionAmount: 132,
@@ -653,13 +660,14 @@ export function getMockOrders(): Order[] {
       p0_supplierCost: 850,
       p1_platformPrice: 935,
       p2_salePrice: 1028.5,
-      platformMarkupRate: 10,
+      platformMarkupRate: 10, // 平台加价率10% (P0→P1)
+      partnerMarkupRate: 10, // 大B加价率10% (P1→P2)
       nightlyRates: [
         { date: '2025-10-18', p0: 425, p1: 467.5, p2: 514.25 },
         { date: '2025-10-19', p0: 425, p1: 467.5, p2: 514.25 },
       ],
-      platformProfit: 85,
-      partnerProfit: 93.5,
+      platformProfit: 85, // 平台利润 = P1 - P0 = 935 - 850 = 85
+      partnerProfit: 93.5, // 大B利润 = P2 - P1 = 1028.5 - 935 = 93.5
       totalDiscountAmount: 0,
       discountContribution: { platform: 0, bigB: 0 },
       commissionAmount: 93.5,
@@ -707,13 +715,14 @@ export function getMockOrders(): Order[] {
       p0_supplierCost: 750,
       p1_platformPrice: 825,
       p2_salePrice: 907.5,
-      platformMarkupRate: 10,
+      platformMarkupRate: 10, // 平台加价率10% (P0→P1)
+      partnerMarkupRate: 10, // 大B加价率10% (P1→P2)
       nightlyRates: [
         { date: '2025-10-26', p0: 375, p1: 412.5, p2: 453.75 },
         { date: '2025-10-27', p0: 375, p1: 412.5, p2: 453.75 },
       ],
-      platformProfit: 75,
-      partnerProfit: 82.5,
+      platformProfit: 75, // 平台利润 = P1 - P0 = 825 - 750 = 75
+      partnerProfit: 82.5, // 大B利润 = P2 - P1 = 907.5 - 825 = 82.5
       totalDiscountAmount: 0,
       discountContribution: { platform: 0, bigB: 0 },
       commissionAmount: 82.5,
