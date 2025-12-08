@@ -15,8 +15,8 @@ import {
 
 export type OrderStatus = 'pending_checkin' | 'completed' | 'cancelled_free' | 'cancelled_partial';
 
-// 结算状态类型
-export type SettlementStatus = 'pending' | 'settleable' | 'processing' | 'settled';
+// 结算状态类型（简化为三种状态）
+export type SettlementStatus = 'unsettled' | 'settled' | 'cancelled';
 
 // 订单明细（按PRD要求的财务字段）
 export interface OrderDetail {
@@ -66,10 +66,9 @@ export function OrderDetailsTable({ orders }: OrderDetailsTableProps) {
 
   const getSettlementStatusBadge = (status: SettlementStatus) => {
     const config = {
-      pending: { label: '待结算', className: 'bg-yellow-50 text-yellow-700 border-yellow-300' },
-      settleable: { label: '可结算', className: 'bg-blue-50 text-blue-700 border-blue-300' },
-      processing: { label: '处理中', className: 'bg-purple-50 text-purple-700 border-purple-300' },
+      unsettled: { label: '未结算', className: 'bg-yellow-50 text-yellow-700 border-yellow-300' },
       settled: { label: '已结算', className: 'bg-green-50 text-green-700 border-green-300' },
+      cancelled: { label: '已取消', className: 'bg-gray-50 text-gray-700 border-gray-300' },
     };
     const { label, className } = config[status];
     return <Badge variant="outline" className={className}>{label}</Badge>;
@@ -114,25 +113,6 @@ export function OrderDetailsTable({ orders }: OrderDetailsTableProps) {
     minAmount !== '' ||
     maxAmount !== '';
 
-  const renderCommissionRate = (order: OrderDetail) => {
-    if (order.orderType === 'smallB') {
-      if (typeof order.commissionRate === 'number') {
-        return `${order.commissionRate.toFixed(2)}%`;
-      }
-      return '-';
-    }
-    return '-';
-  };
-
-  const renderMarkupRate = (order: OrderDetail) => {
-    if (order.orderType === 'bigB') {
-      if (typeof order.markupRate === 'number') {
-        return `${order.markupRate.toFixed(2)}%`;
-      }
-      return '-';
-    }
-    return '-';
-  };
 
   return (
     <Card>
@@ -161,10 +141,9 @@ export function OrderDetailsTable({ orders }: OrderDetailsTableProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部状态</SelectItem>
-                  <SelectItem value="pending">待结算</SelectItem>
-                  <SelectItem value="settleable">可结算</SelectItem>
-                  <SelectItem value="processing">处理中</SelectItem>
+                  <SelectItem value="unsettled">未结算</SelectItem>
                   <SelectItem value="settled">已结算</SelectItem>
+                  <SelectItem value="cancelled">已取消</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -286,32 +265,24 @@ export function OrderDetailsTable({ orders }: OrderDetailsTableProps) {
             <thead>
               <tr className="border-b bg-gray-50">
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">订单号</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">商户名称</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">酒店名称</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">入住日期</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">下单日期</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">离店日期</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">结算状态</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">订单金额</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">优惠金额</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">实付金额</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">订单售价</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">大B出资金额</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">退款金额</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">分销价</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">底价</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">平台出资</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">大B出资</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">佣金比例</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">佣金</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">平台利润</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">加价比例</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">应付大B</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">应付供应商</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">操作</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">实付金额</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">订单底价</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">供应商价</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">应付大B金额</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">应付供应商金额</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">利润</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">状态</th>
               </tr>
             </thead>
             <tbody>
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={21} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={13} className="px-4 py-10 text-center text-gray-500">
                     暂无订单数据
                   </td>
                 </tr>
@@ -323,71 +294,46 @@ export function OrderDetailsTable({ orders }: OrderDetailsTableProps) {
                   const refundP1Part = order.p2_orderAmount > 0
                     ? (order.totalRefund * order.p1_distributionPrice) / order.p2_orderAmount
                     : 0;
-                  const refundProfit = order.p2_orderAmount > 0
-                    ? (order.totalRefund * (order.p1_distributionPrice - order.p0_supplierCost)) / order.p2_orderAmount
-                    : 0;
 
-                  const platformProfit =
-                    order.p1_distributionPrice -
-                    order.p0_supplierCost -
-                    refundProfit -
-                    (order.platformDiscountContribution || 0);
-
+                  // 应付大B金额
                   const payableToBigB =
                     (order.p2_orderAmount - order.totalRefund) -
                     (order.p1_distributionPrice - refundP1Part) -
                     (order.bigBDiscountContribution || 0);
 
+                  // 应付供应商金额
                   const payableToSupplier = order.p0_supplierCost - refundP0Part;
 
-                  // 佣金计算：需扣除退款对应的佣金部分
-                  const refundCommissionPart = order.commissionRate && order.totalRefund > 0
-                    ? order.totalRefund * (order.commissionRate / 100)
+                  // 利润计算公式：订单底价 - 供应商价
+                  const profit = order.p1_distributionPrice - order.p0_supplierCost;
+
+                  // 计算加价率：(订单售价 - 订单底价) / 订单底价 * 100%
+                  const markupRate = order.p1_distributionPrice > 0
+                    ? ((order.p2_orderAmount - order.p1_distributionPrice) / order.p1_distributionPrice * 100)
                     : 0;
-                  const actualCommission = order.totalCommission - refundCommissionPart;
 
                   return (
                     <tr key={order.orderId} className="border-b hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm font-mono text-gray-900">{order.orderId}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{order.merchantName}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{order.hotelName}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{order.checkInDate}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{order.checkOutDate}</td>
-                      <td className="px-4 py-3 text-sm">{getSettlementStatusBadge(order.settlementStatus)}</td>
-                      <td className="px-4 py-3 text-sm text-right font-medium text-gray-900">¥{order.p2_orderAmount.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-right text-orange-600">
-                        {order.totalDiscount > 0 ? `¥${order.totalDiscount.toLocaleString()}` : '-'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-900">¥{order.actualAmount.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-right text-red-600">
-                        {order.totalRefund > 0 ? `¥${order.totalRefund.toLocaleString()}` : '-'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right text-blue-600">¥{order.p1_distributionPrice.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-right text-purple-600">¥{order.p0_supplierCost.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-right text-blue-600">
-                        {order.platformDiscountContribution > 0 ? `¥${order.platformDiscountContribution.toLocaleString()}` : '-'}
+                      <td className="px-4 py-3 text-sm text-right">
+                        <div className="font-medium text-gray-900">¥{order.p2_orderAmount.toLocaleString()}</div>
+                        <div className="text-xs text-blue-600 mt-0.5">加价率: {markupRate.toFixed(2)}%</div>
                       </td>
                       <td className="px-4 py-3 text-sm text-right text-green-600">
                         {order.bigBDiscountContribution > 0 ? `¥${order.bigBDiscountContribution.toLocaleString()}` : '-'}
                       </td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-900">{renderCommissionRate(order)}</td>
-                      <td className="px-4 py-3 text-sm text-right text-purple-600">
-                        {actualCommission > 0 ? `¥${actualCommission.toFixed(2)}` : '-'}
+                      <td className="px-4 py-3 text-sm text-right text-red-600">
+                        {order.totalRefund > 0 ? `¥${order.totalRefund.toLocaleString()}` : '-'}
                       </td>
-                      <td className="px-4 py-3 text-sm text-right font-medium text-green-600">¥{platformProfit.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-900">{renderMarkupRate(order)}</td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-900">¥{order.actualAmount.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-right text-blue-600">¥{order.p1_distributionPrice.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-right text-purple-600">¥{order.p0_supplierCost.toLocaleString()}</td>
                       <td className="px-4 py-3 text-sm text-right font-medium text-orange-600">¥{Math.max(0, payableToBigB).toFixed(2)}</td>
                       <td className="px-4 py-3 text-sm text-right font-medium text-purple-600">¥{Math.max(0, payableToSupplier).toFixed(2)}</td>
-                      <td className="px-4 py-3 text-sm">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2"
-                          onClick={() => window.location.href = `/admin/orders/${order.orderId}`}
-                        >
-                          查看详情
-                        </Button>
-                      </td>
+                      <td className="px-4 py-3 text-sm text-right font-medium text-green-600">¥{profit.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-sm">{getSettlementStatusBadge(order.settlementStatus)}</td>
                     </tr>
                   );
                 })

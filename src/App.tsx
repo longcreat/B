@@ -32,11 +32,11 @@ import { WithdrawalDetail } from './components/WithdrawalDetail';
 import { ReconciliationManagement, type Reconciliation } from './components/ReconciliationManagement';
 import { ReconciliationDetail } from './components/ReconciliationDetail';
 import { ReconciliationSummary } from './components/ReconciliationSummary';
-import { PartnerSettlementBatchList, type PartnerSettlementBatch } from './components/PartnerSettlementBatchList';
+import { SettlementManagement } from './components/SettlementManagement';
+import { type PartnerSettlementBatch } from './components/PartnerSettlementBatchList';
 import { PartnerSettlementBatchDetail } from './components/PartnerSettlementBatchDetail';
-import { SupplierSettlementBatchList, type SupplierSettlementBatch } from './components/SupplierSettlementBatchList';
+import { type SupplierSettlementBatch } from './components/SupplierSettlementBatchList';
 import { SupplierSettlementBatchDetail } from './components/SupplierSettlementBatchDetail';
-import { SettlementConfig } from './components/SettlementConfig';
 import { OrderTransactionList, type OrderTransaction } from './components/OrderTransactionList';
 import { OrderTransactionDetail } from './components/OrderTransactionDetail';
 import { OrderRefundRecordList, type OrderRefundRecord } from './components/OrderRefundRecordList';
@@ -922,16 +922,20 @@ export default function App() {
             case 'merchant-accounts':
               return <MerchantAccounts />;
             case 'settlement':
-              // 结算管理下的三级菜单
-              if (adminCurrentSettlementSubMenu === 'partner-batches') {
-                return <PartnerSettlementBatchList onViewBatchDetail={setSelectedPartnerBatch} />;
-              } else if (adminCurrentSettlementSubMenu === 'supplier-batches') {
-                return <SupplierSettlementBatchList onViewBatchDetail={setSelectedSupplierBatch} />;
-              } else if (adminCurrentSettlementSubMenu === 'settlement-config') {
-                return <SettlementConfig />;
-              }
-              // 如果三级菜单未选中，显示结算管理的占位内容
-              return <div className="p-6"><div className="text-lg font-semibold">结算管理</div><div className="text-gray-500 mt-2">请选择具体的菜单项</div></div>;
+              // 结算管理直接显示tab页面
+              return (
+                <div className="p-6 space-y-6">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span>财务中心</span>
+                    <span>/</span>
+                    <span className="text-gray-900 font-medium">结算管理</span>
+                  </div>
+                  <SettlementManagement 
+                    onViewPartnerBatchDetail={setSelectedPartnerBatch}
+                    onViewSupplierBatchDetail={setSelectedSupplierBatch}
+                  />
+                </div>
+              );
             case 'reconciliation':
               // 对账下的三级菜单
               if (adminCurrentReconciliationSubMenu === 'reconciliation-management') {
