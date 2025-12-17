@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { ArrowLeft, CheckCircle2, XCircle } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
 import {
@@ -91,6 +92,17 @@ export function BigBAccountDetail({ account, onBack }: BigBAccountDetailProps) {
       operator: '系统管理员',
     },
   ] : [];
+
+  // Mock数据 - 月度GMV汇总
+  const monthlyGMVData = [
+    { month: '2024-05', gmv: 45000 },
+    { month: '2024-06', gmv: 52000 },
+    { month: '2024-07', gmv: 48000 },
+    { month: '2024-08', gmv: 61000 },
+    { month: '2024-09', gmv: 58000 },
+    { month: '2024-10', gmv: 67000 },
+    { month: '2024-11', gmv: 72000 },
+  ];
 
   // Mock数据 - 余额明细
   const balanceDetails: BigBBalanceDetail[] = [
@@ -523,6 +535,76 @@ export function BigBAccountDetail({ account, onBack }: BigBAccountDetailProps) {
             <div>
               <label className="text-sm text-gray-500">账户余额</label>
               <div className="mt-1 text-2xl font-bold text-purple-600">¥{account.businessStats.accountBalance.toLocaleString()}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 月度GMV汇总卡片 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>月度GMV汇总</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {/* GMV统计数据 */}
+            <div className="grid grid-cols-4 gap-6">
+              <div>
+                <label className="text-sm text-gray-500">近7月总GMV</label>
+                <div className="mt-1 text-2xl font-bold text-blue-600">
+                  ¥{monthlyGMVData.reduce((sum, item) => sum + item.gmv, 0).toLocaleString()}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-gray-500">月均GMV</label>
+                <div className="mt-1 text-2xl font-bold text-green-600">
+                  ¥{Math.round(monthlyGMVData.reduce((sum, item) => sum + item.gmv, 0) / monthlyGMVData.length).toLocaleString()}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-gray-500">最高月GMV</label>
+                <div className="mt-1 text-2xl font-bold text-purple-600">
+                  ¥{Math.max(...monthlyGMVData.map(item => item.gmv)).toLocaleString()}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-gray-500">环比增长</label>
+                <div className="mt-1 text-2xl font-bold text-orange-600">
+                  {monthlyGMVData.length >= 2 
+                    ? ((monthlyGMVData[monthlyGMVData.length - 1].gmv - monthlyGMVData[monthlyGMVData.length - 2].gmv) / monthlyGMVData[monthlyGMVData.length - 2].gmv * 100).toFixed(1)
+                    : '0.0'}%
+                </div>
+              </div>
+            </div>
+
+            {/* GMV趋势曲线图 */}
+            <div>
+              <label className="text-sm text-gray-500 mb-3 block">GMV趋势</label>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={monthlyGMVData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `¥${(value / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => [`¥${value.toLocaleString()}`, 'GMV']}
+                    labelStyle={{ color: '#666' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="gmv" 
+                    stroke="#3b82f6" 
+                    strokeWidth={2}
+                    dot={{ fill: '#3b82f6', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </CardContent>

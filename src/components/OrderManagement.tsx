@@ -110,6 +110,18 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
   // 每晚供应商退款金额: { date: string, amount: string }
   const [nightlySupplierRefunds, setNightlySupplierRefunds] = useState<Record<string, string>>({});
 
+  // 修改/退款弹窗状态
+  const [showModifyRefundDialog, setShowModifyRefundDialog] = useState(false);
+  const [selectedOrderForModifyRefund, setSelectedOrderForModifyRefund] = useState<Order | null>(null);
+  const [modifyRefundCheckInDate, setModifyRefundCheckInDate] = useState('');
+  const [modifyRefundCheckOutDate, setModifyRefundCheckOutDate] = useState('');
+  const [modifyRefundGuestCount, setModifyRefundGuestCount] = useState(1);
+  const [supplierRefundAmount, setSupplierRefundAmount] = useState('');
+  const [refundProofFile, setRefundProofFile] = useState<File | null>(null);
+
+  // 二次确认弹窗状态
+  const [showConfirmRefundDialog, setShowConfirmRefundDialog] = useState(false);
+
   // 使用 mock 数据
   const allOrders: Order[] = getMockOrders();
   
@@ -198,6 +210,41 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
     if (onViewOrderDetail) {
       onViewOrderDetail(order);
     }
+  };
+
+  // 打开修改/退款对话框
+  const handleOpenModifyRefundDialog = (order: Order) => {
+    setSelectedOrderForModifyRefund(order);
+    setModifyRefundCheckInDate(order.checkInDate);
+    setModifyRefundCheckOutDate(order.checkOutDate);
+    setModifyRefundGuestCount(1); // 默认1人
+    setShowModifyRefundDialog(true);
+  };
+
+  // 发起退款（显示二次确认弹窗）
+  const handleInitiateRefund = () => {
+    setShowModifyRefundDialog(false);
+    setShowConfirmRefundDialog(true);
+  };
+
+  // 最终确认退款
+  const handleFinalConfirmRefund = () => {
+    if (!selectedOrderForModifyRefund) return;
+    
+    const refundAmountValue = parseFloat(supplierRefundAmount) || 0;
+    
+    // 这里应该调用API保存退款信息
+    // 临时模拟：更新订单的退款金额
+    selectedOrderForModifyRefund.refundAmount = refundAmountValue;
+    
+    toast.success(`订单 ${selectedOrderForModifyRefund.orderId} 退款成功！退款金额：¥${refundAmountValue.toFixed(2)}`);
+    setShowConfirmRefundDialog(false);
+    setSelectedOrderForModifyRefund(null);
+    setModifyRefundCheckInDate('');
+    setModifyRefundCheckOutDate('');
+    setModifyRefundGuestCount(1);
+    setSupplierRefundAmount('');
+    setRefundProofFile(null);
   };
 
   // 打开免费取消对话框
@@ -820,86 +867,82 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                             );
                           })()}
                         </TableCell>
-                        <TableCell className="font-mono text-sm text-gray-900">{formatCurrency(order.p0_supplierCost)}</TableCell>
-                        <TableCell className="font-mono text-sm text-gray-900">{formatCurrency(order.p1_platformPrice)}</TableCell>
-                        <TableCell className="font-mono text-sm text-gray-900">{formatCurrency(order.p2_salePrice)}</TableCell>
-                        <TableCell className="font-mono text-sm text-gray-900">{formatCurrency(order.totalDiscountAmount)}</TableCell>
-                        <TableCell className="font-mono text-sm text-indigo-600 font-semibold">{formatCurrency(order.actualAmount)}</TableCell>
+                        <TableCell className="font-mono text-sm text-gray-900">
+                          <div className="flex flex-col">
+                            <span>{formatCurrency(order.p0_supplierCost)}</span>
+                            {(() => {
+                              if (!order.refundAmount || order.refundAmount <= 0) return null;
+                              return <span className="text-xs text-red-600 mt-0.5">已退款{formatCurrency(order.refundAmount)}</span>;
+                            })()}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm text-gray-900">
+                          <div className="flex flex-col">
+                            <span>{formatCurrency(order.p1_platformPrice)}</span>
+                            {(() => {
+                              if (!order.refundAmount || order.refundAmount <= 0 || !order.p1_platformPrice) return null;
+                              const refundP1 = (order.refundAmount / order.p0_supplierCost) * order.p1_platformPrice;
+                              if (refundP1 <= 0) return null;
+                              return <span className="text-xs text-red-600 mt-0.5">已退款{formatCurrency(refundP1)}</span>;
+                            })()}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm text-gray-900">
+                          <div className="flex flex-col">
+                            <span>{formatCurrency(order.p2_salePrice)}</span>
+                            {(() => {
+                              if (!order.refundAmount || order.refundAmount <= 0) return null;
+                              const refundP2 = (order.refundAmount / order.p0_supplierCost) * order.p2_salePrice;
+                              if (refundP2 <= 0) return null;
+                              return <span className="text-xs text-red-600 mt-0.5">已退款{formatCurrency(refundP2)}</span>;
+                            })()}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm text-gray-900">
+                          <div className="flex flex-col">
+                            <span>{formatCurrency(order.totalDiscountAmount)}</span>
+                            {(() => {
+                              if (!order.refundAmount || order.refundAmount <= 0 || !order.totalDiscountAmount) return null;
+                              const refundDiscount = (order.refundAmount / order.p0_supplierCost) * order.totalDiscountAmount;
+                              if (refundDiscount <= 0) return null;
+                              return <span className="text-xs text-red-600 mt-0.5">已退款{formatCurrency(refundDiscount)}</span>;
+                            })()}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm text-indigo-600 font-semibold">
+                          <div className="flex flex-col">
+                            <span>{formatCurrency(order.actualAmount)}</span>
+                            {(() => {
+                              if (!order.refundAmount || order.refundAmount <= 0) return null;
+                              const refundActual = (order.refundAmount / order.p0_supplierCost) * order.actualAmount;
+                              if (refundActual <= 0) return null;
+                              return <span className="text-xs text-red-600 mt-0.5">已退款{formatCurrency(refundActual)}</span>;
+                            })()}
+                          </div>
+                        </TableCell>
                         <TableCell>{getOrderStatusBadge(order.orderStatus)}</TableCell>
                         <TableCell>{getSettlementStatusBadge(order.settlementStatus)}</TableCell>
                         <TableCell className="text-right sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                          <div className="flex items-center justify-end gap-1">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  onClick={() => handleViewOrderDetail(order)}
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>查看详情</p>
-                              </TooltipContent>
-                            </Tooltip>
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="link"
+                              size="sm"
+                              className="h-auto p-0 text-blue-600 hover:text-blue-700"
+                              onClick={() => handleViewOrderDetail(order)}
+                            >
+                              查看详情
+                            </Button>
                             
-                            {/* 修改订单按钮 */}
-                            {(order.orderStatus === 'confirmed' || order.orderStatus === 'pending_confirm' || order.orderStatus === 'pending_checkin') && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                    onClick={() => handleOpenModifyDialog(order)}
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>修改订单</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                            
-                            {/* 退款按钮 */}
-                            {(order.orderStatus !== 'cancelled_free' && order.orderStatus !== 'cancelled_paid' && order.orderStatus !== 'pending_payment') && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                                    onClick={() => handleOpenSimpleRefundDialog(order)}
-                                  >
-                                    <RefreshCw className="w-4 h-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>退款</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                            
-                            {/* 取消订单按钮 */}
-                            {(order.orderStatus === 'confirmed' || order.orderStatus === 'pending_confirm' || order.orderStatus === 'pending_checkin') && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    onClick={() => handleCancelOrder(order)}
-                                  >
-                                    <XCircle className="w-4 h-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>取消订单</p>
-                                </TooltipContent>
-                              </Tooltip>
+                            {/* 修改/退款按钮 */}
+                            {(order.orderStatus !== 'cancelled_free' && order.orderStatus !== 'cancelled_paid') && (
+                              <Button
+                                variant="link"
+                                size="sm"
+                                className="h-auto p-0 text-orange-600 hover:text-orange-700"
+                                onClick={() => handleOpenModifyRefundDialog(order)}
+                              >
+                                修改/退款
+                              </Button>
                             )}
                           </div>
                         </TableCell>
@@ -1415,6 +1458,157 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
               取消
             </Button>
             <Button onClick={handleConfirmSimpleRefund}>
+              确认退款
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 修改/退款对话框 */}
+      <Dialog open={showModifyRefundDialog} onOpenChange={setShowModifyRefundDialog}>
+        <DialogContent className="sm:max-w-[320px]">
+          <DialogHeader>
+            <DialogTitle>修改订单/退款</DialogTitle>
+            <DialogDescription>
+              订单号: {selectedOrderForModifyRefund?.orderId}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            {/* 入住日期、离店日期、入住人数放在一行 */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="modify-checkin" className="text-xs">入住日期</Label>
+                <Input
+                  id="modify-checkin"
+                  type="date"
+                  value={modifyRefundCheckInDate}
+                  onChange={(e) => setModifyRefundCheckInDate(e.target.value)}
+                  className="text-xs h-8"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="modify-checkout" className="text-xs">离店日期</Label>
+                <Input
+                  id="modify-checkout"
+                  type="date"
+                  value={modifyRefundCheckOutDate}
+                  onChange={(e) => setModifyRefundCheckOutDate(e.target.value)}
+                  className="text-xs h-8"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="modify-guest-count" className="text-xs">入住人数</Label>
+                <Input
+                  id="modify-guest-count"
+                  type="number"
+                  min="1"
+                  value={modifyRefundGuestCount}
+                  onChange={(e) => setModifyRefundGuestCount(parseInt(e.target.value) || 1)}
+                  className="text-xs h-8"
+                />
+              </div>
+            </div>
+
+            {/* 供应商金额信息 */}
+            <div className="space-y-1">
+              <Label className="text-xs">原单供应商金额</Label>
+              <div className="p-2 bg-gray-50 rounded-md border">
+                <p className="text-sm font-medium">
+                  ¥{selectedOrderForModifyRefund?.p0_supplierCost.toFixed(2) || '0.00'}
+                </p>
+              </div>
+            </div>
+
+            {/* 供应商同意退款金额 */}
+            <div className="space-y-1">
+              <Label htmlFor="supplier-refund-amount" className="text-xs">供应商同意退款金额</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">¥</span>
+                <Input
+                  id="supplier-refund-amount"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={supplierRefundAmount}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                      setSupplierRefundAmount(value);
+                    }
+                  }}
+                  className="pl-8 h-9"
+                />
+              </div>
+            </div>
+
+            {/* 凭证截图上传 */}
+            <div className="space-y-1">
+              <Label htmlFor="refund-proof" className="text-xs">凭证截图</Label>
+              <div className="flex items-center gap-2">
+                <label 
+                  htmlFor="refund-proof" 
+                  className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition-colors whitespace-nowrap"
+                >
+                  选择文件
+                </label>
+                <Input
+                  id="refund-proof"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setRefundProofFile(file);
+                    }
+                  }}
+                />
+                <span className="text-xs text-gray-500 flex-1 truncate">
+                  {refundProofFile ? refundProofFile.name : '未选择任何文件'}
+                </span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowModifyRefundDialog(false)} className="text-sm h-8">
+              取消
+            </Button>
+            <Button onClick={handleInitiateRefund} className="text-sm h-8">
+              确认
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 二次确认退款对话框 */}
+      <Dialog open={showConfirmRefundDialog} onOpenChange={setShowConfirmRefundDialog}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">⚠️ 确认退款操作</DialogTitle>
+            <DialogDescription>
+              此操作不可撤销，请仔细确认！
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-2">
+              <p className="text-sm font-medium text-red-800">您即将对以下订单进行退款：</p>
+              <div className="space-y-1 text-sm text-red-700">
+                <p>• 订单号：{selectedOrderForModifyRefund?.orderId}</p>
+                <p>• 酒店：{selectedOrderForModifyRefund?.hotelName}</p>
+                <p>• 入住时间：{modifyRefundCheckInDate} 至 {modifyRefundCheckOutDate}</p>
+                <p>• 入住人数：{modifyRefundGuestCount}人</p>
+                <p>• 供应商退款金额：¥{supplierRefundAmount || '0.00'}</p>
+              </div>
+              <p className="text-sm font-bold text-red-900 mt-3">
+                请再次确认是否要执行退款操作？
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfirmRefundDialog(false)}>
+              取消
+            </Button>
+            <Button onClick={handleFinalConfirmRefund} className="bg-red-600 hover:bg-red-700">
               确认退款
             </Button>
           </DialogFooter>

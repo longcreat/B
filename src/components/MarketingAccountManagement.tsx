@@ -32,7 +32,7 @@ interface MarketingAccountRow {
   usedMarketingAmount: number;
   status: 'normal' | 'warning';
   remark?: string;
-  businessMode?: 'saas' | 'mcp' | 'affiliate';
+  businessMode?: 'mcp' | 'paas_white_label';
   lastUpdated?: string;
 }
 
@@ -86,7 +86,7 @@ export function MarketingAccountManagement() {
         usedMarketingAmount: 80000,
         status: 'normal',
         remark: '用于大B A 联合补贴活动',
-        businessMode: 'saas',
+        businessMode: 'mcp',
         lastUpdated: '2024-01-19 09:15:00',
       },
       {
@@ -137,7 +137,7 @@ export function MarketingAccountManagement() {
 
   const [bigBSearch, setBigBSearch] = useState('');
   const [bigBBusinessModeFilter, setBigBBusinessModeFilter] =
-    useState<'all' | 'saas' | 'mcp' | 'affiliate'>('all');
+    useState<'all' | 'mcp' | 'paas_white_label'>('all');
   const [bigBStatusFilter, setBigBStatusFilter] =
     useState<'all' | 'normal' | 'warning'>('all');
   const [bigBOnlyWarning, setBigBOnlyWarning] = useState(false);
@@ -290,11 +290,10 @@ export function MarketingAccountManagement() {
       );
     }
     const config = {
-      saas: { label: 'SaaS', className: 'bg-green-50 text-green-700 border-green-300' },
-      mcp: { label: 'MCP', className: 'bg-orange-50 text-orange-700 border-orange-300' },
-      affiliate: {
-        label: '联盟推广',
-        className: 'bg-indigo-50 text-indigo-700 border-indigo-300',
+      mcp: { label: 'MCP', className: 'bg-blue-50 text-blue-700 border-blue-300' },
+      paas_white_label: {
+        label: 'PAAS与White Label',
+        className: 'bg-purple-50 text-purple-700 border-purple-300',
       },
     } as const;
     const { label, className } = config[mode];
@@ -1026,7 +1025,7 @@ export function MarketingAccountManagement() {
                 <div className="flex flex-wrap items-center gap-3">
                   <Select
                     value={bigBBusinessModeFilter}
-                    onValueChange={(value: 'all' | 'saas' | 'mcp' | 'affiliate') =>
+                    onValueChange={(value: 'all' | 'mcp' | 'paas_white_label') =>
                       setBigBBusinessModeFilter(value)
                     }
                   >
@@ -1035,9 +1034,8 @@ export function MarketingAccountManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">全部模式</SelectItem>
-                      <SelectItem value="saas">SaaS</SelectItem>
                       <SelectItem value="mcp">MCP</SelectItem>
-                      <SelectItem value="affiliate">联盟推广</SelectItem>
+                      <SelectItem value="paas_white_label">PAAS与White Label</SelectItem>
                     </SelectContent>
                   </Select>
 

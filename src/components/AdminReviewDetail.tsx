@@ -86,9 +86,8 @@ export function AdminReviewDetail({
 
   const getBusinessModelName = (model: string) => {
     const names = {
-      mcp: 'MCP - 大模型与API集成',
-      saas: '品牌预订站 (SaaS方案)',
-      affiliate: '联盟推广计划',
+      mcp: 'MCP',
+      paas_white_label: 'PAAS与White Label',
     };
     return names[model as keyof typeof names] || model;
   };

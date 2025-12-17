@@ -23,7 +23,7 @@ export function MerchantAccounts() {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>商户账户</BreadcrumbPage>
+            <BreadcrumbPage>大B/达人账户</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
