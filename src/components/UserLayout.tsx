@@ -26,9 +26,9 @@ interface UserLayoutProps {
   onNavigateToUserCenter?: () => void;
 }
 
-export function UserLayout({ 
-  children, 
-  currentUser, 
+export function UserLayout({
+  children,
+  currentUser,
   onLogout,
   applicationStatus,
   sidebarContent,
@@ -126,11 +126,10 @@ export function UserLayout({
                       {notifications.map((notification) => (
                         <div
                           key={notification.id}
-                          className={`p-3 rounded-lg border transition-colors ${
-                            !notification.read 
-                              ? 'bg-blue-50 border-blue-200 hover:bg-blue-100' 
+                          className={`p-3 rounded-lg border transition-colors ${!notification.read
+                              ? 'bg-blue-50 border-blue-200 hover:bg-blue-100'
                               : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                          }`}
+                            }`}
                         >
                           <div className="flex justify-between items-start mb-1">
                             <p className="font-medium text-sm">{notification.title}</p>
@@ -152,8 +151,8 @@ export function UserLayout({
               {/* User Menu */}
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     className="flex items-center gap-2 pl-2 pr-3 hover:bg-gray-100"
                     type="button"
                     onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -187,7 +186,7 @@ export function UserLayout({
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                       e.preventDefault();
                       onNavigateToUserCenter?.();
@@ -198,11 +197,11 @@ export function UserLayout({
                     用户中心
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                       e.preventDefault();
                       onLogout();
-                    }} 
+                    }}
                     className="text-red-600 focus:text-red-600 cursor-pointer"
                   >
                     <LogOut className="w-4 h-4 mr-2" />

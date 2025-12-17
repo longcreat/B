@@ -88,7 +88,7 @@ export function AdminLayout({
     level4: 'w-4 h-4',      // 四级菜单（违约扣费记录、订单交易等）- 与三级菜单统一大小
     chevron: 'w-3 h-3',     // 展开/收起箭头
   } as const;
-  
+
   // 菜单展开状态管理
   const [userMenuExpanded, setUserMenuExpanded] = useState(false);
   const [financeMenuExpanded, setFinanceMenuExpanded] = useState(false);
@@ -146,7 +146,7 @@ export function AdminLayout({
   //   { id: 'marketing-accounts' as MarketingSubMenu, icon: Wallet, label: '营销账户管理' },
   //   { id: 'crowd-tags' as MarketingSubMenu, icon: Users, label: '人群标签' },
   // ];
-  
+
   // 处理一级菜单（用户管理）点击
   const handleUserMenuClick = () => {
     if (currentMenu !== 'users') {
@@ -201,7 +201,7 @@ export function AdminLayout({
   // 处理二级菜单（对账）点击
   const handleReconciliationMenuClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     // 如果当前不是对账，切换到对账
     if (currentFinanceSubMenu !== 'reconciliation') {
       onFinanceSubMenuChange?.('reconciliation');
@@ -240,7 +240,7 @@ export function AdminLayout({
   // 处理二级菜单（业务单据管理）点击
   const handleBusinessDocumentsMenuClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     // 如果当前不是业务单据管理，切换到业务单据管理
     if (currentFinanceSubMenu !== 'business-documents') {
       onFinanceSubMenuChange?.('business-documents');
@@ -284,18 +284,18 @@ export function AdminLayout({
   };
 
   // ========== 菜单状态同步 ==========
-  
+
   // 同步菜单展开状态
   useEffect(() => {
     if (sidebarCollapsed) {
       // 侧边栏收起时，保持展开状态但不显示
       return;
     }
-    
+
     if (currentMenu === 'finance') {
       // 在财务中心时，确保财务中心菜单展开
       setFinanceMenuExpanded(true);
-      
+
       if (currentFinanceSubMenu === 'reconciliation') {
         // 如果选中对账，确保对账菜单展开
         setReconciliationMenuExpanded(true);
@@ -387,9 +387,8 @@ export function AdminLayout({
       <div className="flex">
         {/* 侧边栏 */}
         <aside
-          className={`bg-white border-r transition-all duration-300 flex flex-col ${
-            sidebarCollapsed ? 'w-16' : 'w-64'
-          }`}
+          className={`bg-white border-r transition-all duration-300 flex flex-col ${sidebarCollapsed ? 'w-16' : 'w-64'
+            }`}
         >
           <div className="sticky top-16 flex flex-col h-[calc(100vh-4rem)]">
             {/* 侧边栏内容 */}
@@ -400,18 +399,17 @@ export function AdminLayout({
                 const isFinance = item.id === 'finance';
                 const isMarketing = item.id === 'marketing';
                 const isUsers = item.id === 'users';
-                
+
                 if (isUsers && !sidebarCollapsed) {
                   // 用户管理菜单带二级菜单
                   return (
                     <div key={item.id} className="space-y-1">
                       <button
                         onClick={handleUserMenuClick}
-                        className={`flex items-center rounded-lg transition-colors w-full gap-3 px-3 py-2 text-sm ${
-                          isActive
+                        className={`flex items-center rounded-lg transition-colors w-full gap-3 px-3 py-2 text-sm ${isActive
                             ? 'bg-blue-50 text-blue-700'
                             : 'text-gray-700 hover:bg-gray-100'
-                        }`}
+                          }`}
                       >
                         <Icon className={`${ICON_SIZES.level1} flex-shrink-0`} />
                         <span className="flex-1 text-left">{item.label}</span>
@@ -431,20 +429,18 @@ export function AdminLayout({
                           {userSubMenus.map((subMenu) => {
                             const SubIcon = subMenu.icon;
                             const isSubActive = currentUserSubMenu === subMenu.id;
-                            
+
                             return (
                               <button
                                 key={subMenu.id}
                                 onClick={() => onUserSubMenuChange?.(subMenu.id)}
-                                className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${
-                                  isSubActive
+                                className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${isSubActive
                                     ? 'bg-blue-100 text-blue-700 font-medium'
                                     : 'text-gray-600 hover:bg-gray-50'
-                                }`}
+                                  }`}
                               >
-                                <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0 ${
-                                  isSubActive ? 'text-blue-700' : 'text-gray-600'
-                                }`} />
+                                <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0 ${isSubActive ? 'text-blue-700' : 'text-gray-600'
+                                  }`} />
                                 <span className="flex-1 text-left">{subMenu.label}</span>
                               </button>
                             );
@@ -504,18 +500,17 @@ export function AdminLayout({
                 //     </div>
                 //   );
                 // }
-                
+
                 if (isFinance && !sidebarCollapsed) {
                   // 财务中心菜单带二级菜单
                   return (
                     <div key={item.id} className="space-y-1">
                       <button
                         onClick={handleFinanceMenuClick}
-                        className={`flex items-center rounded-lg transition-colors w-full gap-3 px-3 py-2 text-sm ${
-                          isActive
+                        className={`flex items-center rounded-lg transition-colors w-full gap-3 px-3 py-2 text-sm ${isActive
                             ? 'bg-blue-50 text-blue-700'
                             : 'text-gray-700 hover:bg-gray-100'
-                        }`}
+                          }`}
                       >
                         <Icon className={`${ICON_SIZES.level1} flex-shrink-0`} />
                         <span className="flex-1 text-left">{item.label}</span>
@@ -538,52 +533,48 @@ export function AdminLayout({
                             const isReconciliation = subMenu.id === 'reconciliation';
                             const isSettlement = subMenu.id === 'settlement';
                             const isBusinessDocuments = subMenu.id === 'business-documents';
-                            
+
                             if (isReconciliation && subMenu.hasSubMenu) {
                               // 对账有三级菜单
                               const hasThirdMenuActive = !!currentReconciliationSubMenu;
                               const isSubMenuActive = isSubActive && !hasThirdMenuActive;
-                              
+
                               return (
                                 <div key={subMenu.id} className="space-y-1">
                                   {/* 二级菜单按钮 */}
                                   <button
                                     onClick={handleReconciliationMenuClick}
-                                    className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${
-                                      isSubMenuActive
+                                    className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${isSubMenuActive
                                         ? 'bg-blue-100 text-blue-700 font-medium'
                                         : isSubActive
-                                        ? 'text-blue-600 hover:bg-blue-50'
-                                        : 'text-gray-600 hover:bg-gray-50'
-                                    }`}
+                                          ? 'text-blue-600 hover:bg-blue-50'
+                                          : 'text-gray-600 hover:bg-gray-50'
+                                      }`}
                                   >
-                                    <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0 ${
-                                      isSubMenuActive
+                                    <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0 ${isSubMenuActive
                                         ? 'text-blue-700'
                                         : isSubActive
-                                        ? 'text-blue-600'
-                                        : 'text-gray-600'
-                                    }`} />
+                                          ? 'text-blue-600'
+                                          : 'text-gray-600'
+                                      }`} />
                                     <span className="flex-1 text-left">{subMenu.label}</span>
                                     {reconciliationMenuExpanded ? (
-                                      <ChevronUp className={`${ICON_SIZES.chevron} flex-shrink-0 ${
-                                        isSubMenuActive
+                                      <ChevronUp className={`${ICON_SIZES.chevron} flex-shrink-0 ${isSubMenuActive
                                           ? 'text-blue-700'
                                           : isSubActive
-                                          ? 'text-blue-600'
-                                          : 'text-gray-600'
-                                      }`} />
+                                            ? 'text-blue-600'
+                                            : 'text-gray-600'
+                                        }`} />
                                     ) : (
-                                      <ChevronDown className={`${ICON_SIZES.chevron} flex-shrink-0 ${
-                                        isSubMenuActive
+                                      <ChevronDown className={`${ICON_SIZES.chevron} flex-shrink-0 ${isSubMenuActive
                                           ? 'text-blue-700'
                                           : isSubActive
-                                          ? 'text-blue-600'
-                                          : 'text-gray-600'
-                                      }`} />
+                                            ? 'text-blue-600'
+                                            : 'text-gray-600'
+                                        }`} />
                                     )}
                                   </button>
-                                  
+
                                   {/* 三级菜单 */}
                                   {reconciliationMenuExpanded && (
                                     <div className="ml-6 space-y-1">
@@ -598,17 +589,15 @@ export function AdminLayout({
                                               e.stopPropagation();
                                               handleReconciliationThirdMenuClick(thirdMenu.id);
                                             }}
-                                            className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${
-                                              isThirdActive
+                                            className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${isThirdActive
                                                 ? 'bg-blue-200 text-blue-800 font-medium'
                                                 : 'text-gray-600 hover:bg-gray-50'
-                                            }`}
+                                              }`}
                                           >
-                                            <ThirdIcon className={`${ICON_SIZES.level3} flex-shrink-0 ${
-                                              isThirdActive
+                                            <ThirdIcon className={`${ICON_SIZES.level3} flex-shrink-0 ${isThirdActive
                                                 ? 'text-blue-800'
                                                 : 'text-gray-600'
-                                            }`} />
+                                              }`} />
                                             <span className="flex-1 text-left">{thirdMenu.label}</span>
                                           </button>
                                         );
@@ -618,53 +607,49 @@ export function AdminLayout({
                                 </div>
                               );
                             }
-                            
-                            
+
+
                             if (isBusinessDocuments && subMenu.hasSubMenu) {
                               // 业务单据管理有三级菜单（管控账单、交易记录、结算明细）
                               const hasThirdMenuActive = !!currentBusinessDocumentsSubMenu;
                               const isSubMenuActive = isSubActive && !hasThirdMenuActive;
-                              
+
                               return (
                                 <div key={subMenu.id} className="space-y-1">
                                   {/* 二级菜单按钮 */}
                                   <button
                                     onClick={handleBusinessDocumentsMenuClick}
-                                    className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${
-                                      isSubMenuActive
+                                    className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${isSubMenuActive
                                         ? 'bg-blue-100 text-blue-700 font-medium'
                                         : isSubActive
-                                        ? 'text-blue-600 hover:bg-blue-50'
-                                        : 'text-gray-600 hover:bg-gray-50'
-                                    }`}
+                                          ? 'text-blue-600 hover:bg-blue-50'
+                                          : 'text-gray-600 hover:bg-gray-50'
+                                      }`}
                                   >
-                                    <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0 ${
-                                      isSubMenuActive
+                                    <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0 ${isSubMenuActive
                                         ? 'text-blue-700'
                                         : isSubActive
-                                        ? 'text-blue-600'
-                                        : 'text-gray-600'
-                                    }`} />
+                                          ? 'text-blue-600'
+                                          : 'text-gray-600'
+                                      }`} />
                                     <span className="flex-1 text-left">{subMenu.label}</span>
                                     {businessDocumentsMenuExpanded ? (
-                                      <ChevronUp className={`${ICON_SIZES.chevron} flex-shrink-0 ${
-                                        isSubMenuActive
+                                      <ChevronUp className={`${ICON_SIZES.chevron} flex-shrink-0 ${isSubMenuActive
                                           ? 'text-blue-700'
                                           : isSubActive
-                                          ? 'text-blue-600'
-                                          : 'text-gray-600'
-                                      }`} />
+                                            ? 'text-blue-600'
+                                            : 'text-gray-600'
+                                        }`} />
                                     ) : (
-                                      <ChevronDown className={`${ICON_SIZES.chevron} flex-shrink-0 ${
-                                        isSubMenuActive
+                                      <ChevronDown className={`${ICON_SIZES.chevron} flex-shrink-0 ${isSubMenuActive
                                           ? 'text-blue-700'
                                           : isSubActive
-                                          ? 'text-blue-600'
-                                          : 'text-gray-600'
-                                      }`} />
+                                            ? 'text-blue-600'
+                                            : 'text-gray-600'
+                                        }`} />
                                     )}
                                   </button>
-                                  
+
                                   {/* 三级菜单（管控账单、交易记录、结算明细） */}
                                   {businessDocumentsMenuExpanded && (
                                     <div className="ml-4 space-y-1">
@@ -672,7 +657,7 @@ export function AdminLayout({
                                         const ThirdIcon = thirdMenu.icon;
                                         const hasFourthMenuActive = thirdMenu.subMenus.some(sub => currentBusinessDocumentsSubMenu === sub);
                                         const isThirdMenuActive = hasFourthMenuActive;
-                                        
+
                                         return (
                                           <div key={thirdMenu.id} className="space-y-1">
                                             {/* 三级菜单按钮 */}
@@ -692,17 +677,15 @@ export function AdminLayout({
                                                   }
                                                 }
                                               }}
-                                              className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${
-                                                isThirdMenuActive
+                                              className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${isThirdMenuActive
                                                   ? 'bg-blue-50 text-blue-700 font-medium'
                                                   : 'text-gray-600 hover:bg-gray-50'
-                                              }`}
+                                                }`}
                                             >
-                                              <ThirdIcon className={`${ICON_SIZES.level3} flex-shrink-0 ${
-                                                isThirdMenuActive
+                                              <ThirdIcon className={`${ICON_SIZES.level3} flex-shrink-0 ${isThirdMenuActive
                                                   ? 'text-blue-700'
                                                   : 'text-gray-600'
-                                              }`} />
+                                                }`} />
                                               <span className="flex-1 text-left truncate">{thirdMenu.label}</span>
                                               {thirdMenu.subMenus.length > 1 && (
                                                 hasFourthMenuActive ? (
@@ -712,17 +695,17 @@ export function AdminLayout({
                                                 )
                                               )}
                                             </button>
-                                            
+
                                             {/* 四级菜单 */}
                                             {thirdMenu.subMenus.length > 0 && (
                                               <div className="ml-4 space-y-1">
                                                 {thirdMenu.subMenus.map((fourthMenuId) => {
                                                   const fourthMenu = businessDocumentsSubMenus.find(m => m.id === fourthMenuId);
                                                   if (!fourthMenu) return null;
-                                                  
+
                                                   const FourthIcon = fourthMenu.icon || FileText;
                                                   const isFourthActive = currentBusinessDocumentsSubMenu === fourthMenuId;
-                                                  
+
                                                   return (
                                                     <button
                                                       key={fourthMenuId}
@@ -731,17 +714,15 @@ export function AdminLayout({
                                                         e.stopPropagation();
                                                         handleBusinessDocumentsThirdMenuClick(fourthMenuId);
                                                       }}
-                                                      className={`flex items-center rounded-lg transition-colors w-full gap-2 px-2 py-1.5 text-sm ${
-                                                        isFourthActive
+                                                      className={`flex items-center rounded-lg transition-colors w-full gap-2 px-2 py-1.5 text-sm ${isFourthActive
                                                           ? 'bg-blue-200 text-blue-800 font-medium'
                                                           : 'text-gray-600 hover:bg-gray-50'
-                                                      }`}
+                                                        }`}
                                                     >
-                                                      <FourthIcon className={`${ICON_SIZES.level4} flex-shrink-0 ${
-                                                        isFourthActive
+                                                      <FourthIcon className={`${ICON_SIZES.level4} flex-shrink-0 ${isFourthActive
                                                           ? 'text-blue-800'
                                                           : 'text-gray-600'
-                                                      }`} />
+                                                        }`} />
                                                       <span className="flex-1 text-left truncate">{fourthMenu.label}</span>
                                                     </button>
                                                   );
@@ -756,17 +737,16 @@ export function AdminLayout({
                                 </div>
                               );
                             }
-                            
+
                             // 普通二级菜单项
                             return (
                               <button
                                 key={subMenu.id}
                                 onClick={() => handleSecondMenuClick(subMenu.id)}
-                                className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${
-                                  isSubActive
+                                className={`flex items-center rounded-lg transition-colors w-full gap-2 px-3 py-2 text-sm ${isSubActive
                                     ? 'bg-blue-100 text-blue-700 font-medium'
                                     : 'text-gray-600 hover:bg-gray-50'
-                                }`}
+                                  }`}
                               >
                                 <SubIcon className={`${ICON_SIZES.level2} flex-shrink-0`} />
                                 <span className="flex-1 text-left">{subMenu.label}</span>
@@ -778,21 +758,19 @@ export function AdminLayout({
                     </div>
                   );
                 }
-                
+
                 // 普通菜单项
                 return (
                   <button
                     key={item.id}
                     onClick={() => onMenuChange?.(item.id)}
-                    className={`flex items-center rounded-lg transition-colors text-sm ${
-                      sidebarCollapsed
+                    className={`flex items-center rounded-lg transition-colors text-sm ${sidebarCollapsed
                         ? 'w-full justify-center px-2 py-2'
                         : 'w-full gap-3 px-3 py-2'
-                    } ${
-                      isActive
+                      } ${isActive
                         ? 'bg-blue-50 text-blue-700'
                         : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                      }`}
                   >
                     <Icon className={`${ICON_SIZES.level1} flex-shrink-0`} />
                     {!sidebarCollapsed && (

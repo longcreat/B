@@ -19,7 +19,7 @@ import type { Partner } from '../data/mockPartners';
 import { hasFeaturePermission } from '../utils/featurePermissionUtils';
 import type { FeatureCode } from '../data/mockFeaturePermissions';
 
-export type SmallBMenuItem = 
+export type SmallBMenuItem =
   | 'dashboard'          // 首页看板
   | 'orders'            // 订单佣金
   | 'withdrawal'        // 提现管理（一级菜单）
@@ -50,12 +50,12 @@ export function SmallBLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
-  
+
   // 检查功能权限
   const checkPermission = (featureCode: FeatureCode): boolean => {
     return hasFeaturePermission(featureCode, currentPartner, 'smallb');
   };
-  
+
   const menuItems: Array<{
     id: SmallBMenuItem;
     icon: React.ElementType;
@@ -67,9 +67,9 @@ export function SmallBLayout({
     { id: 'affiliate-link', icon: Link2, label: '推广链接', visible: checkPermission('affiliate-link') },
     { id: 'orders', icon: Package, label: '订单佣金', visible: checkPermission('order-management') },
     { id: 'commission', icon: Receipt, label: '佣金明细', visible: true },
-    { 
-      id: 'withdrawal', 
-      icon: Wallet, 
+    {
+      id: 'withdrawal',
+      icon: Wallet,
       label: '提现管理',
       visible: checkPermission('withdrawal'),
       subMenu: [
@@ -80,7 +80,7 @@ export function SmallBLayout({
     { id: 'reports', icon: BarChart3, label: '数据报表', visible: checkPermission('data-reports') },
     { id: 'account-help', icon: HelpCircle, label: '账户说明', visible: true },
   ].filter(item => item.visible);
-  
+
   const toggleSubMenu = (menuId: string) => {
     const newExpanded = new Set(expandedMenus);
     if (newExpanded.has(menuId)) {
@@ -169,9 +169,8 @@ export function SmallBLayout({
       <div className="flex">
         {/* 侧边栏 */}
         <aside
-          className={`bg-white border-r transition-all duration-300 flex flex-col ${
-            sidebarCollapsed ? 'w-16' : 'w-64'
-          }`}
+          className={`bg-white border-r transition-all duration-300 flex flex-col ${sidebarCollapsed ? 'w-16' : 'w-64'
+            }`}
         >
           <div className="sticky top-16 flex flex-col h-[calc(100vh-4rem)]">
             <nav className={`space-y-1 flex-1 overflow-y-auto ${sidebarCollapsed ? 'p-2' : 'p-4'}`}>
@@ -180,7 +179,7 @@ export function SmallBLayout({
                 const isActive = currentMenu === item.id || (item.subMenu && item.subMenu.some(sub => currentMenu === sub.id));
                 const isExpanded = expandedMenus.has(item.id);
                 const hasSubMenu = item.subMenu && item.subMenu.length > 0;
-                
+
                 return (
                   <div key={item.id} className="space-y-1">
                     <button
@@ -192,7 +191,7 @@ export function SmallBLayout({
                           toggleSubMenu(item.id);
                           return;
                         }
-                        
+
                         // 如果有子菜单，点击时导航到主页面
                         if (hasSubMenu) {
                           onMenuChange?.(item.id);
@@ -204,22 +203,20 @@ export function SmallBLayout({
                           onMenuChange?.(item.id);
                         }
                       }}
-                      className={`flex items-center rounded-lg transition-colors text-sm w-full ${
-                        sidebarCollapsed
+                      className={`flex items-center rounded-lg transition-colors text-sm w-full ${sidebarCollapsed
                           ? 'justify-center px-2 py-2'
                           : 'gap-3 px-3 py-2'
-                      } ${
-                        isActive
+                        } ${isActive
                           ? 'bg-gray-100 text-gray-900'
                           : 'text-gray-700 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       <Icon className="w-5 h-5 flex-shrink-0" />
                       {!sidebarCollapsed && (
                         <>
                           <span className="flex-1 text-left">{item.label}</span>
                           {hasSubMenu && (
-                            <ChevronRight 
+                            <ChevronRight
                               className={`w-4 h-4 transition-transform chevron-icon ${isExpanded ? 'rotate-90' : ''}`}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -238,11 +235,10 @@ export function SmallBLayout({
                             <button
                               key={subItem.id}
                               onClick={() => onMenuChange?.(subItem.id as SmallBMenuItem)}
-                              className={`flex items-center rounded-lg transition-colors text-sm w-full px-3 py-2 ${
-                                isSubActive
+                              className={`flex items-center rounded-lg transition-colors text-sm w-full px-3 py-2 ${isSubActive
                                   ? 'bg-gray-100 text-gray-900'
                                   : 'text-gray-600 hover:bg-gray-50'
-                              }`}
+                                }`}
                             >
                               <span className="flex-1 text-left">{subItem.label}</span>
                             </button>
