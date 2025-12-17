@@ -10,7 +10,7 @@ export type AuthType = 'individual' | 'enterprise';
 export type AccountStatus = 'active' | 'frozen' | 'closed';
 
 // 业务模式
-export type BusinessMode = 'saas' | 'mcp' | 'platform_self_operated';
+export type BusinessMode = 'mcp' | 'paas_white_label';
 
 // 结算模式
 export type SettlementMode = 'batch' | 'per_order';

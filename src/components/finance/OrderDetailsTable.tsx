@@ -271,6 +271,7 @@ export function OrderDetailsTable({ orders }: OrderDetailsTableProps) {
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">大B出资金额</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">退款金额</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">实付金额</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">实收金额</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">订单底价</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">供应商价</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">应付大B金额</th>
@@ -282,7 +283,7 @@ export function OrderDetailsTable({ orders }: OrderDetailsTableProps) {
             <tbody>
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={14} className="px-4 py-10 text-center text-gray-500">
                     暂无订单数据
                   </td>
                 </tr>
@@ -304,13 +305,17 @@ export function OrderDetailsTable({ orders }: OrderDetailsTableProps) {
                   // 应付供应商金额
                   const payableToSupplier = order.p0_supplierCost - refundP0Part;
 
-                  // 利润计算公式：订单底价 - 供应商价
-                  const profit = order.p1_distributionPrice - order.p0_supplierCost;
+                  // 利润计算公式：订单底价 - 供应商价 - 支付手续费
+                  const paymentFee = order.actualAmount * 0.0025;
+                  const profit = order.p1_distributionPrice - order.p0_supplierCost - paymentFee;
 
                   // 计算加价率：(订单售价 - 订单底价) / 订单底价 * 100%
                   const markupRate = order.p1_distributionPrice > 0
                     ? ((order.p2_orderAmount - order.p1_distributionPrice) / order.p1_distributionPrice * 100)
                     : 0;
+
+                  // 实收金额 = 实付金额 × (1 - 0.0025)，即扣除千分之2.5的手续费
+                  const actualReceivedAmount = order.actualAmount * (1 - 0.0025);
 
                   return (
                     <tr key={order.orderId} className="border-b hover:bg-gray-50">
@@ -328,8 +333,19 @@ export function OrderDetailsTable({ orders }: OrderDetailsTableProps) {
                         {order.totalRefund > 0 ? `¥${order.totalRefund.toLocaleString()}` : '-'}
                       </td>
                       <td className="px-4 py-3 text-sm text-right text-gray-900">¥{order.actualAmount.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-right text-blue-600">¥{order.p1_distributionPrice.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-right text-purple-600">¥{order.p0_supplierCost.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-right font-medium text-indigo-600">¥{actualReceivedAmount.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-sm text-right text-blue-600">
+                        <div>¥{order.p1_distributionPrice.toLocaleString()}</div>
+                        {refundP1Part > 0 && (
+                          <div className="text-xs text-red-500 mt-0.5">已退款¥{refundP1Part.toFixed(2)}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-purple-600">
+                        <div>¥{order.p0_supplierCost.toLocaleString()}</div>
+                        {refundP0Part > 0 && (
+                          <div className="text-xs text-red-500 mt-0.5">已退款¥{refundP0Part.toFixed(2)}</div>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-sm text-right font-medium text-orange-600">¥{Math.max(0, payableToBigB).toFixed(2)}</td>
                       <td className="px-4 py-3 text-sm text-right font-medium text-purple-600">¥{Math.max(0, payableToSupplier).toFixed(2)}</td>
                       <td className="px-4 py-3 text-sm text-right font-medium text-green-600">¥{profit.toFixed(2)}</td>
