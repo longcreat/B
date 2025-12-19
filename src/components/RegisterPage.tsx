@@ -21,6 +21,7 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [emailCountdown, setEmailCountdown] = useState(0);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showAgreement, setShowAgreement] = useState<'service' | 'privacy' | null>(null);
 
@@ -35,6 +36,7 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
   // Email registration form
   const [emailForm, setEmailForm] = useState({
     email: '',
+    code: '',
     password: '',
     confirmPassword: '',
   });
@@ -74,6 +76,35 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
     setCountdown(60);
     const timer = setInterval(() => {
       setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    toast.success('验证码已发送（模拟）：123456');
+  };
+
+  // Send Email verification code
+  const sendEmailCode = () => {
+    if (!validateEmail(emailForm.email)) {
+      toast.error('请输入正确的邮箱地址');
+      return;
+    }
+
+    // Mock: Check if email already exists
+    const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
+    if (existingUsers.some((u: any) => u.email === emailForm.email)) {
+      toast.error('该邮箱已注册，请直接登录');
+      return;
+    }
+
+    // Start countdown
+    setEmailCountdown(60);
+    const timer = setInterval(() => {
+      setEmailCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
           return 0;
@@ -136,7 +167,7 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
         hour: '2-digit',
         minute: '2-digit',
       });
-      
+
       const newUser = {
         id: Date.now().toString(),
         phone: phoneForm.phone,
@@ -151,8 +182,8 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
 
       toast.success('注册成功！');
       setIsLoading(false);
-      onRegisterSuccess({ 
-        phone: phoneForm.phone, 
+      onRegisterSuccess({
+        phone: phoneForm.phone,
         role: 'user',
         registeredAt: registeredAt,
       });
@@ -164,6 +195,16 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
     // Validation
     if (!validateEmail(emailForm.email)) {
       toast.error('请输入正确的邮箱地址');
+      return;
+    }
+
+    if (!emailForm.code) {
+      toast.error('请输入验证码');
+      return;
+    }
+
+    if (emailForm.code !== '123456') {
+      toast.error('验证码错误');
       return;
     }
 
@@ -200,7 +241,7 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
         hour: '2-digit',
         minute: '2-digit',
       });
-      
+
       const newUser = {
         id: Date.now().toString(),
         email: emailForm.email,
@@ -215,8 +256,8 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
 
       toast.success('注册成功！');
       setIsLoading(false);
-      onRegisterSuccess({ 
-        email: emailForm.email, 
+      onRegisterSuccess({
+        email: emailForm.email,
         role: 'user',
         registeredAt: registeredAt,
       });
@@ -349,7 +390,7 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
                 <Checkbox
                   id="phone-terms"
                   checked={agreedToTerms}
-                  onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
+                  onCheckedChange={(checked: boolean | "indeterminate") => setAgreedToTerms(checked as boolean)}
                 />
                 <label htmlFor="phone-terms" className="text-sm text-gray-600 leading-tight">
                   我已阅读并同意
@@ -394,6 +435,30 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
                   onChange={(e) => setEmailForm({ ...emailForm, email: e.target.value })}
                   className="mt-2"
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="email-code">验证码</Label>
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    id="email-code"
+                    placeholder="请输入验证码"
+                    maxLength={6}
+                    value={emailForm.code}
+                    onChange={(e) => setEmailForm({ ...emailForm, code: e.target.value })}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={sendEmailCode}
+                    disabled={emailCountdown > 0}
+                    className="min-w-[100px]"
+                  >
+                    {emailCountdown > 0 ? `${emailCountdown}秒后重试` : '获取验证码'}
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">验证码有效期5分钟</p>
               </div>
 
               <div>
@@ -444,7 +509,7 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin }: RegisterPag
                 <Checkbox
                   id="email-terms"
                   checked={agreedToTerms}
-                  onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
+                  onCheckedChange={(checked: boolean | "indeterminate") => setAgreedToTerms(checked as boolean)}
                 />
                 <label htmlFor="email-terms" className="text-sm text-gray-600 leading-tight">
                   我已阅读并同意
