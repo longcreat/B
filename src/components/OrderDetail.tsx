@@ -451,7 +451,17 @@ export function OrderDetail({ order, onBack }: OrderDetailProps) {
                   </div>
                   <div>
                     <Label className="text-gray-500 text-xs font-medium mb-1.5 block">入住人姓名</Label>
-                    <p className="text-sm text-gray-900">{order.guestName || order.customerName}</p>
+                    {order.rooms > 1 && order.guestNames ? (
+                      <div className="text-sm text-gray-900 space-y-1">
+                        {order.guestNames.map((name, index) => (
+                          <div key={index}>
+                            <span className="text-gray-500">第{index + 1}间房:</span> {name}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-900">{order.guestName || order.customerName}</p>
+                    )}
                   </div>
                   <div>
                     <Label className="text-gray-500 text-xs font-medium mb-1.5 block">入住人数</Label>

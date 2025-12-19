@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -11,6 +12,12 @@ import {
   BreadcrumbPage,
 } from './ui/breadcrumb';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -18,6 +25,7 @@ import {
   SelectValue,
 } from './ui/select';
 import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
 import { 
   CheckCircle2,
   AlertCircle,
@@ -32,6 +40,10 @@ import {
   Upload,
   Edit,
   RefreshCw,
+  MoreHorizontal,
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import {
@@ -42,7 +54,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
-import { Textarea } from './ui/textarea';
 import { toast } from 'sonner';
 import {
   Pagination,
@@ -67,8 +78,8 @@ interface OrderManagementProps {
 
 export function OrderManagement({ onViewOrderDetail, currentPartner, userType }: OrderManagementProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'all' | 'disputed'>('all');
   const [filterOrderStatus, setFilterOrderStatus] = useState<'all' | OrderStatus>('all');
-  const [filterSettlementStatus, setFilterSettlementStatus] = useState<'all' | SettlementStatus>('all');
   const [filterUserInfoType, setFilterUserInfoType] = useState<'all' | 'travel_agent' | 'influencer' | 'app'>('all');
   const [filterCertificationType, setFilterCertificationType] = useState<'all' | 'personal' | 'enterprise'>('all');
   const [filterHotelName, setFilterHotelName] = useState('');
@@ -122,8 +133,21 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
   // 二次确认弹窗状态
   const [showConfirmRefundDialog, setShowConfirmRefundDialog] = useState(false);
 
-  // 使用 mock 数据
-  const allOrders: Order[] = getMockOrders();
+  // 标记为争议单弹窗状态
+  const [showDisputeDialog, setShowDisputeDialog] = useState(false);
+  const [selectedOrderForDispute, setSelectedOrderForDispute] = useState<Order | null>(null);
+  const [disputeReason, setDisputeReason] = useState('');
+
+  // 展开订单详情状态
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+
+  // 切换订单详情展开/折叠
+  const toggleOrderExpand = (orderId: string) => {
+    setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
+  };
+
+  // 使用 mock 数据，并用状态管理
+  const [allOrders, setAllOrders] = useState<Order[]>(getMockOrders());
   
   // 根据用户类型和Partner信息过滤订单
   const orders = useMemo(() => {
@@ -135,29 +159,39 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
     return filterOrdersByUserType(allOrders, currentPartner || null, userType);
   }, [allOrders, currentPartner, userType]);
 
-  const getOrderStatusBadge = (status: OrderStatus) => {
-    const config = {
-      pending_payment: { label: '待支付', className: 'bg-yellow-50 text-yellow-700 border-yellow-300' },
-      pending_confirm: { label: '待确认', className: 'bg-orange-50 text-orange-700 border-orange-300' },
-      confirmed: { label: '已确认', className: 'bg-blue-50 text-blue-700 border-blue-300' },
-      pending_checkin: { label: '待入住', className: 'bg-indigo-50 text-indigo-700 border-indigo-300' },
-      completed: { label: '已完成', className: 'bg-green-50 text-green-700 border-green-300' },
-      settleable: { label: '可结算', className: 'bg-teal-50 text-teal-700 border-teal-300' },
-      cancelled_free: { label: '已取消(免费)', className: 'bg-gray-50 text-gray-700 border-gray-300' },
-      cancelled_paid: { label: '已取消(付费)', className: 'bg-red-50 text-red-700 border-red-300' },
-      no_show: { label: '未入住', className: 'bg-slate-50 text-slate-700 border-slate-300' },
-      after_sale: { label: '售后中', className: 'bg-rose-50 text-rose-700 border-rose-300' },
-    } as const;
-    const { label, className } = config[status];
+  const getOrderStatusBadge = (status: OrderStatus, checkInDate: string, checkOutDate: string) => {
+    const today = new Date();
+    const checkIn = new Date(checkInDate);
+    const checkOut = new Date(checkOutDate);
+    
+    let displayStatus: OrderStatus = status;
+    let label = '';
+    let className = '';
+    
+    if (status === 'cancelled') {
+      label = '已取消';
+      className = 'bg-gray-50 text-gray-700 border-gray-300';
+    } else {
+      if (today < checkIn) {
+        label = '待入住';
+        className = 'bg-blue-50 text-blue-700 border-blue-300';
+      } else if (today >= checkIn && today < checkOut) {
+        label = '入住中';
+        className = 'bg-green-50 text-green-700 border-green-300';
+      } else {
+        label = '已离店';
+        className = 'bg-gray-50 text-gray-700 border-gray-300';
+      }
+    }
+    
     return <Badge variant="outline" className={className}>{label}</Badge>;
   };
 
   const getSettlementStatusBadge = (status: SettlementStatus) => {
     const config = {
-      pending: { label: '待结算', className: 'bg-yellow-50 text-yellow-700 border-yellow-300' },
-      settleable: { label: '可结算', className: 'bg-blue-50 text-blue-700 border-blue-300' },
-      processing: { label: '处理中', className: 'bg-purple-50 text-purple-700 border-purple-300' },
+      unsettled: { label: '未结算', className: 'bg-yellow-50 text-yellow-700 border-yellow-300' },
       settled: { label: '已结算', className: 'bg-green-50 text-green-700 border-green-300' },
+      disputed: { label: '争议单待处理', className: 'bg-red-50 text-red-700 border-red-300' },
     };
     const { label, className } = config[status];
     return <Badge variant="outline" className={className}>{label}</Badge>;
@@ -460,16 +494,66 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
     }
   };
 
+  // 打开标记为争议单对话框
+  const handleOpenDisputeDialog = (order: Order) => {
+    setSelectedOrderForDispute(order);
+    setDisputeReason('');
+    setShowDisputeDialog(true);
+  };
+
+  // 确认标记为争议单
+  const handleConfirmDispute = () => {
+    if (!selectedOrderForDispute) return;
+    
+    if (!disputeReason.trim()) {
+      toast.error('请填写争议原因');
+      return;
+    }
+    
+    // 这里应该调用API标记订单为争议单，并更新结算状态为 'disputed'
+    // 更新订单状态
+    setAllOrders(prevOrders => 
+      prevOrders.map(order => 
+        order.orderId === selectedOrderForDispute.orderId 
+          ? { ...order, settlementStatus: 'disputed' as SettlementStatus }
+          : order
+      )
+    );
+    
+    toast.success(`订单 ${selectedOrderForDispute.orderId} 已标记为争议单，结算状态已更新`);
+    setShowDisputeDialog(false);
+    setSelectedOrderForDispute(null);
+    setDisputeReason('');
+  };
+
+  // 解除争议单
+  const handleResolveDispute = (order: Order) => {
+    if (window.confirm(`确定要解除订单 ${order.orderId} 的争议状态吗？`)) {
+      // 这里应该调用API解除争议单，并将结算状态改为 'unsettled'
+      setAllOrders(prevOrders => 
+        prevOrders.map(o => 
+          o.orderId === order.orderId 
+            ? { ...o, settlementStatus: 'unsettled' as SettlementStatus }
+            : o
+        )
+      );
+      toast.success(`订单 ${order.orderId} 的争议状态已解除，结算状态已恢复为未结算`);
+    }
+  };
+
   const filteredOrders = orders.filter((order) => {
+    // Tab filtering: disputed orders tab shows only disputed orders
+    const matchesTab = activeTab === 'all' || (activeTab === 'disputed' && order.settlementStatus === 'disputed');
+    
     const matchesSearch =
       order.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.hotelName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.partnerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (order.guestName && order.guestName.toLowerCase().includes(searchQuery.toLowerCase()));
+      (order.guestName && order.guestName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (order.guestNames && order.guestNames.some(name => name.toLowerCase().includes(searchQuery.toLowerCase())));
 
     const matchesOrderStatus = filterOrderStatus === 'all' || order.orderStatus === filterOrderStatus;
-    const matchesSettlementStatus = filterSettlementStatus === 'all' || order.settlementStatus === filterSettlementStatus;
     const matchesUserInfoType = filterUserInfoType === 'all' || getUserInfoTypeValue(order.partnerType) === filterUserInfoType;
     const matchesCertificationType = filterCertificationType === 'all' || order.certificationType === filterCertificationType;
     
@@ -504,7 +588,7 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
       (minActualAmount === null || !isNaN(minActualAmount) && order.actualAmount >= minActualAmount) &&
       (maxActualAmount === null || !isNaN(maxActualAmount) && order.actualAmount <= maxActualAmount);
 
-    return matchesSearch && matchesOrderStatus && matchesSettlementStatus && matchesUserInfoType && matchesCertificationType &&
+    return matchesTab && matchesSearch && matchesOrderStatus && matchesUserInfoType && matchesCertificationType &&
       matchesHotelName && matchesPartnerName && matchesCreateDate && matchesCheckInDate &&
       matchesOrderAmount && matchesActualAmount;
   });
@@ -521,7 +605,7 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
   // 当筛选条件改变时，重置到第一页
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterOrderStatus, filterSettlementStatus, filterUserInfoType, filterCertificationType, filterHotelName, filterPartnerName, filterCreateDateStart, filterCreateDateEnd, filterCheckInDateStart, filterCheckInDateEnd, filterOrderAmountMin, filterOrderAmountMax, filterActualAmountMin, filterActualAmountMax]);
+  }, [activeTab, searchQuery, filterOrderStatus, filterUserInfoType, filterCertificationType, filterHotelName, filterPartnerName, filterCreateDateStart, filterCreateDateEnd, filterCheckInDateStart, filterCheckInDateEnd, filterOrderAmountMin, filterOrderAmountMax, filterActualAmountMin, filterActualAmountMax]);
 
   return (
     <div className="p-6 space-y-6">
@@ -537,7 +621,7 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
       {/* 主内容 */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <CardTitle className="flex items-center gap-2">
               <Package className="w-5 h-5" />
               订单列表
@@ -582,32 +666,10 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">全部状态</SelectItem>
-                      <SelectItem value="pending_payment">待支付</SelectItem>
-                      <SelectItem value="pending_confirm">待确认</SelectItem>
-                      <SelectItem value="confirmed">已确认</SelectItem>
                       <SelectItem value="pending_checkin">待入住</SelectItem>
-                      <SelectItem value="completed">已完成</SelectItem>
-                      <SelectItem value="settleable">可结算</SelectItem>
-                      <SelectItem value="cancelled_free">已取消(免费)</SelectItem>
-                      <SelectItem value="cancelled_paid">已取消(付费)</SelectItem>
-                      <SelectItem value="no_show">未入住</SelectItem>
-                      <SelectItem value="after_sale">售后中</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">结算状态</Label>
-                  <Select value={filterSettlementStatus} onValueChange={(value: any) => setFilterSettlementStatus(value)}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="全部状态" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">全部状态</SelectItem>
-                      <SelectItem value="pending">待结算</SelectItem>
-                      <SelectItem value="settleable">可结算</SelectItem>
-                      <SelectItem value="processing">处理中</SelectItem>
-                      <SelectItem value="settled">已结算</SelectItem>
+                      <SelectItem value="checked_in">入住中</SelectItem>
+                      <SelectItem value="checked_out">已离店</SelectItem>
+                      <SelectItem value="cancelled">已取消</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -626,10 +688,24 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">认证方式</Label>
+                  <Select value={filterCertificationType} onValueChange={(value: any) => setFilterCertificationType(value)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="全部认证" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部认证</SelectItem>
+                      <SelectItem value="personal">个人认证</SelectItem>
+                      <SelectItem value="enterprise">企业认证</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* 第二行：名称筛选 */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center gap-2">
                   <Label className="text-sm text-gray-700 w-20 flex-shrink-0">酒店名称</Label>
                   <Input
@@ -648,20 +724,6 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                     onChange={(e) => setFilterPartnerName(e.target.value)}
                     className="flex-1"
                   />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm text-gray-700 w-20 flex-shrink-0">认证方式</Label>
-                  <Select value={filterCertificationType} onValueChange={(value: any) => setFilterCertificationType(value)}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="全部认证" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">全部认证</SelectItem>
-                      <SelectItem value="personal">个人认证</SelectItem>
-                      <SelectItem value="enterprise">企业认证</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
 
@@ -761,7 +823,7 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
 
               {/* 清除筛选按钮 */}
               <div className="flex items-center justify-end pt-2">
-                {(filterOrderStatus !== 'all' || filterSettlementStatus !== 'all' || filterUserInfoType !== 'all' || filterCertificationType !== 'all' ||
+                {(filterOrderStatus !== 'all' || filterUserInfoType !== 'all' || filterCertificationType !== 'all' ||
                   filterHotelName || filterPartnerName || filterCreateDateStart || filterCreateDateEnd ||
                   filterCheckInDateStart || filterCheckInDateEnd || filterOrderAmountMin || filterOrderAmountMax ||
                   filterActualAmountMin || filterActualAmountMax) && (
@@ -770,7 +832,6 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                     size="sm"
                     onClick={() => {
                       setFilterOrderStatus('all');
-                      setFilterSettlementStatus('all');
                       setFilterUserInfoType('all');
                       setFilterCertificationType('all');
                       setFilterHotelName('');
@@ -791,6 +852,21 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
               </div>
             </div>
           )}
+          
+          {/* Tabs for All Orders and Disputed Orders */}
+          <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="w-full mt-4">
+            <TabsList>
+              <TabsTrigger value="all">全部订单</TabsTrigger>
+              <TabsTrigger value="disputed">
+                争议单
+                {orders.filter(o => o.settlementStatus === 'disputed').length > 0 && (
+                  <Badge variant="outline" className="ml-2 bg-orange-50 text-orange-700 border-orange-300">
+                    {orders.filter(o => o.settlementStatus === 'disputed').length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </CardHeader>
 
         <CardContent>
@@ -815,59 +891,65 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
             <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[40px]"></TableHead>
                     <TableHead className="min-w-[140px] sticky left-0 bg-white z-10 shadow-[2px_0_4px_rgba(0,0,0,0.05)]">订单号</TableHead>
                     <TableHead className="min-w-[170px]">酒店名称</TableHead>
-                    <TableHead className="min-w-[120px]">房型</TableHead>
-                    <TableHead className="min-w-[100px]">入住人姓名</TableHead>
-                    <TableHead className="min-w-[120px]">人数</TableHead>
+                    <TableHead className="min-w-[100px]">入住人</TableHead>
                     <TableHead className="min-w-[100px]">供应商价</TableHead>
                     <TableHead className="min-w-[100px]">底价</TableHead>
                     <TableHead className="min-w-[100px]">大B售价</TableHead>
                     <TableHead className="min-w-[100px]">优惠金额</TableHead>
                     <TableHead className="min-w-[100px]">实付金额</TableHead>
                     <TableHead className="min-w-[100px]">订单状态</TableHead>
-                    <TableHead className="min-w-[100px]">结算状态</TableHead>
-                    <TableHead className="text-right w-[140px] sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">操作</TableHead>
+                    <TableHead className="text-right w-[100px] sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">更多操作</TableHead>
                   </TableRow>
                 </TableHeader>
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center py-12 text-gray-500">
+                    <TableCell colSpan={11} className="text-center py-12 text-gray-500">
                       暂无订单数据
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedOrders.map((order) => (
-                      <TableRow key={order.orderId}>
-                        <TableCell className="font-mono text-sm sticky left-0 bg-white z-10 shadow-[2px_0_4px_rgba(0,0,0,0.05)]">{order.orderId}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{order.hotelName}</span>
-                            {order.hotelNameEn && (
-                              <span className="text-xs text-gray-500">{order.hotelNameEn}</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-gray-600">{order.roomType}</TableCell>
-                        <TableCell>{order.guestName || order.customerName}</TableCell>
-                        <TableCell>
-                          {(() => {
-                            const segments: string[] = [];
-                            if (order.adultCount !== undefined) {
-                              segments.push(`${order.adultCount}成人`);
-                            }
-                            if (order.childCount !== undefined && order.childCount > 0) {
-                              segments.push(`${order.childCount}儿童`);
-                            }
-                            return segments.length > 0 ? (
-                              <span className="text-sm text-gray-700">{segments.join('/')}</span>
+                  paginatedOrders.map((order) => {
+                    const isExpanded = expandedOrderId === order.orderId;
+                    return (
+                      <React.Fragment key={order.orderId}>
+                        <TableRow 
+                          className="cursor-pointer hover:bg-gray-50 transition-colors"
+                          onClick={() => toggleOrderExpand(order.orderId)}
+                        >
+                          <TableCell className="text-center bg-white">
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4 text-gray-500" />
                             ) : (
-                              <span className="text-sm text-gray-400">-</span>
-                            );
-                          })()}
-                        </TableCell>
-                        <TableCell className="font-mono text-sm text-gray-900">
+                              <ChevronRight className="h-4 w-4 text-gray-500" />
+                            )}
+                          </TableCell>
+                          <TableCell className="font-mono text-sm sticky left-0 bg-white z-10 shadow-[2px_0_4px_rgba(0,0,0,0.05)]">{order.orderId}</TableCell>
+                          <TableCell className="bg-white">
+                            <div className="flex flex-col">
+                              <span className="font-medium">{order.hotelName}</span>
+                              {order.hotelNameEn && (
+                                <span className="text-xs text-gray-500">{order.hotelNameEn}</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="bg-white">
+                            {order.rooms > 1 && order.guestNames ? (
+                              <div className="flex flex-col gap-1">
+                                {order.guestNames.map((name, index) => (
+                                  <div key={index} className="text-sm">
+                                    <span className="text-gray-500">房{index + 1}:</span> {name}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              order.guestName || order.customerName
+                            )}
+                          </TableCell>
+                        <TableCell className="font-mono text-sm text-gray-900 bg-white">
                           <div className="flex flex-col">
                             <span>{formatCurrency(order.p0_supplierCost)}</span>
                             {(() => {
@@ -876,7 +958,7 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                             })()}
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-sm text-gray-900">
+                        <TableCell className="font-mono text-sm text-gray-900 bg-white">
                           <div className="flex flex-col">
                             <span>{formatCurrency(order.p1_platformPrice)}</span>
                             {(() => {
@@ -887,7 +969,7 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                             })()}
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-sm text-gray-900">
+                        <TableCell className="font-mono text-sm text-gray-900 bg-white">
                           <div className="flex flex-col">
                             <span>{formatCurrency(order.p2_salePrice)}</span>
                             {(() => {
@@ -898,7 +980,7 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                             })()}
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-sm text-gray-900">
+                        <TableCell className="font-mono text-sm text-gray-900 bg-white">
                           <div className="flex flex-col">
                             <span>{formatCurrency(order.totalDiscountAmount)}</span>
                             {(() => {
@@ -909,7 +991,7 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                             })()}
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-sm text-indigo-600 font-semibold">
+                        <TableCell className="font-mono text-sm text-indigo-600 font-semibold bg-white">
                           <div className="flex flex-col">
                             <span>{formatCurrency(order.actualAmount)}</span>
                             {(() => {
@@ -920,34 +1002,183 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
                             })()}
                           </div>
                         </TableCell>
-                        <TableCell>{getOrderStatusBadge(order.orderStatus)}</TableCell>
-                        <TableCell>{getSettlementStatusBadge(order.settlementStatus)}</TableCell>
-                        <TableCell className="text-right sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="link"
-                              size="sm"
-                              className="h-auto p-0 text-blue-600 hover:text-blue-700"
-                              onClick={() => handleViewOrderDetail(order)}
-                            >
-                              查看详情
-                            </Button>
-                            
-                            {/* 修改/退款按钮 */}
-                            {(order.orderStatus !== 'cancelled_free' && order.orderStatus !== 'cancelled_paid') && (
-                              <Button
-                                variant="link"
-                                size="sm"
-                                className="h-auto p-0 text-orange-600 hover:text-orange-700"
-                                onClick={() => handleOpenModifyRefundDialog(order)}
-                              >
-                                修改/退款
-                              </Button>
+                        <TableCell className="bg-white">
+                          <div className="flex items-center gap-2">
+                            {getOrderStatusBadge(order.orderStatus, order.checkInDate, order.checkOutDate)}
+                            {order.settlementStatus === 'disputed' && (
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">
+                                争议单
+                              </Badge>
                             )}
                           </div>
                         </TableCell>
+                        <TableCell 
+                          className="text-right sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {order.orderStatus !== 'cancelled' && (
+                                <DropdownMenuItem onClick={() => handleOpenModifyRefundDialog(order)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  修改/退款
+                                </DropdownMenuItem>
+                              )}
+                              {order.settlementStatus === 'disputed' ? (
+                                <DropdownMenuItem 
+                                  onClick={() => handleResolveDispute(order)}
+                                  className="text-green-600"
+                                >
+                                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                                  解除争议单
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem 
+                                  onClick={() => handleOpenDisputeDialog(order)}
+                                  className="text-orange-600"
+                                >
+                                  <AlertTriangle className="mr-2 h-4 w-4" />
+                                  标记为争议单
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
                       </TableRow>
-                    ))
+                      
+                      {/* 展开的详情行 */}
+                      {isExpanded && (
+                        <TableRow>
+                          <TableCell colSpan={11} className="bg-gray-50 p-0">
+                            <div className="p-6 space-y-4">
+                              {/* 基本信息 */}
+                              <div className="grid grid-cols-4 gap-6">
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-1">供应商订单号</div>
+                                  <div className="font-mono text-sm">{order.supplierOrderId || '-'}</div>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-1">酒店确认号</div>
+                                  <div className="font-mono text-sm">{order.hotelConfirmationNumber || '-'}</div>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-1">房型</div>
+                                  <div className="text-sm">{order.roomType}</div>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-1">下单渠道</div>
+                                  <div className="text-sm">
+                                    {order.orderChannel === 'standalone' && '独立站'}
+                                    {order.orderChannel === 'snail_partner' && '蜗牛出行合作站'}
+                                    {order.orderChannel === 'super' && 'Super'}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* 入住信息 */}
+                              <div className="grid grid-cols-4 gap-6">
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-1">入住日期</div>
+                                  <div className="text-sm font-medium">{order.checkInDate}</div>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-1">离店日期</div>
+                                  <div className="text-sm font-medium">{order.checkOutDate}</div>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-1">入住晚数</div>
+                                  <div className="text-sm">{order.nights} 晚</div>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-1">房间数量</div>
+                                  <div className="text-sm">{order.rooms} 间</div>
+                                </div>
+                              </div>
+
+                              {/* 客人信息 */}
+                              <div className="grid grid-cols-3 gap-6">
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-1">入住人姓名</div>
+                                  {order.rooms > 1 && order.guestNames ? (
+                                    <div className="text-sm space-y-1">
+                                      {order.guestNames.map((name, index) => (
+                                        <div key={index}>
+                                          <span className="text-gray-500">第{index + 1}间房:</span> {name}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm">{order.guestName || order.customerName}</div>
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-1">入住人数</div>
+                                  <div className="text-sm">
+                                    {(() => {
+                                      const segments: string[] = [];
+                                      if (order.adultCount !== undefined) {
+                                        segments.push(`${order.adultCount}成人`);
+                                      }
+                                      if (order.childCount !== undefined && order.childCount > 0) {
+                                        segments.push(`${order.childCount}儿童`);
+                                      }
+                                      return segments.length > 0 ? segments.join(' / ') : '-';
+                                    })()}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-1">客户电话</div>
+                                  <div className="text-sm font-mono">{order.customerPhone}</div>
+                                </div>
+                              </div>
+
+                              {/* 佣金明细 */}
+                              <div className="grid grid-cols-3 gap-6 pt-4 border-t">
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-1">佣金比例</div>
+                                  <div className="text-sm font-medium text-blue-600">
+                                    {order.partnerCommissionRate ? `${order.partnerCommissionRate}%` : '-'}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-1">佣金金额</div>
+                                  <div className="text-sm font-medium text-green-600">
+                                    {order.commissionAmount ? `¥${order.commissionAmount.toFixed(2)}` : '-'}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* 时间信息 */}
+                              <div className="grid grid-cols-3 gap-6 pt-4 border-t">
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-1">创建时间</div>
+                                  <div className="text-sm font-mono">{order.createdAt}</div>
+                                </div>
+                                {order.confirmedAt && (
+                                  <div>
+                                    <div className="text-xs text-gray-500 mb-1">确认时间</div>
+                                    <div className="text-sm font-mono">{order.confirmedAt}</div>
+                                  </div>
+                                )}
+                                {order.completedAt && (
+                                  <div>
+                                    <div className="text-xs text-gray-500 mb-1">完成时间</div>
+                                    <div className="text-sm font-mono">{order.completedAt}</div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -1612,6 +1843,44 @@ export function OrderManagement({ onViewOrderDetail, currentPartner, userType }:
               确认退款
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 标记为争议单对话框 */}
+      <Dialog open={showDisputeDialog} onOpenChange={setShowDisputeDialog}>
+        <DialogContent className="sm:max-w-[250px]">
+          <DialogHeader>
+            <DialogTitle>标记为争议单</DialogTitle>
+            <DialogDescription>
+              订单号: {selectedOrderForDispute?.orderId} | 酒店: {selectedOrderForDispute?.hotelName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="dispute-reason">争议原因 *</Label>
+              <Textarea
+                id="dispute-reason"
+                placeholder="请详细描述争议原因，例如：客户投诉、退款纠纷、价格争议等"
+                value={disputeReason}
+                onChange={(e) => setDisputeReason(e.target.value)}
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+              <p className="text-sm text-orange-800">
+                <strong>注意：</strong>标记为争议单后，该订单的结算状态将变更为"争议单待处理"，需要人工介入处理后才能继续结算流程。
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-4">
+            <Button variant="outline" onClick={() => setShowDisputeDialog(false)} className="flex-1">
+              取消
+            </Button>
+            <Button onClick={handleConfirmDispute} className="bg-orange-600 hover:bg-orange-700 text-black flex-1">
+              确认
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

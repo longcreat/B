@@ -1,20 +1,18 @@
 // 订单相关的 mock 数据
 
 export type OrderStatus =
-  | 'pending_payment'
-  | 'pending_confirm'
-  | 'confirmed'
   | 'pending_checkin'
-  | 'completed'
-  | 'settleable'
-  | 'cancelled_free'
-  | 'cancelled_paid'
-  | 'no_show'
-  | 'after_sale';
-export type SettlementStatus = 'pending' | 'settleable' | 'processing' | 'settled';
+  | 'checked_in'
+  | 'checked_out'
+  | 'cancelled';
+export type SettlementStatus = 'unsettled' | 'settled' | 'disputed';
+export type OrderChannel = 'standalone' | 'snail_partner' | 'super'; // 下单渠道：独立站/蜗牛出行合作站/super
 
 export interface Order {
   orderId: string;
+  supplierOrderId?: string; // 供应商订单号
+  hotelConfirmationNumber?: string; // 酒店确认号
+  orderChannel: OrderChannel; // 下单渠道
   hotelName: string;
   hotelNameEn?: string; // 酒店英文名（可选）
   hotelAddress: string;
@@ -51,7 +49,8 @@ export interface Order {
   
   // 客户信息
   customerName: string; // 客户姓名（用于显示）
-  guestName?: string; // 入住人姓名（可选，如果没有则使用customerName）
+  guestName?: string; // 入住人姓名（可选，如果没有则使用customerName）- 单间房时使用
+  guestNames?: string[]; // 多间房入住人姓名列表（按房间顺序）- 多间房时使用，如：['张三', '李四', '王五']
   adultCount?: number; // 成人数量（可选）
   childCount?: number; // 儿童数量（可选）
   customerPhone: string;
@@ -142,6 +141,9 @@ export function getMockOrders(): Order[] {
   return [
     {
       orderId: 'ORD-2025001',
+      supplierOrderId: 'SUP-HLT-20251015-001',
+      hotelConfirmationNumber: 'HLT-BJ-968742',
+      orderChannel: 'standalone',
       hotelName: '北京希尔顿酒店',
       hotelNameEn: 'Beijing Hilton Hotel',
       hotelAddress: '北京市朝阳区东三环北路8号',
@@ -150,7 +152,8 @@ export function getMockOrders(): Order[] {
       checkInDate: '2025-10-18',
       checkOutDate: '2025-10-20',
       nights: 2,
-      rooms: 1,
+      rooms: 2,
+      guestNames: ['王先生', '李女士'], // 多间房，第一间：王先生，第二间：李女士
       bigBPartnerId: 'P002', // 挂载在大B客户P002（旅游达人小李）下
       bigBPartnerName: '旅游达人小李',
       bigBPartnerType: 'saas',
@@ -168,8 +171,7 @@ export function getMockOrders(): Order[] {
       parentPartnerType: '旅行代理',
       parentPartnerBusinessMode: 'SaaS',
       customerName: '王先生',
-      guestName: '王先生',
-      adultCount: 2,
+      adultCount: 4,
       childCount: 0,
       customerPhone: '138****5678',
       p0_supplierCost: 800,
@@ -191,7 +193,7 @@ export function getMockOrders(): Order[] {
       actualAmount: 968,
       refundAmount: 0,
       refundRecords: [],
-      orderStatus: 'settleable',
+      orderStatus: 'checked_out',
       gates: {
         serviceCompleted: true,
         coolingOffPassed: true,
@@ -199,7 +201,7 @@ export function getMockOrders(): Order[] {
         costReconciled: true,
         accountHealthy: true,
       },
-      settlementStatus: 'settleable',
+      settlementStatus: 'unsettled',
       createdAt: '2025-10-15 14:30:00',
       confirmedAt: '2025-10-15 15:10:00',
       completedAt: '2025-10-20 12:20:00',
@@ -212,6 +214,9 @@ export function getMockOrders(): Order[] {
     },
     {
       orderId: 'ORD-2025002',
+      supplierOrderId: 'SUP-SGL-20251020-002',
+      hotelConfirmationNumber: 'SGL-SH-453821',
+      orderChannel: 'snail_partner',
       hotelName: '上海浦东香格里拉',
       hotelNameEn: 'Pudong Shangri-La Shanghai',
       hotelAddress: '上海市浦东新区富城路33号',
@@ -260,7 +265,7 @@ export function getMockOrders(): Order[] {
           handler: '客服-王丽',
         },
       ],
-      orderStatus: 'completed',
+      orderStatus: 'checked_out',
       gates: {
         serviceCompleted: true,
         coolingOffPassed: false,
@@ -268,7 +273,7 @@ export function getMockOrders(): Order[] {
         costReconciled: true,
         accountHealthy: true,
       },
-      settlementStatus: 'pending',
+      settlementStatus: 'unsettled',
       createdAt: '2025-10-20 10:15:00',
       confirmedAt: '2025-10-20 11:00:00',
       completedAt: '2025-10-25 10:30:00',
@@ -281,6 +286,9 @@ export function getMockOrders(): Order[] {
     },
     {
       orderId: 'ORD-2025003',
+      supplierOrderId: 'SUP-MRT-20251018-003',
+      hotelConfirmationNumber: 'MRT-SZ-789456',
+      orderChannel: 'super',
       hotelName: '深圳湾万豪酒店',
       hotelNameEn: 'Shenzhen Bay Marriott Hotel',
       hotelAddress: '深圳市南山区后海滨路3101号',
@@ -340,7 +348,7 @@ export function getMockOrders(): Order[] {
           handler: '客服-陈涛',
         },
       ],
-      orderStatus: 'completed',
+      orderStatus: 'checked_out',
       gates: {
         serviceCompleted: true,
         coolingOffPassed: true,
@@ -348,7 +356,7 @@ export function getMockOrders(): Order[] {
         costReconciled: true,
         accountHealthy: true,
       },
-      settlementStatus: 'pending',
+      settlementStatus: 'unsettled',
       createdAt: '2025-10-18 16:45:00',
       confirmedAt: '2025-10-18 18:10:00',
       completedAt: '2025-10-22 11:00:00',
@@ -360,6 +368,9 @@ export function getMockOrders(): Order[] {
     },
     {
       orderId: 'ORD-2025004',
+      supplierOrderId: 'SUP-FSN-20251022-004',
+      hotelConfirmationNumber: 'FSN-GZ-321654',
+      orderChannel: 'standalone',
       hotelName: '广州四季酒店',
       hotelAddress: '广州市天河区珠江新城珠江西路5号',
       hotelPhone: '020-8888-0101',
@@ -394,7 +405,7 @@ export function getMockOrders(): Order[] {
       actualAmount: 1331,
       refundAmount: 0,
       refundRecords: [],
-      orderStatus: 'confirmed',
+      orderStatus: 'pending_checkin',
       gates: {
         serviceCompleted: false,
         coolingOffPassed: false,
@@ -402,7 +413,7 @@ export function getMockOrders(): Order[] {
         costReconciled: false,
         accountHealthy: true,
       },
-      settlementStatus: 'pending',
+      settlementStatus: 'unsettled',
       createdAt: '2025-10-22 11:20:00',
       confirmedAt: '2025-10-22 12:00:00',
       riskReview: {
@@ -413,6 +424,9 @@ export function getMockOrders(): Order[] {
     },
     {
       orderId: 'ORD-2025005',
+      supplierOrderId: 'SUP-XHG-20251019-005',
+      hotelConfirmationNumber: 'XHG-HZ-654987',
+      orderChannel: 'snail_partner',
       hotelName: '杭州西湖国宾馆',
       hotelAddress: '杭州市西湖区杨公堤18号',
       hotelPhone: '0571-1234-8888',
@@ -448,7 +462,7 @@ export function getMockOrders(): Order[] {
       actualAmount: 878,
       refundAmount: 0,
       refundRecords: [],
-      orderStatus: 'settleable',
+      orderStatus: 'checked_out',
       gates: {
         serviceCompleted: true,
         coolingOffPassed: true,
@@ -456,7 +470,7 @@ export function getMockOrders(): Order[] {
         costReconciled: true,
         accountHealthy: true,
       },
-      settlementStatus: 'settleable',
+      settlementStatus: 'unsettled',
       createdAt: '2025-10-19 09:30:00',
       confirmedAt: '2025-10-19 10:20:00',
       completedAt: '2025-10-24 11:30:00',
@@ -469,6 +483,9 @@ export function getMockOrders(): Order[] {
     },
     {
       orderId: 'ORD-2025006',
+      supplierOrderId: 'SUP-IHG-20251016-006',
+      hotelConfirmationNumber: 'IHG-CD-147258',
+      orderChannel: 'super',
       hotelName: '成都洲际酒店',
       hotelAddress: '成都市锦江区滨江东路9号',
       hotelPhone: '028-5555-6677',
@@ -503,7 +520,7 @@ export function getMockOrders(): Order[] {
       actualAmount: 1028.5,
       refundAmount: 0,
       refundRecords: [],
-      orderStatus: 'completed',
+      orderStatus: 'checked_out',
       gates: {
         serviceCompleted: true,
         coolingOffPassed: true,
@@ -525,6 +542,9 @@ export function getMockOrders(): Order[] {
     },
     {
       orderId: 'ORD-2025007',
+      supplierOrderId: 'SUP-XHG-20251020-007',
+      hotelConfirmationNumber: 'XHG-HZ-852963',
+      orderChannel: 'standalone',
       hotelName: '杭州西湖国宾馆',
       hotelAddress: '杭州市西湖区杨公堤18号',
       hotelPhone: '0571-1234-8888',
@@ -564,7 +584,7 @@ export function getMockOrders(): Order[] {
       actualAmount: 878,
       refundAmount: 0,
       refundRecords: [],
-      orderStatus: 'settleable',
+      orderStatus: 'checked_out',
       gates: {
         serviceCompleted: true,
         coolingOffPassed: true,
@@ -572,7 +592,7 @@ export function getMockOrders(): Order[] {
         costReconciled: true,
         accountHealthy: true,
       },
-      settlementStatus: 'settleable',
+      settlementStatus: 'unsettled',
       createdAt: '2025-10-20 08:45:00',
       confirmedAt: '2025-10-20 09:30:00',
       completedAt: '2025-10-24 10:10:00',
@@ -585,6 +605,9 @@ export function getMockOrders(): Order[] {
     },
     {
       orderId: 'ORD-2025008',
+      supplierOrderId: 'SUP-SGL-20251013-008',
+      hotelConfirmationNumber: 'SGL-SH-963741',
+      orderChannel: 'snail_partner',
       hotelName: '上海浦东香格里拉',
       hotelAddress: '上海市浦东新区富城路33号',
       hotelPhone: '021-6666-0202',
@@ -619,7 +642,7 @@ export function getMockOrders(): Order[] {
       actualAmount: 1452,
       refundAmount: 0,
       refundRecords: [],
-      orderStatus: 'settleable',
+      orderStatus: 'checked_out',
       gates: {
         serviceCompleted: true,
         coolingOffPassed: true,
@@ -627,7 +650,7 @@ export function getMockOrders(): Order[] {
         costReconciled: true,
         accountHealthy: true,
       },
-      settlementStatus: 'settleable',
+      settlementStatus: 'unsettled',
       createdAt: '2025-10-13 15:20:00',
       confirmedAt: '2025-10-13 16:00:00',
       completedAt: '2025-10-18 09:40:00',
@@ -640,6 +663,9 @@ export function getMockOrders(): Order[] {
     },
     {
       orderId: 'ORD-2025009',
+      supplierOrderId: 'SUP-IHG-20251015-009',
+      hotelConfirmationNumber: 'IHG-CD-159753',
+      orderChannel: 'super',
       hotelName: '成都洲际酒店',
       hotelAddress: '成都市锦江区滨江东路9号',
       hotelPhone: '028-5555-6677',
@@ -674,7 +700,7 @@ export function getMockOrders(): Order[] {
       actualAmount: 1028.5,
       refundAmount: 0,
       refundRecords: [],
-      orderStatus: 'completed',
+      orderStatus: 'checked_out',
       gates: {
         serviceCompleted: true,
         coolingOffPassed: true,
@@ -682,7 +708,7 @@ export function getMockOrders(): Order[] {
         costReconciled: true,
         accountHealthy: true,
       },
-      settlementStatus: 'settleable',
+      settlementStatus: 'unsettled',
       createdAt: '2025-10-15 10:00:00',
       confirmedAt: '2025-10-15 10:40:00',
       completedAt: '2025-10-20 09:30:00',
@@ -695,6 +721,9 @@ export function getMockOrders(): Order[] {
     },
     {
       orderId: 'ORD-2025010',
+      supplierOrderId: 'SUP-HLT-20251024-010',
+      hotelConfirmationNumber: 'HLT-BJ-357159',
+      orderChannel: 'standalone',
       hotelName: '北京希尔顿酒店',
       hotelAddress: '北京市朝阳区东三环北路8号',
       hotelPhone: '010-8888-0001',
@@ -729,7 +758,7 @@ export function getMockOrders(): Order[] {
       actualAmount: 907.5,
       refundAmount: 0,
       refundRecords: [],
-      orderStatus: 'pending_payment',
+      orderStatus: 'pending_checkin',
       gates: {
         serviceCompleted: false,
         coolingOffPassed: false,
@@ -737,7 +766,7 @@ export function getMockOrders(): Order[] {
         costReconciled: false,
         accountHealthy: true,
       },
-      settlementStatus: 'pending',
+      settlementStatus: 'unsettled',
       createdAt: '2025-10-24 14:00:00',
       riskReview: {
         status: 'pending',
