@@ -55,6 +55,10 @@ export interface Order {
   childCount?: number; // 儿童数量（可选）
   customerPhone: string;
   
+  // 供应商信息
+  supplierId?: string; // 供应商ID
+  supplierName?: string; // 供应商名称
+  
   // 价格体系
   p0_supplierCost: number; // 供应商底价P0
   p1_platformPrice?: number; // 平台供货价P1（SaaS模式有效，MCP/推广联盟可为空或等于P2）

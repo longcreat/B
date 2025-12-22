@@ -29,6 +29,9 @@ export interface OrderDetail {
   orderStatus?: OrderStatus; // 订单状态（用于统计）
   orderType?: 'bigB' | 'smallB'; // 订单归属类型
   
+  // 供应商信息
+  supplierName?: string; // 供应商名称
+  
   // 价格信息
   p0_supplierCost: number; // 订单总底价P0
   p1_distributionPrice: number; // 订单总分销价P1
@@ -273,6 +276,7 @@ export function OrderDetailsTable({ orders }: OrderDetailsTableProps) {
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">实付金额</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">实收金额</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">订单底价</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">供应商名称</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">供应商价</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">应付大B金额</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">应付供应商金额</th>
@@ -283,7 +287,7 @@ export function OrderDetailsTable({ orders }: OrderDetailsTableProps) {
             <tbody>
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={14} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={15} className="px-4 py-10 text-center text-gray-500">
                     暂无订单数据
                   </td>
                 </tr>
@@ -339,6 +343,9 @@ export function OrderDetailsTable({ orders }: OrderDetailsTableProps) {
                         {refundP1Part > 0 && (
                           <div className="text-xs text-red-500 mt-0.5">已退款¥{refundP1Part.toFixed(2)}</div>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {order.supplierName || '道旅'}
                       </td>
                       <td className="px-4 py-3 text-sm text-right text-purple-600">
                         <div>¥{order.p0_supplierCost.toLocaleString()}</div>

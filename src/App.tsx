@@ -32,6 +32,7 @@ import { WithdrawalDetail } from './components/WithdrawalDetail';
 import { ReconciliationManagement, type Reconciliation } from './components/ReconciliationManagement';
 import { ReconciliationDetail } from './components/ReconciliationDetail';
 import { ReconciliationSummary } from './components/ReconciliationSummary';
+import { MonthlyReconciliation } from './components/MonthlyReconciliation';
 import { SettlementManagement } from './components/SettlementManagement';
 import { type PartnerSettlementBatch } from './components/PartnerSettlementBatchList';
 import { PartnerSettlementBatchDetail } from './components/PartnerSettlementBatchDetail';
@@ -932,19 +933,11 @@ export default function App() {
                   </div>
                   <SettlementManagement 
                     onViewPartnerBatchDetail={setSelectedPartnerBatch}
-                    onViewSupplierBatchDetail={setSelectedSupplierBatch}
                   />
                 </div>
               );
             case 'reconciliation':
-              // 对账下的三级菜单
-              if (adminCurrentReconciliationSubMenu === 'reconciliation-management') {
-                return <ReconciliationManagement onViewReconciliationDetail={setSelectedReconciliation} />;
-              } else if (adminCurrentReconciliationSubMenu === 'reconciliation-summary') {
-                return <ReconciliationSummary onViewReconciliationDetail={setSelectedReconciliation} />;
-              }
-              // 如果三级菜单未选中，显示对账的占位内容
-              return <div className="p-6"><div className="text-lg font-semibold">对账</div><div className="text-gray-500 mt-2">请选择具体的菜单项</div></div>;
+              return <MonthlyReconciliation />;
             case 'withdrawal':
               return <WithdrawalManager />;
             case 'invoice':
@@ -998,7 +991,7 @@ export default function App() {
               // 如果四级菜单未选中，显示业务单据管理的占位内容
               return <div className="p-6"><div className="text-lg font-semibold">业务单据管理</div><div className="text-gray-500 mt-2">请选择具体的菜单项</div></div>;
             default:
-          return <SettlementCenter />;
+              return <PlatformAccount />;
           }
         case 'marketing':
           switch (adminCurrentMarketingSubMenu) {

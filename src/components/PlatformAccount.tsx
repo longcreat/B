@@ -9,13 +9,15 @@ import {
 import { PlatformAccountDashboard } from './finance/PlatformAccountDashboard';
 import { OrderDetailsTable, type OrderDetail } from './finance/OrderDetailsTable';
 import { CustomerCompensationTable, type CustomerCompensation } from './finance/CustomerCompensationTable';
+import { TransactionHistoryPanel, type Transaction, type TransactionType } from './finance/TransactionHistoryPanel';
 
 type DashboardAggregate = {
   advancePayment: number;
   actualRevenue: number;
   estimatedProfit: number;
   actualProfit: number;
-  payableDistribution: number;
+  payableBigB: number;
+  payableSmallB: number;
   payableSupplier: number;
   availableFunds: number;
   platformDiscountContribution: number;
@@ -70,9 +72,9 @@ const computeStats = (
     0,
   );
 
-  // 应付账款（大B）：按PRD公式基于订单字段计算（不扣除佣金，由大B自行结算给小B）
-  const payableDistribution = ordersData
-    .filter(order => order.orderStatus === 'completed')
+  // 应付大B佣金：大B订单的利润部分
+  const payableBigB = ordersData
+    .filter(order => order.orderStatus === 'completed' && order.orderType === 'bigB')
     .reduce((sum, order) => {
       const refundP1Part = order.p2_orderAmount > 0
         ? order.totalRefund * order.p1_distributionPrice / order.p2_orderAmount
@@ -83,6 +85,11 @@ const computeStats = (
         - bigBContribution;
       return sum + Math.max(0, amount);
     }, 0);
+
+  // 应付小B佣金：小B订单的佣金部分
+  const payableSmallB = ordersData
+    .filter(order => order.orderStatus === 'completed' && order.orderType === 'smallB')
+    .reduce((sum, order) => sum + (order.totalCommission || 0), 0);
 
   // 应付账款（供应商）：按PRD公式基于订单字段计算
   const payableSupplier = ordersData
@@ -95,14 +102,15 @@ const computeStats = (
       return sum + Math.max(0, amount);
     }, 0);
 
-  const availableFunds = actualRevenue - payableDistribution - payableSupplier;
+  const availableFunds = actualRevenue - payableBigB - payableSmallB - payableSupplier;
 
   return {
     advancePayment,
     actualRevenue,
     estimatedProfit,
     actualProfit,
-    payableDistribution,
+    payableBigB,
+    payableSmallB,
     payableSupplier,
     availableFunds,
     platformDiscountContribution,
@@ -111,7 +119,147 @@ const computeStats = (
 };
 
 export function PlatformAccount() {
+  const [showTransactionPanel, setShowTransactionPanel] = useState(false);
+  const [selectedTransactionType, setSelectedTransactionType] = useState<TransactionType>('payableBigB');
+  const [manualRecharge, setManualRecharge] = useState(0);
+
+  // Mock交易历史数据
+  const [transactions, setTransactions] = useState<Record<TransactionType, Transaction[]>>({
+    payableBigB: [
+      {
+        id: 'TXN-001',
+        timestamp: '2025-12-20 14:30:00',
+        type: 'decrease',
+        amount: 500.00,
+        description: '大B提现申请已打款',
+        relatedId: 'WA-2025003',
+        operator: '财务-李明',
+      },
+      {
+        id: 'TXN-002',
+        timestamp: '2025-12-15 10:20:00',
+        type: 'increase',
+        amount: 1200.50,
+        description: '订单完结，增加应付大B佣金',
+        relatedId: 'ORD-2025001',
+      },
+      {
+        id: 'TXN-003',
+        timestamp: '2025-12-10 16:45:00',
+        type: 'decrease',
+        amount: 800.00,
+        description: '大B提现申请已打款',
+        relatedId: 'WA-2025001',
+        operator: '财务-张华',
+      },
+    ],
+    payableSmallB: [
+      {
+        id: 'TXN-004',
+        timestamp: '2025-12-18 11:15:00',
+        type: 'decrease',
+        amount: 300.00,
+        description: '小B提现申请已打款',
+        relatedId: 'WA-2025002',
+        operator: '财务-李明',
+      },
+      {
+        id: 'TXN-005',
+        timestamp: '2025-12-12 09:30:00',
+        type: 'increase',
+        amount: 450.03,
+        description: '订单完结，增加应付小B佣金',
+        relatedId: 'ORD-2025002',
+      },
+    ],
+    payableSupplier: [
+      {
+        id: 'TXN-006',
+        timestamp: '2025-12-22 15:20:00',
+        type: 'decrease',
+        amount: 2100.00,
+        description: '供应商账单已支付',
+        relatedId: 'BILL-2025-12-道旅',
+        operator: '财务-王芳',
+      },
+      {
+        id: 'TXN-007',
+        timestamp: '2025-12-19 13:40:00',
+        type: 'decrease',
+        amount: 1500.00,
+        description: '供应商账单已支付',
+        relatedId: 'BILL-2025-12-携程',
+        operator: '财务-李明',
+      },
+      {
+        id: 'TXN-008',
+        timestamp: '2025-12-16 10:00:00',
+        type: 'increase',
+        amount: 3434.71,
+        description: '订单完结，增加应付供应商费用',
+        relatedId: 'ORD-2025004',
+      },
+    ],
+    availableFunds: [
+      {
+        id: 'TXN-009',
+        timestamp: '2025-12-21 16:00:00',
+        type: 'increase',
+        amount: 5000.00,
+        description: '平台充值',
+        operator: '财务-张华',
+      },
+      {
+        id: 'TXN-010',
+        timestamp: '2025-12-20 14:30:00',
+        type: 'decrease',
+        amount: 500.00,
+        description: '客户赔付',
+        relatedId: 'COMP-003',
+        operator: '财务-李明',
+      },
+      {
+        id: 'TXN-011',
+        timestamp: '2025-12-18 11:15:00',
+        type: 'decrease',
+        amount: 2000.00,
+        description: '公司提现',
+        operator: '财务-王芳',
+      },
+      {
+        id: 'TXN-012',
+        timestamp: '2025-12-15 09:30:00',
+        type: 'decrease',
+        amount: 300.00,
+        description: '客户赔付',
+        relatedId: 'COMP-002',
+        operator: '财务-张华',
+      },
+    ],
+  });
+
   // 模拟订单数据，包含PRD定义的核心金额、优惠、结算字段
+  // 处理添加新交易记录
+  const handleAddTransaction = (newTransaction: Omit<Transaction, 'id' | 'timestamp'>) => {
+    const now = new Date();
+    const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
+    const id = `TXN-${Date.now()}`;
+
+    const transaction: Transaction = {
+      ...newTransaction,
+      id,
+      timestamp,
+    };
+
+    setTransactions(prev => ({
+      ...prev,
+      availableFunds: [transaction, ...prev.availableFunds],
+    }));
+
+    // 更新可用资金（减少）
+    setManualRecharge(prev => prev - newTransaction.amount);
+  };
+
   const [orders] = useState<OrderDetail[]>([
     {
       orderId: 'ORD-2025001',
@@ -196,7 +344,6 @@ export function PlatformAccount() {
   ]);
 
 
-  const [manualRecharge, setManualRecharge] = useState(0);
 
   // Mock数据 - 客户赔付明细
   const [compensations] = useState<CustomerCompensation[]>([
@@ -247,6 +394,12 @@ export function PlatformAccount() {
     setManualRecharge(prev => prev + amount);
   };
 
+  // 处理查看交易历史
+  const handleViewTransactionHistory = (type: TransactionType) => {
+    setSelectedTransactionType(type);
+    setShowTransactionPanel(true);
+  };
+
 
   return (
     <div className="p-6 space-y-6">
@@ -264,13 +417,26 @@ export function PlatformAccount() {
       </Breadcrumb>
 
       {/* 看板统计 */}
-      <PlatformAccountDashboard stats={stats} onRecharge={handleRecharge} />
+      <PlatformAccountDashboard 
+        stats={stats} 
+        onRecharge={handleRecharge}
+        onViewTransactionHistory={handleViewTransactionHistory}
+      />
 
       {/* 订单明细表格 */}
       <OrderDetailsTable orders={orders} />
 
       {/* 客户赔付明细表格 */}
       <CustomerCompensationTable compensations={compensations} />
+
+      {/* 交易历史面板 */}
+      <TransactionHistoryPanel
+        isOpen={showTransactionPanel}
+        onClose={() => setShowTransactionPanel(false)}
+        transactionType={selectedTransactionType}
+        transactions={transactions[selectedTransactionType]}
+        onAddTransaction={selectedTransactionType === 'availableFunds' ? handleAddTransaction : undefined}
+      />
     </div>
   );
 }
