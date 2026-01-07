@@ -11,10 +11,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { Search, Filter, Download, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Search, Filter, Download, FileText, CheckCircle, XCircle, Clock, DollarSign } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
+import { toast } from 'sonner';
 
 // 提现申请状态
-export type WithdrawalApplicationStatus = 'pending' | 'approved' | 'rejected' | 'processing' | 'completed';
+export type WithdrawalApplicationStatus = 'pending' | 'approved' | 'rejected';
 
 // 打款状态
 export type PaymentStatus = 'unpaid' | 'paid' | 'failed';
@@ -67,7 +76,7 @@ const mockApplications: WithdrawalApplication[] = [
     partnerType: 'enterprise',
     applicationTime: '2025-12-03 09:15:00',
     amount: 80000,
-    applicationStatus: 'completed',
+    applicationStatus: 'approved',
     paymentStatus: 'paid',
     invoiceUrl: '/invoices/WA-2025003.pdf',
     processedTime: '2025-12-03 16:30:00',
@@ -88,7 +97,7 @@ const mockApplications: WithdrawalApplication[] = [
     partnerType: 'enterprise',
     applicationTime: '2025-12-01 15:20:00',
     amount: 120000,
-    applicationStatus: 'processing',
+    applicationStatus: 'approved',
     paymentStatus: 'unpaid',
     invoiceUrl: '/invoices/WA-2025005.pdf',
   },
@@ -102,15 +111,17 @@ export function WithdrawalProcessing({ applications = mockApplications }: Withdr
   const [filterPartnerType, setFilterPartnerType] = useState<string>('all');
   const [filterDateStart, setFilterDateStart] = useState('');
   const [filterDateEnd, setFilterDateEnd] = useState('');
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<WithdrawalApplication | null>(null);
+  const [paymentTime, setPaymentTime] = useState('');
+  const [transactionNumber, setTransactionNumber] = useState('');
 
   // 获取申请状态徽章
   const getApplicationStatusBadge = (status: WithdrawalApplicationStatus) => {
     const config = {
       pending: { label: '待审核', className: 'bg-yellow-50 text-yellow-700 border-yellow-300' },
-      approved: { label: '已审核', className: 'bg-blue-50 text-blue-700 border-blue-300' },
-      rejected: { label: '已拒绝', className: 'bg-red-50 text-red-700 border-red-300' },
-      processing: { label: '处理中', className: 'bg-purple-50 text-purple-700 border-purple-300' },
-      completed: { label: '已完成', className: 'bg-green-50 text-green-700 border-green-300' },
+      approved: { label: '审核通过', className: 'bg-green-50 text-green-700 border-green-300' },
+      rejected: { label: '审核拒绝', className: 'bg-red-50 text-red-700 border-red-300' },
     };
     const { label, className } = config[status];
     return <Badge variant="outline" className={className}>{label}</Badge>;
@@ -185,6 +196,57 @@ export function WithdrawalProcessing({ applications = mockApplications }: Withdr
     alert('下载发票: ' + invoiceUrl);
   };
 
+  // 处理审核通过
+  const handleApprove = (app: WithdrawalApplication) => {
+    console.log('审核通过:', app.applicationId);
+    toast.success('审核通过');
+    // 实际应用中这里应该调用API更新状态
+  };
+
+  // 处理拒绝
+  const handleReject = (app: WithdrawalApplication) => {
+    console.log('拒绝申请:', app.applicationId);
+    toast.error('已拒绝申请');
+    // 实际应用中这里应该调用API更新状态
+  };
+
+  // 处理打款
+  const handlePayment = (app: WithdrawalApplication) => {
+    if (app.partnerType === 'enterprise') {
+      // 企业用户弹出面板
+      setSelectedApplication(app);
+      setPaymentTime('');
+      setTransactionNumber('');
+      setShowPaymentDialog(true);
+    } else {
+      // 个人用户直接打款
+      console.log('个人用户打款:', app.applicationId);
+      toast.success('打款成功');
+      // 实际应用中这里应该调用API
+    }
+  };
+
+  // 提交打款信息
+  const handlePaymentSubmit = () => {
+    if (!paymentTime || !transactionNumber) {
+      toast.error('请填写打款时间和流水号');
+      return;
+    }
+
+    console.log('企业打款:', {
+      applicationId: selectedApplication?.applicationId,
+      paymentTime,
+      transactionNumber,
+    });
+
+    toast.success('打款成功');
+    setShowPaymentDialog(false);
+    setSelectedApplication(null);
+    setPaymentTime('');
+    setTransactionNumber('');
+    // 实际应用中这里应该调用API
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -213,10 +275,8 @@ export function WithdrawalProcessing({ applications = mockApplications }: Withdr
                 <SelectContent>
                   <SelectItem value="all">全部状态</SelectItem>
                   <SelectItem value="pending">待审核</SelectItem>
-                  <SelectItem value="approved">已审核</SelectItem>
-                  <SelectItem value="rejected">已拒绝</SelectItem>
-                  <SelectItem value="processing">处理中</SelectItem>
-                  <SelectItem value="completed">已完成</SelectItem>
+                  <SelectItem value="approved">审核通过</SelectItem>
+                  <SelectItem value="rejected">审核拒绝</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -364,14 +424,16 @@ export function WithdrawalProcessing({ applications = mockApplications }: Withdr
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => handleApprove(app)}
                               className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
                             >
                               <CheckCircle className="w-4 h-4 mr-1" />
-                              审核
+                              通过
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => handleReject(app)}
                               className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
                               <XCircle className="w-4 h-4 mr-1" />
@@ -383,9 +445,10 @@ export function WithdrawalProcessing({ applications = mockApplications }: Withdr
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => handlePayment(app)}
                             className="h-8 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                           >
-                            <Clock className="w-4 h-4 mr-1" />
+                            <DollarSign className="w-4 h-4 mr-1" />
                             打款
                           </Button>
                         )}
@@ -405,6 +468,63 @@ export function WithdrawalProcessing({ applications = mockApplications }: Withdr
           </div>
         )}
       </CardContent>
+
+      {/* 打款信息对话框 */}
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>企业打款</DialogTitle>
+            <DialogDescription>
+              请填写打款时间和流水号
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {selectedApplication && (
+              <div className="p-3 bg-gray-50 rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">申请单号:</span>
+                  <span className="font-medium">{selectedApplication.applicationId}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">企业名称:</span>
+                  <span className="font-medium">{selectedApplication.partnerName}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">打款金额:</span>
+                  <span className="font-medium text-blue-600">¥{selectedApplication.amount.toLocaleString()}</span>
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="payment-time">打款时间 *</Label>
+              <Input
+                id="payment-time"
+                type="datetime-local"
+                value={paymentTime}
+                onChange={(e) => setPaymentTime(e.target.value)}
+                placeholder="选择打款时间"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="transaction-number">流水号 *</Label>
+              <Input
+                id="transaction-number"
+                value={transactionNumber}
+                onChange={(e) => setTransactionNumber(e.target.value)}
+                placeholder="请输入银行流水号"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
+              取消
+            </Button>
+            <Button onClick={handlePaymentSubmit}>
+              确认打款
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

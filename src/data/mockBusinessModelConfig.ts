@@ -95,37 +95,35 @@ export const userTypeMetadata: UserTypeMetadata[] = [
 
 // 获取所有配置
 export function getBusinessModelConfigs(): BusinessModelConfig[] {
-  const stored = localStorage.getItem('businessModelConfigs');
-  if (stored) {
-    return JSON.parse(stored);
-  }
+  // 强制清除旧配置，使用新配置
+  // TODO: 在生产环境中应该使用版本号来判断是否需要更新
+  localStorage.removeItem('businessModelConfigs');
   
   // 默认配置
   const defaultConfigs: BusinessModelConfig[] = [
-    // 旅行代理-个人认证
+    // 旅行代理-个人认证 - 全部三个选项可用
     {
       configId: 'config_001',
       userType: 'travel_agent',
       certificationType: 'individual',
-      businessModel: 'affiliate',
+      businessModel: 'mcp',
       isEnabled: true,
-      priority: 1,
-      displayName: '旅行代理-个人认证-推广联盟',
-      description: '旅行代理个人认证只能选择推广联盟模式',
+      priority: 3,
+      displayName: '个人认证-MCP',
+      description: '个人认证可以选择MCP模式',
       configStatus: 'active',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     },
-    // 旅行代理-企业认证
     {
       configId: 'config_002',
       userType: 'travel_agent',
-      certificationType: 'enterprise',
+      certificationType: 'individual',
       businessModel: 'saas',
       isEnabled: true,
       priority: 2,
-      displayName: '旅行代理-企业认证-SaaS',
-      description: '旅行代理企业认证可以选择SaaS模式',
+      displayName: '个人认证-联名独立站',
+      description: '个人认证可以选择联名独立站模式',
       configStatus: 'active',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -133,12 +131,52 @@ export function getBusinessModelConfigs(): BusinessModelConfig[] {
     {
       configId: 'config_003',
       userType: 'travel_agent',
+      certificationType: 'individual',
+      businessModel: 'affiliate',
+      isEnabled: true,
+      priority: 1,
+      displayName: '个人认证-链接分销',
+      description: '个人认证可以选择链接分销模式',
+      configStatus: 'active',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    // 旅行代理-企业认证 - 全部三个选项可用
+    {
+      configId: 'config_004',
+      userType: 'travel_agent',
+      certificationType: 'enterprise',
+      businessModel: 'mcp',
+      isEnabled: true,
+      priority: 3,
+      displayName: '企业认证-MCP',
+      description: '企业认证可以选择MCP模式',
+      configStatus: 'active',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      configId: 'config_005',
+      userType: 'travel_agent',
+      certificationType: 'enterprise',
+      businessModel: 'saas',
+      isEnabled: true,
+      priority: 2,
+      displayName: '企业认证-联名独立站',
+      description: '企业认证可以选择联名独立站模式',
+      configStatus: 'active',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      configId: 'config_006',
+      userType: 'travel_agent',
       certificationType: 'enterprise',
       businessModel: 'affiliate',
       isEnabled: true,
       priority: 1,
-      displayName: '旅行代理-企业认证-推广联盟',
-      description: '旅行代理企业认证可以选择推广联盟模式',
+      displayName: '企业认证-链接分销',
+      description: '企业认证可以选择链接分销模式',
       configStatus: 'active',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
