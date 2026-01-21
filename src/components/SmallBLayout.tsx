@@ -65,7 +65,7 @@ export function SmallBLayout({
   }> = [
     { id: 'dashboard', icon: Home, label: '首页看板', visible: true },
     { id: 'affiliate-link', icon: Link2, label: '推广链接', visible: checkPermission('affiliate-link') },
-    { id: 'orders', icon: Package, label: '订单佣金', visible: checkPermission('order-management') },
+    { id: 'orders', icon: Package, label: '订单佣金', visible: false }, // 隐藏订单管理，合并到佣金明细
     { id: 'commission', icon: Receipt, label: '佣金明细', visible: true },
     {
       id: 'withdrawal',
@@ -115,10 +115,7 @@ export function SmallBLayout({
               <div className="w-8 h-8 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
                 <span className="text-red-600 text-sm font-bold">AI</span>
               </div>
-              <span className="text-xl font-semibold text-gray-900">AIGOHOTEL</span>
-              <Badge variant="outline" className="ml-2 bg-gray-50 text-gray-700 border-gray-300">
-                小B客户系统
-              </Badge>
+              <span className="text-xl font-semibold text-gray-900">达人分销系统</span>
             </div>
           </div>
 

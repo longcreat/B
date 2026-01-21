@@ -85,33 +85,6 @@ export function CommissionDetail({ currentPartner }: CommissionDetailProps) {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* 佣金比例卡片（只读） */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Eye className="w-5 h-5" />
-            佣金比例（只读）
-          </CardTitle>
-          <CardDescription>
-            您的佣金比例由大B客户设置，您无法修改
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="text-3xl font-bold text-blue-600">
-              {currentPartner.defaultCommissionRate || 0}%
-            </div>
-            <div className="text-sm text-gray-500">
-              {bigBPartner ? (
-                <>由 <span className="font-medium">{bigBPartner.displayName}</span> 设置</>
-              ) : (
-                '由平台设置'
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* 佣金统计 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
